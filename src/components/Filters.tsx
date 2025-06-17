@@ -23,6 +23,8 @@ interface FiltersProps {
   onClearFilters: () => void;
 }
 
+const ALL_ITEMS_FILTER_VALUE = "%%ALL_ITEMS_FILTER_VALUE%%"; // Unique non-empty string
+
 export function Filters({
   leagues,
   teams,
@@ -70,12 +72,17 @@ export function Filters({
 
         <div>
           <Label htmlFor="league-select" className="block mb-2 font-medium">League</Label>
-          <Select value={selectedLeague} onValueChange={onLeagueChange}>
+          <Select 
+            value={selectedLeague === '' ? ALL_ITEMS_FILTER_VALUE : selectedLeague} 
+            onValueChange={(value) => {
+              onLeagueChange(value === ALL_ITEMS_FILTER_VALUE ? '' : value);
+            }}
+          >
             <SelectTrigger id="league-select" className="w-full">
               <SelectValue placeholder="Select League" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Leagues</SelectItem>
+              <SelectItem value={ALL_ITEMS_FILTER_VALUE}>All Leagues</SelectItem>
               {leagues.map((league) => (
                 <SelectItem key={league.id} value={league.id}>
                   {league.name}
@@ -87,12 +94,17 @@ export function Filters({
 
         <div>
           <Label htmlFor="team-select" className="block mb-2 font-medium">Team</Label>
-          <Select value={selectedTeam} onValueChange={onTeamChange}>
+          <Select 
+            value={selectedTeam === '' ? ALL_ITEMS_FILTER_VALUE : selectedTeam} 
+            onValueChange={(value) => {
+              onTeamChange(value === ALL_ITEMS_FILTER_VALUE ? '' : value);
+            }}
+          >
             <SelectTrigger id="team-select" className="w-full">
               <SelectValue placeholder="Select Team" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Teams</SelectItem>
+              <SelectItem value={ALL_ITEMS_FILTER_VALUE}>All Teams</SelectItem>
               {teams.map((team) => (
                 <SelectItem key={team.id} value={team.id}>
                   {team.name}
