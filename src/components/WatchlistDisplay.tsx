@@ -28,7 +28,7 @@ export function WatchlistDisplay({
               <MatchCard
                 key={match.id}
                 match={match}
-                isWatchlisted={true} // Matches in this list are always watchlisted
+                isWatchlisted={true} 
                 onToggleWatchlist={onToggleWatchlist}
               />
             ))}

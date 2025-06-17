@@ -5,6 +5,7 @@ import { formatMatchDateTime } from '@/lib/dateUtils';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CalendarDays, Clock, Heart, Info, Shield, Users } from 'lucide-react';
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 interface MatchCardProps {
@@ -18,7 +19,6 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
   const [formattedDateTime, setFormattedDateTime] = useState({ date: 'Loading...', time: 'Loading...' });
 
   useEffect(() => {
-    // Ensure this runs client-side for correct timezone conversion
     setFormattedDateTime(formatMatchDateTime(match.matchTime));
   }, [match.matchTime]);
 
@@ -26,15 +26,43 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
   const homeTeamName = 'homeTeam' in match && typeof match.homeTeam === 'object' ? match.homeTeam.name : match.homeTeam;
   const awayTeamName = 'awayTeam' in match && typeof match.awayTeam === 'object' ? match.awayTeam.name : match.awayTeam;
   const matchId = 'id' in match ? match.id : match.matchId;
+  
+  const homeTeamObj = 'homeTeam' in match && typeof match.homeTeam === 'object' ? match.homeTeam : { name: homeTeamName };
+  const awayTeamObj = 'awayTeam' in match && typeof match.awayTeam === 'object' ? match.awayTeam : { name: awayTeamName };
+
 
   return (
-    <Card className="w-full max-w-md shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col">
+    <Card className="w-full max-w-md shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card text-card-foreground">
       <CardHeader className="pb-3">
-        <CardTitle className="font-headline text-xl flex items-center justify-between">
-          <span>{homeTeamName} vs {awayTeamName}</span>
+        <CardTitle className="font-headline text-xl">
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Image 
+                src={`https://placehold.co/32x32.png`} 
+                alt={`${homeTeamObj.name} logo`} 
+                width={24} 
+                height={24} 
+                className="rounded-full"
+                data-ai-hint={`${homeTeamObj.name} logo`} 
+              />
+              <span>{homeTeamObj.name}</span>
+            </div>
+            <span className="text-muted-foreground">vs</span>
+            <div className="flex items-center gap-2">
+              <span>{awayTeamObj.name}</span>
+               <Image 
+                src={`https://placehold.co/32x32.png`} 
+                alt={`${awayTeamObj.name} logo`} 
+                width={24} 
+                height={24} 
+                className="rounded-full"
+                data-ai-hint={`${awayTeamObj.name} logo`}
+              />
+            </div>
+          </div>
         </CardTitle>
-        <CardDescription className="flex items-center gap-2 pt-1">
-          <Shield size={16} className="text-muted-foreground" />
+        <CardDescription className="flex items-center gap-2 pt-1 text-muted-foreground">
+          <Shield size={16} />
           {leagueName}
         </CardDescription>
       </CardHeader>
@@ -49,7 +77,7 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
         </div>
         {'venue' in match && match.venue && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users size={16} /> {/* Using Users as placeholder for venue icon */}
+            <Users size={16} />
             <span>Venue: {match.venue}</span>
           </div>
         )}
@@ -65,7 +93,7 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
           variant={isWatchlisted ? 'destructive' : 'default'}
           onClick={() => onToggleWatchlist(matchId)}
           className="w-full transition-colors duration-300"
-          aria-label={isWatchlisted ? `Remove ${homeTeamName} vs ${awayTeamName} from watchlist` : `Add ${homeTeamName} vs ${awayTeamName} to watchlist`}
+          aria-label={isWatchlisted ? `Remove ${homeTeamObj.name} vs ${awayTeamObj.name} from watchlist` : `Add ${homeTeamObj.name} vs ${awayTeamObj.name} to watchlist`}
         >
           <Heart size={18} className={`mr-2 ${isWatchlisted ? 'fill-current' : ''}`} />
           {isWatchlisted ? 'Remove from Watchlist' : 'Add to Watchlist'}

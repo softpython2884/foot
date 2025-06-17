@@ -7,7 +7,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MatchList } from '@/components/MatchList';
 import { Filters } from '@/components/Filters';
-import { WatchlistAndRecommendations } from '@/components/WatchlistAndRecommendations';
+import { WatchlistDisplay } from '@/components/WatchlistDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 
@@ -88,7 +88,7 @@ export default function HomePage() {
         <Tabs defaultValue="all-matches" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3 mx-auto mb-8">
             <TabsTrigger value="all-matches" className="font-headline">All Matches</TabsTrigger>
-            <TabsTrigger value="watchlist-recs" className="font-headline">My Watchlist & AI Picks</TabsTrigger>
+            <TabsTrigger value="watchlist-recs" className="font-headline">My Watchlist</TabsTrigger>
           </TabsList>
           
           <TabsContent value="all-matches">
@@ -111,12 +111,9 @@ export default function HomePage() {
           </TabsContent>
           
           <TabsContent value="watchlist-recs">
-            <WatchlistAndRecommendations
+            <WatchlistDisplay
               watchlistMatches={watchlistMatches}
-              watchlistIds={watchlist}
               onToggleWatchlist={handleToggleWatchlist}
-              allMatches={allMatches}
-              allTeams={teams}
             />
           </TabsContent>
         </Tabs>
