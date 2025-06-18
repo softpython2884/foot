@@ -3,9 +3,9 @@ import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
-import type { User, Bet, BetWithMatchDetails, MatchApp } from './types'; // Added MatchApp
-import { teams, leagues } from './mockData'; 
-import { getApiSportsFixtureById } from '@/services/apiSportsService'; // Import service
+import type { User, Bet, BetWithMatchDetails, MatchApp } from './types';
+import { teams } from './mockData';
+import { getApiSportsFixtureById } from '@/services/apiSportsService';
 
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
@@ -29,7 +29,7 @@ export async function getDb(): Promise<Database> {
 }
 
 async function initializeDb(db: Database): Promise<void> {
-  await db.exec(\`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -39,14 +39,14 @@ async function initializeDb(db: Database): Promise<void> {
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-  \`);
+  `);
 
-  await db.exec(\`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS bets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
-      matchId INTEGER NOT NULL,      -- Changed from TEXT to INTEGER for API fixture ID
-      teamIdBetOn INTEGER NOT NULL,  -- Changed from TEXT to INTEGER for API team ID
+      matchId INTEGER NOT NULL,
+      teamIdBetOn INTEGER NOT NULL,
       amountBet INTEGER NOT NULL,
       potentialWinnings INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'won', 'lost'
@@ -54,7 +54,7 @@ async function initializeDb(db: Database): Promise<void> {
       updatedAt DATETIME,
       FOREIGN KEY (userId) REFERENCES users(id)
     );
-  \`);
+  `);
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
@@ -120,16 +120,29 @@ export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithM
   const detailedBets: BetWithMatchDetails[] = [];
 
   for (const bet of betsFromDb) {
-    // Fetch live match details from API-Sports for each bet
-    // This could be slow if there are many bets; consider optimizing if performance becomes an issue.
-    const match: MatchApp | null = await getApiSportsFixtureById(bet.matchId); 
-    const teamBetOn = teams.find(t => t.id === bet.teamIdBetOn); // Still using mockData for team name
+    const match: MatchApp | null = await getApiSportsFixtureById(bet.matchId);
+    // Find teamBetOn from the actual match details if possible, fallback to mockData if needed
+    let teamBetOnName = 'Unknown Team';
+    if (match) {
+        if (match.homeTeam.id === bet.teamIdBetOn) {
+            teamBetOnName = match.homeTeam.name;
+        } else if (match.awayTeam.id === bet.teamIdBetOn) {
+            teamBetOnName = match.awayTeam.name;
+        } else {
+            // Fallback to mockData if teamIdBetOn is not in the fetched match (should not happen ideally)
+            const teamFromMock = teams.find(t => t.id === bet.teamIdBetOn);
+            if (teamFromMock) teamBetOnName = teamFromMock.name;
+        }
+    } else {
+        const teamFromMock = teams.find(t => t.id === bet.teamIdBetOn);
+        if (teamFromMock) teamBetOnName = teamFromMock.name;
+    }
     
     detailedBets.push({
       ...bet,
       homeTeamName: match?.homeTeam.name || 'Unknown Team',
       awayTeamName: match?.awayTeam.name || 'Unknown Team',
-      teamBetOnName: teamBetOn?.name || 'Unknown Team',
+      teamBetOnName: teamBetOnName,
       matchTime: match?.matchTime || 'Unknown Date',
       leagueName: match?.league?.name || 'Unknown League',
     });
