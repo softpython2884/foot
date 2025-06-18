@@ -5,14 +5,14 @@ import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, notFound, useRouter } from 'next/navigation';
-import { teams as mockTeams } from '@/lib/mockData'; // Using mockData to find team API ID
+import { teams as mockTeams } from '@/lib/mockData'; 
 import type { Team, TeamApp, MatchApp } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Shield, Trophy, Clock, Brain, Users, Building, Landmark, Flag } from 'lucide-react'; // Added Landmark, Flag
+import { CalendarDays, Shield, Trophy, Clock, Brain, Users, Building, Landmark, Flag, Info } from 'lucide-react'; 
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
@@ -22,7 +22,7 @@ import { BettingModal } from '@/components/BettingModal';
 import { getApiSportsTeamDetails, getApiSportsMatchesForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
-const SEASON_FOR_MATCHES = 2023; // Align with apiSportsService for free plan access
+const SEASON_FOR_MATCHES = 2023; 
 
 export default function TeamProfilePage() {
   const params = useParams();
@@ -34,7 +34,6 @@ export default function TeamProfilePage() {
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
   const [mockTeamData, setMockTeamData] = useState<Team | null>(null);
   const [pastMatches, setPastMatches] = useState<MatchApp[]>([]);
-  const [upcomingMatches, setUpcomingMatches] = useState<MatchApp[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
 
@@ -51,21 +50,16 @@ export default function TeamProfilePage() {
   const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
     setIsLoadingData(true);
     setIsLoadingMatches(true);
-    setTeamDetails(null); // Reset previous details
+    setTeamDetails(null); 
     setPastMatches([]);
-    setUpcomingMatches([]);
 
     try {
       const details = await getApiSportsTeamDetails(apiTeamId);
-      setTeamDetails(details); // This will provide country, founded, venue etc.
+      setTeamDetails(details); 
 
-      // Fetch matches for the accessible season
-      const past = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT', last: 5 });
+      const past = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT', last: 10 });
       setPastMatches(past.sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()));
       
-      const upcoming = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'NS', next: 5 });
-      setUpcomingMatches(upcoming.sort((a,b) => new Date(a.matchTime).getTime() - new Date(b.matchTime).getTime()));
-
       const nameForAISummary = details?.name || teamNameFromMock;
        if (nameForAISummary) {
         setIsAiLoading(true);
@@ -117,7 +111,7 @@ export default function TeamProfilePage() {
       router.push('/login');
       return;
     }
-    if (match.statusShort !== 'NS') {
+    if (match.statusShort !== 'NS') { // This check is now less relevant as upcoming matches are removed
       toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
       return;
     }
@@ -144,7 +138,6 @@ export default function TeamProfilePage() {
     setIsAiLoading(false);
   };
   
-  // Use API details if available, otherwise fallback to mock data for initial display
   const displayTeamName = teamDetails?.name || mockTeamData?.name;
   const displayTeamLogo = teamDetails?.logoUrl || mockTeamData?.logoImageUrl;
 
@@ -190,11 +183,11 @@ export default function TeamProfilePage() {
             {displayTeamLogo ? (
               <Image
                 src={displayTeamLogo}
-                alt={`${displayTeamName} Logo`}
+                alt={`${displayTeamName || 'Team'} Logo`}
                 width={200}
                 height={200}
                 style={{ objectFit: 'contain' }}
-                data-ai-hint={`${displayTeamName} logo large`}
+                data-ai-hint={`${displayTeamName || 'Team'} logo large`}
                 priority
               />
             ) : (
@@ -208,24 +201,14 @@ export default function TeamProfilePage() {
               </h1>
             </div>
           </div>
-          <CardContent className="p-6">
-            <CardTitle className="text-2xl mb-3 font-headline flex items-center gap-2"><Landmark /> Informations Détaillées</CardTitle>
-            {isLoadingData && !teamDetails && <div className="py-4"><LoadingSpinner size="md" /></div>}
-            {teamDetails ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <p><Flag size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Pays:</span> {teamDetails.country || 'N/A'}</p>
-                <p><CalendarDays size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Fondé:</span> {teamDetails.founded || 'N/A'}</p>
-                <p><Building size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Stade:</span> {teamDetails.venueName || 'N/A'}</p>
-                <p><Users size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Capacité:</span> {teamDetails.venueCapacity?.toLocaleString() || 'N/A'}</p>
-                <p><Landmark size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Ville du Stade:</span> {teamDetails.venueCity || 'N/A'}</p>
-              </div>
-            ) : (!isLoadingData && <p className="text-muted-foreground mt-2">Detailed information not available from API.</p>)}
-          </CardContent>
         </Card>
 
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
+            <CardDescription>
+              Utilisez l'assistant IA pour obtenir un résumé de l'équipe ou poser des questions spécifiques sur son histoire, son stade, son pays, etc.
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
@@ -236,9 +219,9 @@ export default function TeamProfilePage() {
               {!aiSummary && !isAiLoading && !aiError && <p className="text-muted-foreground">Le résumé de l'IA est en cours de chargement ou non disponible.</p>}
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Poser une question sur {displayTeamName}</h3>
+              <h3 className="text-lg font-semibold">Poser une question sur {displayTeamName || 'cette équipe'}</h3>
               <Textarea
-                placeholder={`Ex: Qui est l'entraîneur actuel ?`}
+                placeholder={`Ex: Quelle est la capacité du stade de ${displayTeamName || 'cette équipe'} ?`}
                 value={userQuestion}
                 onChange={(e) => setUserQuestion(e.target.value)}
                 className="resize-none"
@@ -258,14 +241,14 @@ export default function TeamProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 gap-8"> {/* Removed md:grid-cols-2 as upcoming matches are removed */}
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés (5 derniers)</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés ({pastMatches.length > 0 ? `${pastMatches.length} derniers` : 'Saison ' + SEASON_FOR_MATCHES})</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingMatches && pastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName} (Saison {SEASON_FOR_MATCHES}).</p>}
+              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName || 'cette équipe'} (Saison {SEASON_FOR_MATCHES}).</p>}
               {pastMatches.length > 0 && (
                 <ul className="space-y-4">
                   {pastMatches.map((match) => (
@@ -273,35 +256,11 @@ export default function TeamProfilePage() {
                   ))}
                 </ul>
               )}
+              {/* Future: "Load More" button could go here */}
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Clock className="text-primary"/>Matchs à Venir (5 prochains)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingMatches && upcomingMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && upcomingMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match à venir trouvé pour {displayTeamName} (Saison {SEASON_FOR_MATCHES}).</p>}
-              {upcomingMatches.length > 0 && (
-                <ul className="space-y-4">
-                  {upcomingMatches.map((match) => (
-                    <li key={match.id} className="p-0 border-none rounded-lg bg-transparent">
-                       <MatchCard match={match} isWatchlisted={false} onToggleWatchlist={() => { /* TODO */}} />
-                        <Button
-                            size="sm"
-                            className="mt-2 w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                            onClick={() => handleOpenBetModal(match)}
-                            disabled={!currentUser || match.statusShort !== 'NS'}
-                          >
-                            Parier sur ce match
-                        </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          {/* Upcoming matches section removed */}
         </div>
 
         {selectedMatchForBet && teamToBetOnForModal && currentUser && (

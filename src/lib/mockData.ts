@@ -39,17 +39,12 @@ export const teams: Team[] = [
   { id: 91, name: 'AS Monaco', logoImageUrl: 'https://media.api-sports.io/football/teams/91.png', slug: 'as-monaco' },
   { id: 79, name: 'Lille OSC', logoImageUrl: 'https://media.api-sports.io/football/teams/79.png', slug: 'lille-osc' },
 ].map(team => ({ ...team, slug: team.slug || slugify(team.name) }));
-// Ensure all teams have a slug. If a team from API doesn't have one, slugify its name.
 
 export const leagues: League[] = [
-  { id: 39, name: 'Premier League', logoUrl: 'https://media.api-sports.io/football/leagues/39.png', country: 'England' },
-  { id: 140, name: 'La Liga', logoUrl: 'https://media.api-sports.io/football/leagues/140.png', country: 'Spain' },
-  { id: 135, name: 'Serie A', logoUrl: 'https://media.api-sports.io/football/leagues/135.png', country: 'Italy' },
-  { id: 78, name: 'Bundesliga', logoUrl: 'https://media.api-sports.io/football/leagues/78.png', country: 'Germany' },
-  { id: 61, name: 'Ligue 1', logoUrl: 'https://media.api-sports.io/football/leagues/61.png', country: 'France' },
-  { id: 2, name: 'Champions League', logoUrl: 'https://media.api-sports.io/football/leagues/2.png', country: 'Europe' },
+  { id: 39, name: 'Premier League', logoUrl: 'https://media.api-sports.io/football/leagues/39.png', country: 'England', season: 2023 },
+  { id: 140, name: 'La Liga', logoUrl: 'https://media.api-sports.io/football/leagues/140.png', country: 'Spain', season: 2023 },
+  { id: 135, name: 'Serie A', logoUrl: 'https://media.api-sports.io/football/leagues/135.png', country: 'Italy', season: 2023 },
+  { id: 78, name: 'Bundesliga', logoUrl: 'https://media.api-sports.io/football/leagues/78.png', country: 'Germany', season: 2023 },
+  { id: 61, name: 'Ligue 1', logoUrl: 'https://media.api-sports.io/football/leagues/61.png', country: 'France', season: 2023 },
+  { id: 2, name: 'Champions League', logoUrl: 'https://media.api-sports.io/football/leagues/2.png', country: 'Europe', season: 2023 },
 ];
-
-// mockMatches is no longer the primary source for team pages, but can be kept for reference or testing.
-// Team pages will fetch directly from API-Sports.
-// export const mockMatches: Match[] = [ ... ];
