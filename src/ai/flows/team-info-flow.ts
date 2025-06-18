@@ -30,15 +30,15 @@ const teamInfoPrompt = ai.definePrompt({
   name: 'teamInfoPrompt',
   input: {schema: TeamInfoInputSchema},
   output: {schema: TeamInfoOutputSchema},
-  prompt: `You are a knowledgeable football expert assistant.
-The user is asking about the team: {{{teamName}}}.
+  prompt: `Réponds toujours en français. Tu es un assistant expert en football très compétent.
+L'utilisateur pose une question sur l'équipe : {{{teamName}}}.
 
 {{#if question}}
-Please answer the following question specifically about {{{teamName}}}:
+Veuillez répondre spécifiquement à la question suivante concernant {{{teamName}}} :
 "{{{question}}}"
-Provide a concise and informative answer. Format your response clearly.
+Fournissez une réponse concise et informative. Formatez clairement votre réponse.
 {{else}}
-Provide a general, interesting summary about {{{teamName}}}. Include key facts like their league, notable achievements, famous players, or current form if possible. Keep it to a few engaging sentences.
+Fournissez un résumé général et intéressant sur {{{teamName}}}. Incluez des faits clés comme leur ligue, leurs réalisations notables, les joueurs célèbres ou leur forme actuelle si possible. Limitez-vous à quelques phrases captivantes.
 {{/if}}
 `,
 });
@@ -52,10 +52,8 @@ const teamInfoFlow = ai.defineFlow(
   async (input) => {
     const {output} = await teamInfoPrompt(input);
     if (!output) {
-      return { response: "I'm sorry, I couldn't retrieve information for that team right now. Please try again later." };
+      return { response: "Je suis désolé, je n'ai pas pu récupérer d'informations pour cette équipe pour le moment. Veuillez réessayer plus tard." };
     }
     return output;
   }
 );
-
-    

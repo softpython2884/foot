@@ -76,6 +76,12 @@ const nextConfig: NextConfig = {
         hostname: 'www.icons101.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'tmssl.akamaized.net',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

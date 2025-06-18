@@ -12,7 +12,7 @@ export const leagues: League[] = [
 export const teams: Team[] = [
   { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://images.icon-icons.com/103/PNG/256/manchester_united_17973.png' },
   { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://www.icons101.com/icon_ico/id_37554/Liverpool_FC_80s.ico' },
-  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://stylfoot.fr/c/24-category_01icon/real-madrid.jpg' },
+  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://tmssl.akamaized.net//images/wappen/homepageWappen150x150/418.png?lm=1729684474' },
   { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/1/1d/Logo_FC_Barcelone.svg/langfr-250px-Logo_FC_Barcelone.svg.png' },
   { id: 'T5', name: 'Juventus', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/9/9f/Logo_Juventus.svg/2088px-Logo_Juventus.svg.png' },
   { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://brandlogos.net/wp-content/uploads/2013/07/ac-milan-club-vector-logo.png' },
