@@ -159,3 +159,4 @@ export const mockMatches: Match[] = [
     awayScore: 2,
   },
 ];
+
