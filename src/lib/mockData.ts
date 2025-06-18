@@ -64,9 +64,9 @@ export const mockMatches: Match[] = [
   {
     id: 'M3',
     league: getLeague('L5'),
-    homeTeam: getTeam('T9'), // PSG
+    homeTeam: getTeam('T9'), 
     awayTeam: getTeam('T10'),
-    matchTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+    matchTime: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), 
     venue: 'Parc des Princes',
     status: 'completed',
     homeScore: 2,
@@ -76,88 +76,94 @@ export const mockMatches: Match[] = [
     id: 'M4',
     league: getLeague('L1'),
     homeTeam: getTeam('T11'),
-    awayTeam: getTeam('T1'), // Man U
-    matchTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // In 3 days
+    awayTeam: getTeam('T1'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(), // In 3 days
     venue: 'Stamford Bridge',
     status: 'upcoming',
   },
   {
     id: 'M5',
-    league: getLeague('L5'), // Should be Bundesliga or a league for Dortmund vs PSG
-    homeTeam: getTeam('T8'), // Dortmund
-    awayTeam: getTeam('T9'), // PSG
-    matchTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // In 5 days
-    venue: 'Signal Iduna Park', // Or Parc des Princes if PSG is home
+    league: getLeague('L4'), 
+    homeTeam: getTeam('T8'), 
+    awayTeam: getTeam('T7'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), // In 5 days
+    venue: 'Signal Iduna Park', 
     status: 'upcoming',
   },
    {
     id: 'M6',
     league: getLeague('L1'),
-    homeTeam: getTeam('T15'), // Manchester City
-    awayTeam: getTeam('T12'), // Arsenal FC
-    matchTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), 
+    homeTeam: getTeam('T15'), 
+    awayTeam: getTeam('T12'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 10)).toISOString(), 
     venue: 'Etihad Stadium',
     status: 'upcoming',
   },
   {
     id: 'M7',
     league: getLeague('L3'),
-    homeTeam: getTeam('T5'), // Juventus
-    awayTeam: getTeam('T18'), // Napoli
-    matchTime: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(), 
+    homeTeam: getTeam('T5'), 
+    awayTeam: getTeam('T18'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 12)).toISOString(), 
     venue: 'Allianz Stadium',
     status: 'upcoming',
   },
   {
     id: 'M8',
     league: getLeague('L2'),
-    homeTeam: getTeam('T17'), // Sevilla FC
-    awayTeam: getTeam('T13'), // Atletico Madrid
+    homeTeam: getTeam('T17'), 
+    awayTeam: getTeam('T13'), 
     matchTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), 
     venue: 'Ramón Sánchez Pizjuán',
     status: 'completed',
     homeScore: 1,
     awayScore: 1
   },
-  // Adding some matches for newer teams
   {
     id: 'M9',
-    league: getLeague('L4'), // Bundesliga
-    homeTeam: getTeam('T7'), // Bayern Munich
-    awayTeam: getTeam('T20'), // RB Leipzig
-    matchTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(), 
+    league: getLeague('L4'), 
+    homeTeam: getTeam('T7'), 
+    awayTeam: getTeam('T20'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(), 
     venue: 'Allianz Arena',
     status: 'upcoming',
   },
   {
     id: 'M10',
-    league: getLeague('L3'), // Serie A
-    homeTeam: getTeam('T19'), // AS Roma
-    awayTeam: getTeam('T6'), // AC Milan
-    matchTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(), 
+    league: getLeague('L3'), 
+    homeTeam: getTeam('T19'), 
+    awayTeam: getTeam('T6'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 6)).toISOString(), 
     venue: 'Stadio Olimpico',
     status: 'upcoming',
   },
    {
     id: 'M11',
-    league: getLeague('L5'), // Ligue 1
-    homeTeam: getTeam('T21'), // AS Monaco
-    awayTeam: getTeam('T22'), // Lille OSC
-    matchTime: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(), 
+    league: getLeague('L5'), 
+    homeTeam: getTeam('T21'), 
+    awayTeam: getTeam('T22'), 
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 8)).toISOString(), 
     venue: 'Stade Louis II',
     status: 'upcoming',
   },
   {
     id: 'M12',
     league: getLeague('L1'),
-    homeTeam: getTeam('T16'), // Tottenham
-    awayTeam: getTeam('T2'), // Liverpool
+    homeTeam: getTeam('T16'), 
+    awayTeam: getTeam('T2'), 
     matchTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // Yesterday
     venue: 'Tottenham Hotspur Stadium',
     status: 'completed',
     homeScore: 2,
     awayScore: 2,
   },
+  {
+    id: 'M13_PSG_Dortmund',
+    league: getLeague('L4'), // Assuming this is a Champions League or similar
+    homeTeam: getTeam('T9'), // PSG
+    awayTeam: getTeam('T8'), // Dortmund
+    matchTime: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // In 7 days
+    venue: 'Parc des Princes',
+    status: 'upcoming',
+  },
 ];
-
-

@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -10,7 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from '@/hooks/use-toast';
@@ -18,9 +18,12 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction } from '@/actions/user';
-import type { AuthenticatedUser, LeaderboardUser } from '@/lib/types';
-import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle } from 'lucide-react';
-import Link from 'next/link'; // Added Link import
+import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; // Import bet actions
+import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
+import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import Link from 'next/link';
+import { formatMatchDateTime } from '@/lib/dateUtils';
+
 
 const nameFormSchema = z.object({
   newName: z.string().min(2, { message: 'Name must be at least 2 characters long.' }),
@@ -43,6 +46,10 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
+  const [betHistory, setBetHistory] = useState<BetWithMatchDetails[]>([]);
+  const [betHistoryLoading, setBetHistoryLoading] = useState(true);
+  const [isSettlingBet, setIsSettlingBet] = useState<number | null>(null);
+
 
   const nameForm = useForm<NameFormValues>({
     resolver: zodResolver(nameFormSchema),
@@ -54,13 +61,27 @@ export default function ProfilePage() {
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
+  const fetchBetHistory = useCallback(async () => {
+    if (!currentUser) return;
+    setBetHistoryLoading(true);
+    const result = await getBetHistoryAction(currentUser.id);
+    if (result.bets) {
+      setBetHistory(result.bets);
+    } else if (result.error) {
+      toast({ variant: 'destructive', title: 'Error fetching bet history', description: result.error });
+    }
+    setBetHistoryLoading(false);
+  }, [currentUser, toast]);
+
+
   useEffect(() => {
     if (!authLoading && !currentUser) {
       router.push('/login');
     } else if (currentUser) {
       nameForm.reset({ newName: currentUser.name });
+      fetchBetHistory(); // Fetch bet history when user is available
     }
-  }, [currentUser, authLoading, router, nameForm]);
+  }, [currentUser, authLoading, router, nameForm, fetchBetHistory]);
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -69,7 +90,7 @@ export default function ProfilePage() {
       if (result.users) {
         setLeaderboard(result.users);
       } else if (result.error) {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
+        toast({ variant: 'destructive', title: 'Error fetching leaderboard', description: result.error });
       }
       setLeaderboardLoading(false);
     }
@@ -117,6 +138,37 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSettleBet = async (betId: number, userWon: boolean) => {
+    if(!currentUser) return;
+    setIsSettlingBet(betId);
+    const formData = new FormData();
+    formData.append('betId', betId.toString());
+    formData.append('userWon', userWon.toString());
+    
+    const result = await settleBetAction(formData);
+    if (result.success) {
+      toast({ title: 'Bet Settled', description: result.success });
+      // Refetch user data to update score in AuthContext and display
+      const updatedUser = await getUserById(currentUser.id);
+      if (updatedUser) {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { hashedPassword, ...userToAuth } = updatedUser;
+        updateAuthContextUser(userToAuth as AuthenticatedUser);
+      }
+      fetchBetHistory(); // Refetch bet history to update status
+      // Refetch leaderboard if needed, or assume score update will eventually reflect.
+      const leaderboardResult = await getLeaderboardAction();
+        if (leaderboardResult.users) {
+            setLeaderboard(leaderboardResult.users);
+        }
+
+    } else {
+      toast({ variant: 'destructive', title: 'Error settling bet', description: result.error });
+    }
+    setIsSettlingBet(null);
+  };
+
+
   if (authLoading || !currentUser) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
@@ -147,8 +199,7 @@ export default function ProfilePage() {
                     const inputElement = document.getElementById('newName');
                     const accordionTrigger = document.querySelector('[data-radix-collection-item][value="edit-name"] button[aria-expanded="false"]');
                     if (accordionTrigger instanceof HTMLElement) {
-                      accordionTrigger.click(); // Open accordion if closed
-                      // Wait for accordion to open before focusing
+                      accordionTrigger.click(); 
                       setTimeout(() => inputElement?.focus(), 100);
                     } else if (inputElement) {
                       inputElement.focus();
@@ -266,10 +317,72 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="shadow-lg">
                 <CardHeader>
-                <CardTitle className="flex items-center gap-2 font-headline"><ListOrdered /> Bet History</CardTitle>
+                    <CardTitle className="flex items-center gap-2 font-headline"><Gamepad2 /> Bet History</CardTitle>
                 </CardHeader>
                 <CardContent>
-                <p className="text-muted-foreground">Your betting history will be displayed here once the feature is available.</p>
+                    {betHistoryLoading ? (
+                        <div className="flex justify-center items-center h-40">
+                            <LoadingSpinner />
+                        </div>
+                    ) : betHistory.length > 0 ? (
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {betHistory.map((bet) => {
+                                const { date, time } = formatMatchDateTime(bet.matchTime);
+                                return (
+                                    <Card key={bet.id} className="bg-muted/30">
+                                        <CardHeader className="pb-2">
+                                            <CardTitle className="text-md">
+                                                {bet.homeTeamName} vs {bet.awayTeamName}
+                                            </CardTitle>
+                                            <CardDescription>{bet.leagueName} - {date} at {time}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="text-sm space-y-1">
+                                            <p>Bet on: <span className="font-semibold">{bet.teamBetOnName}</span></p>
+                                            <p>Amount: <span className="font-semibold">{bet.amountBet} pts</span></p>
+                                            <p>Potential Winnings: <span className="font-semibold">{bet.potentialWinnings} pts</span></p>
+                                            <p>Status: 
+                                                <span className={cn(
+                                                    "font-semibold",
+                                                    bet.status === 'won' && 'text-green-500',
+                                                    bet.status === 'lost' && 'text-red-500',
+                                                    bet.status === 'pending' && 'text-yellow-500'
+                                                )}>
+                                                    {bet.status.charAt(0).toUpperCase() + bet.status.slice(1)}
+                                                    {bet.status === 'won' && <CheckCircle2 className="inline ml-1 h-4 w-4" />}
+                                                    {bet.status === 'lost' && <XCircle className="inline ml-1 h-4 w-4" />}
+                                                    {bet.status === 'pending' && <AlertTriangle className="inline ml-1 h-4 w-4" />}
+                                                </span>
+                                            </p>
+                                        </CardContent>
+                                        {bet.status === 'pending' && (
+                                            <CardFooter className="flex gap-2 pt-2">
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    onClick={() => handleSettleBet(bet.id, true)}
+                                                    disabled={isSettlingBet === bet.id}
+                                                    className="text-green-500 border-green-500 hover:bg-green-500/10 hover:text-green-600"
+                                                >
+                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Win"}
+                                                </Button>
+                                                <Button 
+                                                    size="sm" 
+                                                    variant="outline" 
+                                                    onClick={() => handleSettleBet(bet.id, false)}
+                                                    disabled={isSettlingBet === bet.id}
+                                                    className="text-red-500 border-red-500 hover:bg-red-500/10 hover:text-red-600"
+                                                >
+                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Loss"}
+                                                </Button>
+                                            </CardFooter>
+                                        )}
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="text-muted-foreground text-center py-4">You haven&apos;t placed any bets yet.</p>
+                    )}
                 </CardContent>
             </Card>
 

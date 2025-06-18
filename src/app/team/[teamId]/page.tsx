@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, notFound, useRouter } from 'next/navigation'; // Added useRouter
+import { useParams, notFound, useRouter } from 'next/navigation';
 import { teams, mockMatches } from '@/lib/mockData';
 import type { Team, Match } from '@/lib/types';
 import { Header } from '@/components/Header';
@@ -14,18 +14,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CalendarDays, Shield, Trophy, Clock } from 'lucide-react';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { placeBetAction } from '@/actions/bets'; // Import placeBetAction
 
 export default function TeamProfilePage() {
   const params = useParams();
   const teamId = params.teamId as string;
-  const router = useRouter(); // Initialize useRouter
-  const { currentUser, isLoading: authIsLoading } = useAuth(); // Get auth state
+  const router = useRouter();
+  const { currentUser, isLoading: authIsLoading } = useAuth();
+  const { toast } = useToast(); // Initialize useToast
 
   const [team, setTeam] = useState<Team | null | undefined>(undefined);
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isPlacingBet, setIsPlacingBet] = useState<string | null>(null); // To track which match bet is being placed for
 
   useEffect(() => {
     if (teamId) {
@@ -46,13 +50,68 @@ export default function TeamProfilePage() {
     }
   }, [teamId]);
 
+  const handlePlaceBet = async (match: Match) => {
+    if (!currentUser) {
+      router.push('/login');
+      return;
+    }
+    if (match.status !== 'upcoming') {
+      toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
+      return;
+    }
+
+    setIsPlacingBet(match.id);
+    const amountString = window.prompt(`Enter amount to bet on ${match.homeTeam.id === teamId ? match.homeTeam.name : match.awayTeam.name} to win:`);
+    if (amountString === null) { // User cancelled prompt
+      setIsPlacingBet(null);
+      return;
+    }
+
+    const amountBet = parseInt(amountString, 10);
+    if (isNaN(amountBet) || amountBet <= 0) {
+      toast({ variant: 'destructive', title: 'Invalid Amount', description: 'Please enter a valid positive number for your bet.' });
+      setIsPlacingBet(null);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('userId', currentUser.id.toString());
+    formData.append('matchId', match.id);
+    // For simplicity, if on team A's page, and match is A vs B, bet is on A.
+    // If match is B vs A, bet is still on A.
+    // This assumes user always bets on the team whose page they are viewing.
+    // A more complex UI would allow choosing which team to bet on in any match.
+    const teamToBetOn = (match.homeTeam.id === teamId || match.awayTeam.id === teamId) ? teamId : ''; 
+    
+    if (!teamToBetOn) {
+        toast({variant: 'destructive', title: 'Error', description: 'Could not determine team to bet on.'});
+        setIsPlacingBet(null);
+        return;
+    }
+
+    formData.append('teamIdBetOn', teamToBetOn);
+    formData.append('amountBet', amountBet.toString());
+
+    const result = await placeBetAction(formData);
+
+    if (result.success) {
+      toast({ title: 'Bet Placed!', description: result.success });
+    } else {
+      toast({ variant: 'destructive', title: 'Bet Failed', description: result.error || 'Could not place bet.' });
+    }
+    setIsPlacingBet(null);
+  };
+
   const handleProtectedAction = (actionUrl: string) => {
     if (!currentUser && !authIsLoading) {
       router.push('/login');
     } else if (currentUser) {
-      // For now, placeholder. Later, navigate to actual store/follow logic.
       console.log(`Action for ${actionUrl} triggered by ${currentUser.name}`);
-      router.push('/login'); // Placeholder redirect
+      // For now, redirect to login for non-bet actions as placeholder
+      // For bet actions, it's handled by handlePlaceBet directly.
+      if (!actionUrl.includes('/bet')) {
+        router.push('/login'); // Placeholder redirect for store/follow
+      }
     }
   };
 
@@ -165,9 +224,10 @@ export default function TeamProfilePage() {
                         <Button 
                           size="sm" 
                           className="mt-3 w-full bg-accent hover:bg-accent/90 text-accent-foreground"
-                          onClick={() => handleProtectedAction(`/match/${match.id}/bet`)}
+                          onClick={() => handlePlaceBet(match)}
+                          disabled={isPlacingBet === match.id || !currentUser}
                         >
-                          Bet on this match
+                          {isPlacingBet === match.id ? <LoadingSpinner size="sm" /> : 'Bet on this match'}
                         </Button>
                       </li>
                     );

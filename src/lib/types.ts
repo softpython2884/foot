@@ -37,11 +37,29 @@ export interface User {
   email: string;
   hashedPassword?: string; 
   score: number;
-  rank: number;
+  rank: number; // This field is present but not actively managed for ranking calculations by these changes.
   createdAt: string;
 }
 
-// Type for user data stored in AuthContext and localStorage (without password)
 export type AuthenticatedUser = Omit<User, 'hashedPassword'>;
-
 export type LeaderboardUser = Omit<User, 'hashedPassword'>;
+
+export interface Bet {
+  id: number;
+  userId: number;
+  matchId: string;
+  teamIdBetOn: string;
+  amountBet: number;
+  potentialWinnings: number;
+  status: 'pending' | 'won' | 'lost';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface BetWithMatchDetails extends Bet {
+  homeTeamName: string;
+  awayTeamName: string;
+  teamBetOnName: string;
+  matchTime: string; 
+  leagueName: string;
+}

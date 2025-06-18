@@ -3,7 +3,8 @@ import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
-import type { User } from './types';
+import type { User, Bet, BetWithMatchDetails } from './types';
+import { mockMatches, teams, leagues } from './mockData'; // For fetching match/team details
 
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
@@ -36,6 +37,21 @@ async function initializeDb(db: Database): Promise<void> {
       score INTEGER DEFAULT 0 NOT NULL,
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS bets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL,
+      matchId TEXT NOT NULL,
+      teamIdBetOn TEXT NOT NULL,
+      amountBet INTEGER NOT NULL,
+      potentialWinnings INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'won', 'lost'
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updatedAt DATETIME,
+      FOREIGN KEY (userId) REFERENCES users(id)
     );
   `);
 }
@@ -79,4 +95,55 @@ export async function getTopUsersDb(limit: number = 10): Promise<Omit<User, 'has
     'SELECT id, name, email, score, rank, createdAt FROM users ORDER BY score DESC, name ASC LIMIT ?',
     limit
   );
+}
+
+// Bet related functions
+export async function createBetDb(userId: number, matchId: string, teamIdBetOn: string, amountBet: number, potentialWinnings: number): Promise<number | undefined> {
+  const db = await getDb();
+  const result = await db.run(
+    'INSERT INTO bets (userId, matchId, teamIdBetOn, amountBet, potentialWinnings, status) VALUES (?, ?, ?, ?, ?, ?)',
+    userId,
+    matchId,
+    teamIdBetOn,
+    amountBet,
+    potentialWinnings,
+    'pending'
+  );
+  return result.lastID;
+}
+
+export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithMatchDetails[]> {
+  const db = await getDb();
+  const bets = await db.all<Bet[]>('SELECT * FROM bets WHERE userId = ? ORDER BY createdAt DESC', userId);
+
+  return bets.map(bet => {
+    const match = mockMatches.find(m => m.id === bet.matchId);
+    const teamBetOn = teams.find(t => t.id === bet.teamIdBetOn);
+    
+    return {
+      ...bet,
+      homeTeamName: match?.homeTeam.name || 'Unknown Team',
+      awayTeamName: match?.awayTeam.name || 'Unknown Team',
+      teamBetOnName: teamBetOn?.name || 'Unknown Team',
+      matchTime: match?.matchTime || 'Unknown Date',
+      leagueName: typeof match?.league === 'string' ? match.league : match?.league?.name || 'Unknown League',
+    };
+  });
+}
+
+export async function getBetByIdDb(betId: number): Promise<Bet | undefined> {
+  const db = await getDb();
+  return db.get<Bet>('SELECT * FROM bets WHERE id = ?', betId);
+}
+
+export async function updateUserScoreDb(userId: number, scoreChange: number): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.run('UPDATE users SET score = score + ? WHERE id = ?', scoreChange, userId);
+  return (result.changes ?? 0) > 0;
+}
+
+export async function updateBetStatusDb(betId: number, status: 'won' | 'lost'): Promise<boolean> {
+  const db = await getDb();
+  const result = await db.run('UPDATE bets SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', status, betId);
+  return (result.changes ?? 0) > 0;
 }
