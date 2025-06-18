@@ -1,8 +1,20 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Button } from './ui/button';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
+  const { currentUser, logout, isLoading } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/'); // Redirect to home page after logout
+  };
+
   return (
     <header className="bg-primary text-primary-foreground py-4 shadow-md">
       <div className="container mx-auto flex items-center justify-between px-4">
@@ -17,12 +29,25 @@ export function Header() {
           <h1 className="text-3xl font-bold font-headline">FootySchedule</h1>
         </Link>
         <nav className="flex items-center gap-2">
-          <Button asChild variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-            <Link href="/login">Log In</Link>
-          </Button>
-          <Button asChild variant="secondary" className="bg-accent text-accent-foreground hover:bg-accent/80">
-            <Link href="/register">Sign Up</Link>
-          </Button>
+          {isLoading ? (
+            <p className="text-sm">Loading...</p>
+          ) : currentUser ? (
+            <>
+              <span className="text-sm hidden sm:inline">Welcome, {currentUser.name}!</span>
+              <Button onClick={handleLogout} variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+                Log Out
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost" className="text-primary-foreground hover:bg-primary/80">
+                <Link href="/login">Log In</Link>
+              </Button>
+              <Button asChild variant="secondary" className="bg-accent text-accent-foreground hover:bg-accent/80">
+                <Link href="/register">Sign Up</Link>
+              </Button>
+            </>
+          )}
         </nav>
       </div>
     </header>

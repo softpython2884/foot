@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -5,13 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; Removed as FormLabel is used
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { loginUser } from '@/actions/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
+import type { AuthenticatedUser } from '@/lib/types';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -23,6 +26,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const { login } = useAuth(); // Get login function from AuthContext
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -44,13 +48,19 @@ export default function LoginPage() {
         title: 'Login Failed',
         description: result.error,
       });
-    } else if (result.success) {
+    } else if (result.success && result.user) {
       toast({
         title: 'Login Successful',
         description: result.success,
       });
-      // Redirect to home page or dashboard after successful login
+      login(result.user as AuthenticatedUser); // Call context login function
       router.push('/'); 
+    } else {
+       toast({
+        variant: 'destructive',
+        title: 'Login Failed',
+        description: 'An unexpected error occurred or user data was not returned.',
+      });
     }
   };
 

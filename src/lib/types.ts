@@ -2,7 +2,7 @@
 export interface Team {
   id: string;
   name: string;
-  logoImageUrl?: string; // Changed from bannerImageUrl
+  logoImageUrl?: string;
 }
 
 export interface League {
@@ -17,9 +17,9 @@ export interface Match {
   awayTeam: Team;
   matchTime: string; // ISO string format
   venue?: string;
-  homeScore?: number; // Added for past matches
-  awayScore?: number; // Added for past matches
-  status?: 'completed' | 'upcoming' | 'live'; // Added to differentiate matches
+  homeScore?: number;
+  awayScore?: number;
+  status?: 'completed' | 'upcoming' | 'live';
 }
 
 export interface RecommendedMatch {
@@ -35,8 +35,11 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  hashedPassword?: string; // Optional on client, required on server
+  hashedPassword?: string; 
   score: number;
   rank: number;
   createdAt: string;
 }
+
+// Type for user data stored in AuthContext and localStorage (without password)
+export type AuthenticatedUser = Omit<User, 'hashedPassword'>;

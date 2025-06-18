@@ -4,30 +4,33 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, notFound } from 'next/navigation';
-import { teams, mockMatches } from '@/lib/mockData'; // Removed leagues import as it's not directly used here
+import { useParams, notFound, useRouter } from 'next/navigation'; // Added useRouter
+import { teams, mockMatches } from '@/lib/mockData';
 import type { Team, Match } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+// import { Separator } from '@/components/ui/separator'; // Not used
 import { CalendarDays, Shield, Trophy, Clock } from 'lucide-react';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth
 
 export default function TeamProfilePage() {
   const params = useParams();
   const teamId = params.teamId as string;
+  const router = useRouter(); // Initialize useRouter
+  const { currentUser, isLoading: authIsLoading } = useAuth(); // Get auth state
 
-  const [team, setTeam] = useState<Team | null | undefined>(undefined); // undefined for loading, null for not found
+  const [team, setTeam] = useState<Team | null | undefined>(undefined);
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingData, setIsLoadingData] = useState(true);
 
   useEffect(() => {
     if (teamId) {
-      setIsLoading(true);
+      setIsLoadingData(true);
       const foundTeam = teams.find((t) => t.id === teamId);
       
       if (foundTeam) {
@@ -38,13 +41,24 @@ export default function TeamProfilePage() {
         setPastMatches(teamMatches.filter((m) => m.status === 'completed').sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()));
         setUpcomingMatches(teamMatches.filter((m) => m.status === 'upcoming').sort((a,b) => new Date(a.matchTime).getTime() - new Date(b.matchTime).getTime()));
       } else {
-        setTeam(null); // Team not found
+        setTeam(null);
       }
-      setIsLoading(false);
+      setIsLoadingData(false);
     }
   }, [teamId]);
 
-  if (isLoading) {
+  const handleProtectedAction = (actionUrl: string) => {
+    if (!currentUser && !authIsLoading) {
+      router.push('/login');
+    } else if (currentUser) {
+      // For now, placeholder. Later, navigate to actual store/follow logic.
+      console.log(`Action for ${actionUrl} triggered by ${currentUser.name}`);
+      router.push('/login'); // Placeholder redirect
+    }
+  };
+
+
+  if (isLoadingData || authIsLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <Header />
@@ -74,7 +88,7 @@ export default function TeamProfilePage() {
                 alt={`${team.name} Logo`}
                 width={200} 
                 height={200}
-                objectFit="contain"
+                style={{objectFit: 'contain'}}
                 data-ai-hint={`${team.name} logo large`}
               />
             ) : (
@@ -83,7 +97,7 @@ export default function TeamProfilePage() {
                 alt={`${team.name} Placeholder Logo`}
                 width={200}
                 height={200}
-                objectFit="contain"
+                style={{objectFit: 'contain'}}
                 data-ai-hint={`${team.name} logo large`}
               />
             )}
@@ -97,12 +111,8 @@ export default function TeamProfilePage() {
             <CardTitle className="text-2xl mb-4 font-headline">Team Information</CardTitle>
             <p className="text-muted-foreground">Detailed statistics and information about {team.name} will be displayed here.</p>
              <div className="mt-4 flex space-x-4">
-                <Link href="/login">
-                    <Button variant="outline">Team Store</Button>
-                </Link>
-                <Link href="/login">
-                    <Button>Follow Team</Button>
-                </Link>
+                <Button variant="outline" onClick={() => handleProtectedAction(`/team/${teamId}/store`)}>Team Store</Button>
+                <Button onClick={() => handleProtectedAction(`/team/${teamId}/follow`)}>Follow Team</Button>
              </div>
           </CardContent>
         </Card>
@@ -153,8 +163,12 @@ export default function TeamProfilePage() {
                         <p className="text-sm text-muted-foreground flex items-center gap-1"><Shield size={14}/> {match.league.name}</p>
                         <p className="text-sm text-muted-foreground flex items-center gap-1"><CalendarDays size={14}/> {date} at {time}</p>
                         {match.venue && <p className="text-sm text-muted-foreground">Venue: {match.venue}</p>}
-                        <Button size="sm" className="mt-3 w-full bg-accent hover:bg-accent/90 text-accent-foreground">
-                          Bet on this match (Placeholder)
+                        <Button 
+                          size="sm" 
+                          className="mt-3 w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+                          onClick={() => handleProtectedAction(`/match/${match.id}/bet`)}
+                        >
+                          Bet on this match
                         </Button>
                       </li>
                     );
