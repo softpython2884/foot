@@ -1,6 +1,18 @@
 
 import type { Match, League, Team } from './types';
 
+// Helper function to generate slugs
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/--+/g, '-') // Replace multiple - with single -
+    .replace(/^-+/, '') // Trim - from start of text
+    .replace(/-+$/, ''); // Trim - from end of text
+}
+
 export const leagues: League[] = [
   { id: 'L1', name: 'Premier League' },
   { id: 'L2', name: 'La Liga' },
@@ -10,7 +22,7 @@ export const leagues: League[] = [
   { id: 'L6', name: 'Champions League' },
 ];
 
-export const teams: Team[] = [
+const rawTeams: Omit<Team, 'slug'>[] = [
   { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://images.icon-icons.com/103/PNG/256/manchester_united_17973.png' },
   { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://www.icons101.com/icon_ico/id_37554/Liverpool_FC_80s.ico' },
   { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://tmssl.akamaized.net//images/wappen/homepageWappen150x150/418.png?lm=1729684474' },
@@ -35,9 +47,14 @@ export const teams: Team[] = [
   { id: 'T22', name: 'Lille OSC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/6/62/Logo_LOSC_Lille_2018.svg/langfr-250px-Logo_LOSC_Lille_2018.svg.png' },
 ];
 
-// Get specific team objects for matches
-const getTeam = (id: string) => teams.find(t => t.id)!;
-const getLeague = (id: string) => leagues.find(l => l.id)!;
+export const teams: Team[] = rawTeams.map(team => ({
+  ...team,
+  slug: slugify(team.name),
+}));
+
+// Get specific team objects for matches by ID
+const getTeam = (id: string) => teams.find(t => t.id === id)!;
+const getLeague = (id: string) => leagues.find(l => l.id === id)!;
 
 export const mockMatches: Match[] = [
   {
@@ -179,6 +196,4 @@ export const mockMatches: Match[] = [
     awayScore: 0,
   },
 ];
-    
-
     

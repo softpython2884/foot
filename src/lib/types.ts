@@ -3,6 +3,7 @@ export interface Team {
   id: string;
   name: string;
   logoImageUrl?: string;
+  slug?: string; // Added for URL-friendly names
 }
 
 export interface League {

@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import { createBetDb, getBetByIdDb, updateBetStatusDb, updateUserScoreDb, getUserBetsWithDetailsDb } from '@/lib/db';
 import type { BetWithMatchDetails } from '@/lib/types';
-import { mockMatches } from '@/lib/mockData';
+import { mockMatches, teams as allTeams } from '@/lib/mockData'; // Ensure allTeams is imported if needed, or team objects are passed
 
 const FIXED_ODDS = 2.0; // Example: all bets have 2x payout
 
@@ -38,6 +38,17 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
       return { error: 'Betting is only allowed on upcoming matches.' };
     }
 
+    const teamBetOn = allTeams.find(t => t.id === teamIdBetOn);
+    if (!teamBetOn) {
+        return { error: 'Team to bet on not found.' };
+    }
+    
+    // Check if the team bet on is actually playing in the match
+    if (match.homeTeam.id !== teamIdBetOn && match.awayTeam.id !== teamIdBetOn) {
+        return { error: `Team ${teamBetOn.name} is not participating in this match.` };
+    }
+
+
     // For now, potential winnings are simple. This could be dynamic based on odds.
     const potentialWinnings = amountBet * FIXED_ODDS;
 
@@ -47,7 +58,7 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
       return { error: 'Failed to place bet.' };
     }
 
-    return { success: `Bet placed successfully! Potential winnings: ${potentialWinnings}.` };
+    return { success: `Bet placed successfully on ${teamBetOn.name}! Potential winnings: ${potentialWinnings} points.` };
 
   } catch (error) {
     console.error('Place bet error:', error);
@@ -126,4 +137,3 @@ export async function settleBetAction(formData: FormData): Promise<{ error?: str
     return { error: 'An unexpected error occurred while settling the bet.' };
   }
 }
-
