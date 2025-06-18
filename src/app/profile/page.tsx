@@ -20,6 +20,7 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction } from '@/actions/user';
 import type { AuthenticatedUser, LeaderboardUser } from '@/lib/types';
 import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle } from 'lucide-react';
+import Link from 'next/link'; // Added Link import
 
 const nameFormSchema = z.object({
   newName: z.string().min(2, { message: 'Name must be at least 2 characters long.' }),
@@ -144,15 +145,17 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     const inputElement = document.getElementById('newName');
-                    if (inputElement) {
-                      // Check if accordion item is open, if not, open it first.
-                      // This part is a bit tricky without direct control over Accordion state from here.
-                      // For simplicity, we assume user might need to open it manually if it's closed.
-                      // Or, if Accordion's `defaultValue` is set, this might work.
+                    const accordionTrigger = document.querySelector('[data-radix-collection-item][value="edit-name"] button[aria-expanded="false"]');
+                    if (accordionTrigger instanceof HTMLElement) {
+                      accordionTrigger.click(); // Open accordion if closed
+                      // Wait for accordion to open before focusing
+                      setTimeout(() => inputElement?.focus(), 100);
+                    } else if (inputElement) {
                       inputElement.focus();
                     }
                   }}
                   className="mt-1 block w-full text-left text-xl font-semibold text-primary hover:text-primary/80 transition-colors p-0 h-auto bg-transparent"
+                  aria-label="Edit name"
                 >
                   {currentUser.name}
                 </button>
@@ -172,7 +175,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-        <Accordion type="single" collapsible className="w-full space-y-6 mb-8">
+        <Accordion type="single" collapsible className="w-full space-y-6 mb-8" defaultValue="edit-name">
           <AccordionItem value="edit-name" className="border-none">
             <Card className="shadow-lg">
               <AccordionTrigger className="px-6 py-4 text-lg font-headline hover:no-underline">
@@ -304,11 +307,13 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
         </div>
-
+        <div className="mt-12 text-center">
+            <Link href="/">
+                <Button variant="outline">Back to Home</Button>
+            </Link>
+        </div>
       </main>
       <Footer />
     </div>
   );
 }
-
-    

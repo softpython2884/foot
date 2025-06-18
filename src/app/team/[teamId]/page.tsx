@@ -11,7 +11,6 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-// import { Separator } from '@/components/ui/separator'; // Not used
 import { CalendarDays, Shield, Trophy, Clock } from 'lucide-react';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -180,7 +179,7 @@ export default function TeamProfilePage() {
             </CardContent>
           </Card>
         </div>
-        <div className="mt-8 text-center">
+        <div className="mt-12 text-center">
             <Link href="/">
                 <Button variant="outline">Back to All Teams</Button>
             </Link>
