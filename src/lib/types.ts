@@ -1,6 +1,8 @@
+
 export interface Team {
   id: string;
   name: string;
+  bannerImageUrl?: string; // Added for team banners
 }
 
 export interface League {
@@ -15,6 +17,9 @@ export interface Match {
   awayTeam: Team;
   matchTime: string; // ISO string format
   venue?: string;
+  homeScore?: number; // Added for past matches
+  awayScore?: number; // Added for past matches
+  status?: 'completed' | 'upcoming' | 'live'; // Added to differentiate matches
 }
 
 export interface RecommendedMatch {
