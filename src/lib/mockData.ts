@@ -24,6 +24,14 @@ export const teams: Team[] = [
   { id: 'T12', name: 'Arsenal FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png' },
   { id: 'T13', name: 'Atletico Madrid', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Atletico_Madrid_2017_logo.svg/1200px-Atletico_Madrid_2017_logo.svg.png' },
   { id: 'T14', name: 'Inter Milan', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/1200px-FC_Internazionale_Milano_2021.svg.png' },
+  { id: 'T15', name: 'Manchester City', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png' },
+  { id: 'T16', name: 'Tottenham Hotspur', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/1200px-Tottenham_Hotspur.svg.png' },
+  { id: 'T17', name: 'Sevilla FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Sevilla_FC_logo.svg/1200px-Sevilla_FC_logo.svg.png' },
+  { id: 'T18', name: 'Napoli', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/S.S.C._Napoli_logo.svg/1200px-S.S.C._Napoli_logo.svg.png' },
+  { id: 'T19', name: 'AS Roma', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f7/AS_Roma_logo_%282017%29.svg/1200px-AS_Roma_logo_%282017%29.svg.png' },
+  { id: 'T20', name: 'RB Leipzig', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/04/RB_Leipzig_2014_logo.svg/1200px-RB_Leipzig_2014_logo.svg.png' },
+  { id: 'T21', name: 'AS Monaco', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/AS_Monaco_FC.svg/1200px-AS_Monaco_FC.svg.png' },
+  { id: 'T22', name: 'Lille OSC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/15/Lille_OSC_logo.svg/1200px-Lille_OSC_logo.svg.png' },
 ];
 
 // Get specific team objects for matches
@@ -82,4 +90,34 @@ export const mockMatches: Match[] = [
     venue: 'Signal Iduna Park',
     status: 'upcoming',
   },
+   {
+    id: 'M6',
+    league: getLeague('L1'),
+    homeTeam: getTeam('T15'), // Manchester City
+    awayTeam: getTeam('T12'), // Arsenal FC
+    matchTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Etihad Stadium',
+    status: 'upcoming',
+  },
+  {
+    id: 'M7',
+    league: getLeague('L3'),
+    homeTeam: getTeam('T5'), // Juventus
+    awayTeam: getTeam('T18'), // Napoli
+    matchTime: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Allianz Stadium',
+    status: 'upcoming',
+  },
+  {
+    id: 'M8',
+    league: getLeague('L2'),
+    homeTeam: getTeam('T17'), // Sevilla FC
+    awayTeam: getTeam('T13'), // Atletico Madrid
+    matchTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Ramón Sánchez Pizjuán',
+    status: 'completed',
+    homeScore: 1,
+    awayScore: 1
+  },
 ];
+
