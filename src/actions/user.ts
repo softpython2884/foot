@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
 import { getUserById, updateUserNameDb, updateUserPasswordDb, getTopUsersDb } from '@/lib/db';
-import type { AuthenticatedUser, LeaderboardUser } from '@/lib/types';
+import type { AuthenticatedUser, LeaderboardUser, User } from '@/lib/types';
 
 const saltRounds = 10;
 
@@ -48,7 +48,6 @@ export async function updateNameAction(formData: FormData): Promise<{ error?: st
       return { error: 'Failed to update name.' };
     }
     
-    // Return the updated user details (without password)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { hashedPassword, ...updatedUser } = { ...user, name: newName };
 
@@ -106,5 +105,23 @@ export async function getLeaderboardAction(): Promise<{ error?: string; users?: 
   } catch (error) {
     console.error('Get leaderboard error:', error);
     return { error: 'Failed to fetch leaderboard.' };
+  }
+}
+
+export async function getUserDetailsAction(userId: number): Promise<{ error?: string; user?: AuthenticatedUser }> {
+  if (!userId) {
+    return { error: 'User ID is required.' };
+  }
+  try {
+    const userFromDb = await getUserById(userId);
+    if (!userFromDb) {
+      return { error: 'User not found.' };
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { hashedPassword, ...userToAuth } = userFromDb;
+    return { user: userToAuth as AuthenticatedUser };
+  } catch (error) {
+    console.error('Get user details error:', error);
+    return { error: 'Failed to fetch user details.' };
   }
 }

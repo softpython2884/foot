@@ -17,14 +17,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { updateNameAction, updatePasswordAction, getLeaderboardAction } from '@/actions/user';
-import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; // Import bet actions
-import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails, User } from '@/lib/types';
+import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction } from '@/actions/user';
+import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; 
+import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
 import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/dateUtils';
-import { cn } from '@/lib/utils'; // Added import
-import { getUserById } from '@/lib/db';
+import { cn } from '@/lib/utils';
 
 
 const nameFormSchema = z.object({
@@ -81,7 +80,7 @@ export default function ProfilePage() {
       router.push('/login');
     } else if (currentUser) {
       nameForm.reset({ newName: currentUser.name });
-      fetchBetHistory(); // Fetch bet history when user is available
+      fetchBetHistory(); 
     }
   }, [currentUser, authLoading, router, nameForm, fetchBetHistory]);
 
@@ -147,28 +146,25 @@ export default function ProfilePage() {
     formData.append('betId', betId.toString());
     formData.append('userWon', userWon.toString());
     
-    const result = await settleBetAction(formData);
-    if (result.success) {
-      toast({ title: 'Bet Settled', description: result.success });
-      // Refetch user data to update score in AuthContext and display
-      // This needs to be a server call, not a direct DB call from client component context
-      // For simplicity, we'll assume a function `fetchUserByIdFromServer` exists or refetch all user data
-      const userFromDb: User | undefined = await getUserById(currentUser.id); // Assuming getUserById is importable and works server-side or is adapted
-      if (userFromDb) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { hashedPassword, ...userToAuth } = userFromDb;
-        updateAuthContextUser(userToAuth as AuthenticatedUser);
+    const settlementResult = await settleBetAction(formData);
+    if (settlementResult.success) {
+      toast({ title: 'Bet Settled', description: settlementResult.success });
+      
+      const userDetailsResult = await getUserDetailsAction(currentUser.id);
+      if (userDetailsResult.user) {
+        updateAuthContextUser(userDetailsResult.user);
+      } else if (userDetailsResult.error) {
+        toast({variant: 'destructive', title: 'Failed to refresh user data', description: userDetailsResult.error});
       }
 
-      fetchBetHistory(); // Refetch bet history to update status
-      // Refetch leaderboard if needed, or assume score update will eventually reflect.
+      fetchBetHistory(); 
       const leaderboardResult = await getLeaderboardAction();
         if (leaderboardResult.users) {
             setLeaderboard(leaderboardResult.users);
         }
 
     } else {
-      toast({ variant: 'destructive', title: 'Error settling bet', description: result.error });
+      toast({ variant: 'destructive', title: 'Error settling bet', description: settlementResult.error });
     }
     setIsSettlingBet(null);
   };
@@ -202,15 +198,12 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     const inputElement = document.getElementById('newName');
-                    // Try to find an AccordionTrigger that is not expanded
                     const accordionTrigger = document.querySelector('div[data-state="closed"] > button[aria-expanded="false"][data-radix-accordion-trigger]');
 
                     if (accordionTrigger instanceof HTMLElement) {
                       accordionTrigger.click(); 
-                      // Wait for accordion to open then focus. This might need adjustment based on animation duration.
                       setTimeout(() => inputElement?.focus(), 150); 
                     } else if (inputElement) {
-                       // If accordion is already open, or no trigger found in closed state, just focus.
                       inputElement.focus();
                     }
                   }}
@@ -439,4 +432,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

@@ -9,13 +9,14 @@ import { mockMatches, teams, leagues } from './mockData'; // For fetching match/
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
 
-if (!fs.existsSync(DB_DIR)) {
-  fs.mkdirSync(DB_DIR, { recursive: true });
-}
-
 let dbInstance: Database | null = null;
 
 export async function getDb(): Promise<Database> {
+  // Moved fs operations here to ensure they only run when getDb is called (server-side)
+  if (!fs.existsSync(DB_DIR)) {
+    fs.mkdirSync(DB_DIR, { recursive: true });
+  }
+
   if (dbInstance) {
     return dbInstance;
   }
@@ -147,3 +148,4 @@ export async function updateBetStatusDb(betId: number, status: 'won' | 'lost'): 
   const result = await db.run('UPDATE bets SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', status, betId);
   return (result.changes ?? 0) > 0;
 }
+
