@@ -1,18 +1,18 @@
 
 'use client';
 
-import type { Match as AppMatch, RecommendedMatch, Team } from '@/lib/types'; // Use AppMatch
+import type { Match as AppMatch, RecommendedMatch, Team } from '@/lib/types'; 
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, Clock, Heart, Info, Shield, Users, Tv } from 'lucide-react'; // Added Tv icon
+import { CalendarDays, Clock, Heart, Info, Shield, Users, Tv } from 'lucide-react'; 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 interface MatchCardProps {
-  match: AppMatch | RecommendedMatch; // Use AppMatch
+  match: AppMatch | RecommendedMatch; 
   isWatchlisted: boolean;
-  onToggleWatchlist: (matchId: string | number) => void; // ID can be string or number
+  onToggleWatchlist: (matchId: string | number) => void; 
   isRecommended?: boolean;
 }
 
@@ -20,7 +20,6 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
   const [formattedDateTime, setFormattedDateTime] = useState({ date: 'Loading...', time: 'Loading...' });
 
   useEffect(() => {
-    // API provides utcDate, mockData provides matchTime
     const timeToFormat = 'utcDate' in match && match.utcDate ? match.utcDate : match.matchTime;
     setFormattedDateTime(formatMatchDateTime(timeToFormat));
   }, [match]);
@@ -34,7 +33,7 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
   const matchId = 'id' in match ? match.id : match.matchId;
   
   let displayStatus = match.status ? match.status.toLowerCase().replace(/_/g, ' ') : 'scheduled';
-  if (displayStatus === 'finished') displayStatus = 'completed'; // Align with common terminology
+  if (displayStatus === 'finished') displayStatus = 'completed'; 
 
   let scoreDisplay = null;
   if (match.status === 'FINISHED' || match.status === 'completed') {
@@ -58,7 +57,8 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
                   alt={`${homeTeam.name} logo`} 
                   width={24} 
                   height={24} 
-                  className="rounded-full object-contain"
+                  className="rounded-full"
+                  style={{ objectFit: 'contain' }}
                   data-ai-hint={`${homeTeam.name} logo`} 
                 />
               ) : <div className="w-6 h-6 bg-muted rounded-full" />}
@@ -77,7 +77,8 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
                   alt={`${awayTeam.name} logo`} 
                   width={24} 
                   height={24} 
-                  className="rounded-full object-contain"
+                  className="rounded-full"
+                  style={{ objectFit: 'contain' }}
                   data-ai-hint={`${awayTeam.name} logo`}
                 />
               ) : <div className="w-6 h-6 bg-muted rounded-full" />}
@@ -86,7 +87,7 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist, isRecommend
         </CardTitle>
         <CardDescription className="flex items-center gap-2 pt-1 text-muted-foreground">
           {leagueEmblem ? (
-            <Image src={leagueEmblem} alt={`${leagueName} emblem`} width={16} height={16} className="object-contain" />
+            <Image src={leagueEmblem} alt={`${leagueName} emblem`} width={16} height={16} style={{ objectFit: 'contain' }} />
           ) : (
             <Shield size={16} />
           )}

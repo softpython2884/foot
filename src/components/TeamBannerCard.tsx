@@ -20,7 +20,7 @@ export function TeamBannerCard({ team }: TeamBannerCardProps) {
             alt={`${team.name} logo`}
             width={80}
             height={80}
-            objectFit="contain"
+            style={{ objectFit: 'contain' }}
             className="transition-transform duration-300 ease-in-out group-hover:scale-110"
             data-ai-hint={`${team.name} logo`}
           />

@@ -5,16 +5,15 @@ import { useEffect, useState, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MatchList } from '@/components/MatchList';
-import { WatchlistDisplay } from '@/components/WatchlistDisplay'; // Renamed for clarity
+import { WatchlistDisplay } from '@/components/WatchlistDisplay'; 
 import { getApiCompetitions, getApiMatchesForCompetition, getDateNDaysFromNowString, getTodayDateString } from '@/services/footballDataApi';
-import type { ApiCompetition, ApiMatch, Match as AppMatch } from '@/lib/types'; // Using ApiMatch for fetched data
+import type { ApiCompetition, ApiMatch, Match as AppMatch } from '@/lib/types'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format } from 'date-fns';
+import Image from 'next/image'; // Import Image for emblems
 
-// Helper to transform API Match to AppMatch for UI components if needed, or use API types directly
 function transformApiMatchToAppMatch(apiMatch: ApiMatch): AppMatch {
   return {
     id: apiMatch.id,
@@ -38,7 +37,7 @@ function transformApiMatchToAppMatch(apiMatch: ApiMatch): AppMatch {
     },
     matchTime: apiMatch.utcDate,
     utcDate: apiMatch.utcDate,
-    status: apiMatch.status, // This needs mapping if MatchCard expects different values
+    status: apiMatch.status, 
     homeScore: apiMatch.score?.fullTime?.home,
     awayScore: apiMatch.score?.fullTime?.away,
     score: apiMatch.score,
@@ -50,15 +49,14 @@ function transformApiMatchToAppMatch(apiMatch: ApiMatch): AppMatch {
 export default function HomePage() {
   const [competitions, setCompetitions] = useState<ApiCompetition[]>([]);
   const [selectedCompetitionCode, setSelectedCompetitionCode] = useState<string>('');
-  const [matches, setMatches] = useState<AppMatch[]>([]); // Use AppMatch for consistency with MatchCard
+  const [matches, setMatches] = useState<AppMatch[]>([]); 
   const [isLoadingCompetitions, setIsLoadingCompetitions] = useState(true);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
   const [matchDateFilter, setMatchDateFilter] = useState<'upcoming' | 'finished' | 'live'>('upcoming');
 
-  // Local watchlist for API matches on this page (stores numeric API match IDs)
   const [localWatchlist, setLocalWatchlist] = useState<number[]>([]);
 
-  const popularCompetitionCodes = ['PL', 'CL', 'BL1', 'SA', 'PD', 'FL1']; // Premier League, Champions League, Bundesliga, Serie A, La Liga, Ligue 1
+  const popularCompetitionCodes = ['PL', 'CL', 'BL1', 'SA', 'PD', 'FL1']; 
 
   useEffect(() => {
     async function fetchCompetitions() {
@@ -66,17 +64,17 @@ export default function HomePage() {
       try {
         const comps = await getApiCompetitions(popularCompetitionCodes);
         setCompetitions(comps);
-        if (comps.length > 0) {
-          // setSelectedCompetitionCode(comps[0].code); // Auto-select first competition
+        if (comps.length > 0 && !selectedCompetitionCode) {
+          // Optionally auto-select the first competition or a default one
+          // setSelectedCompetitionCode(comps[0].code); 
         }
       } catch (error) {
         console.error("Failed to fetch competitions", error);
-        // Handle error display to user if necessary
       }
       setIsLoadingCompetitions(false);
     }
     fetchCompetitions();
-  }, []);
+  }, [selectedCompetitionCode]); // Added selectedCompetitionCode to avoid re-fetching if already set
 
   const fetchMatches = useCallback(async (compCode: string, filter: 'upcoming' | 'finished' | 'live') => {
     if (!compCode) {
@@ -87,9 +85,9 @@ export default function HomePage() {
     try {
       let apiParams: { dateFrom?: string; dateTo?: string; status?: 'SCHEDULED' | 'LIVE' | 'FINISHED' } = {};
       if (filter === 'upcoming') {
-        apiParams = { status: 'SCHEDULED', dateFrom: getTodayDateString(), dateTo: getDateNDaysFromNowString(14) }; // Next 14 days
+        apiParams = { status: 'SCHEDULED', dateFrom: getTodayDateString(), dateTo: getDateNDaysFromNowString(14) }; 
       } else if (filter === 'finished') {
-        apiParams = { status: 'FINISHED', dateFrom: getDateNDaysFromNowString(-14), dateTo: getTodayDateString() }; // Last 14 days
+        apiParams = { status: 'FINISHED', dateFrom: getDateNDaysFromNowString(-14), dateTo: getTodayDateString() }; 
       } else if (filter === 'live') {
         apiParams = { status: 'LIVE' };
       }
@@ -108,12 +106,11 @@ export default function HomePage() {
     if (selectedCompetitionCode) {
       fetchMatches(selectedCompetitionCode, matchDateFilter);
     } else {
-      setMatches([]); // Clear matches if no competition is selected
+      setMatches([]); 
     }
   }, [selectedCompetitionCode, matchDateFilter, fetchMatches]);
 
   const handleToggleWatchlist = (matchId: string | number) => {
-    // Ensure matchId is a number for API matches
     const numericMatchId = typeof matchId === 'string' ? parseInt(matchId, 10) : matchId;
     if (isNaN(numericMatchId)) return;
 
@@ -148,7 +145,15 @@ export default function HomePage() {
                 {competitions.map((comp) => (
                   <SelectItem key={comp.id} value={comp.code}>
                     <div className="flex items-center gap-2">
-                      {comp.emblem && <img src={comp.emblem} alt="" className="h-5 w-5 object-contain" />}
+                      {comp.emblem && (
+                        <Image 
+                            src={comp.emblem} 
+                            alt={`${comp.name} emblem`} 
+                            width={20} 
+                            height={20} 
+                            style={{ objectFit: 'contain' }}
+                        />
+                      )}
                       {comp.name} ({comp.area.name})
                     </div>
                   </SelectItem>
@@ -179,7 +184,7 @@ export default function HomePage() {
           <>
             <MatchList
               matches={matches}
-              watchlist={localWatchlist.map(String)} // MatchList might expect string IDs
+              watchlist={localWatchlist.map(String)} 
               onToggleWatchlist={handleToggleWatchlist}
             />
             <WatchlistDisplay
@@ -188,9 +193,14 @@ export default function HomePage() {
             />
           </>
         ) : selectedCompetitionCode ? (
+          // This case is when a competition is selected, but fetchMatches hasn't run yet or returned empty, and not loading.
+          // This might briefly show before matches load or if initial fetch is empty.
+           <p className="text-center text-muted-foreground py-8">Loading matches or no matches available for the selected competition.</p>
+        ) : (
+           // Default state before any competition is selected
            <p className="text-center text-muted-foreground py-8">Select a competition to see matches.</p>
-        ) : null}
-
+        )
+      }
 
       </main>
       <Footer />

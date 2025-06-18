@@ -18,11 +18,11 @@ import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
-import { BettingModal } from '@/components/BettingModal'; // Import BettingModal
+import { BettingModal } from '@/components/BettingModal'; 
 
 export default function TeamProfilePage() {
   const params = useParams();
-  const teamSlug = params.teamSlug as string; // Changed from teamId to teamSlug
+  const teamSlug = params.teamSlug as string; 
   const router = useRouter();
   const { currentUser, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
@@ -32,14 +32,12 @@ export default function TeamProfilePage() {
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   
-  // AI State
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState<string>('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Betting Modal State
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false);
   const [selectedMatchForBet, setSelectedMatchForBet] = useState<Match | null>(null);
   const [teamToBetOnForModal, setTeamToBetOnForModal] = useState<Team | null>(null);
@@ -48,7 +46,6 @@ export default function TeamProfilePage() {
   useEffect(() => {
     if (teamSlug) {
       setIsLoadingData(true);
-      // Find team by slug instead of ID
       const foundTeam = teams.find((t) => t.slug === teamSlug);
       
       if (foundTeam) {
@@ -76,7 +73,7 @@ export default function TeamProfilePage() {
         fetchAiSummary();
 
       } else {
-        setTeam(null); // Team not found by slug
+        setTeam(null); 
       }
       setIsLoadingData(false);
     }
@@ -96,9 +93,8 @@ export default function TeamProfilePage() {
       toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
       return;
     }
-    if (!team) return; // Should not happen if button is rendered
+    if (!team) return; 
 
-    // Determine which team the user is implicitly betting on (the team whose page this is)
     let bettingOnThisTeam: Team | null = null;
     if (match.homeTeam.id === team.id) {
         bettingOnThisTeam = match.homeTeam;
@@ -121,7 +117,6 @@ export default function TeamProfilePage() {
     if (!currentUser && !authIsLoading) {
       router.push('/login');
     } else if (currentUser) {
-      // Placeholder for actual follow/store logic
       console.log(`Action for ${actionUrl} triggered by ${currentUser.name}`);
       toast({title: 'Feature Coming Soon!', description: `The "${actionUrl.split('/').pop()}" feature is under development.`});
     }
@@ -160,7 +155,7 @@ export default function TeamProfilePage() {
     notFound(); 
   }
   
-  if (!team) return null; // Should be caught by notFound() but good for TS
+  if (!team) return null; 
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -255,7 +250,7 @@ export default function TeamProfilePage() {
                             {match.homeScore} - {match.awayScore}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Shield size={14}/> {match.league.name}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Shield size={14}/> {typeof match.league === 'object' ? match.league.name : match.league}</p>
                         <p className="text-sm text-muted-foreground flex items-center gap-1"><CalendarDays size={14}/> {date} at {time}</p>
                         {match.venue && <p className="text-sm text-muted-foreground">Venue: {match.venue}</p>}
                       </li>
@@ -281,7 +276,7 @@ export default function TeamProfilePage() {
                     return (
                       <li key={match.id} className="p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
                         <p className="font-semibold">{match.homeTeam.name} vs {match.awayTeam.name}</p>
-                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Shield size={14}/> {match.league.name}</p>
+                        <p className="text-sm text-muted-foreground flex items-center gap-1"><Shield size={14}/> {typeof match.league === 'object' ? match.league.name : match.league}</p>
                         <p className="text-sm text-muted-foreground flex items-center gap-1"><CalendarDays size={14}/> {date} at {time}</p>
                         {match.venue && <p className="text-sm text-muted-foreground">Venue: {match.venue}</p>}
                         {isTeamInMatch && (
@@ -305,7 +300,7 @@ export default function TeamProfilePage() {
           </Card>
         </div>
 
-        {selectedMatchForBet && teamToBetOnForModal && (
+        {selectedMatchForBet && teamToBetOnForModal && currentUser && (
           <BettingModal
             isOpen={isBettingModalOpen}
             onClose={() => setIsBettingModalOpen(false)}
@@ -317,7 +312,7 @@ export default function TeamProfilePage() {
 
         <div className="mt-12 text-center">
             <Link href="/">
-                <Button variant="outline">Back to All Teams</Button>
+                <Button variant="outline">Back to Home</Button>
             </Link>
         </div>
       </main>
