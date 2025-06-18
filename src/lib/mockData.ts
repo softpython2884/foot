@@ -10,20 +10,20 @@ export const leagues: League[] = [
 ];
 
 export const teams: Team[] = [
-  { id: 'T1', name: 'Manchester United', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T2', name: 'Liverpool FC', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T3', name: 'Real Madrid', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T4', name: 'FC Barcelona', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T5', name: 'Juventus', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T6', name: 'AC Milan', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T7', name: 'Bayern Munich', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T8', name: 'Borussia Dortmund', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T9', name: 'Paris Saint-Germain', bannerImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/200px-Paris_Saint-Germain_Logo.svg.png' }, // Using specific PSG logo
-  { id: 'T10', name: 'Olympique de Marseille', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T11', name: 'Chelsea FC', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T12', name: 'Arsenal FC', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T13', name: 'Atletico Madrid', bannerImageUrl: 'https://placehold.co/300x150.png' },
-  { id: 'T14', name: 'Inter Milan', bannerImageUrl: 'https://placehold.co/300x150.png' },
+  { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T5', name: 'Juventus', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T8', name: 'Borussia Dortmund', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T9', name: 'Paris Saint-Germain', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png' },
+  { id: 'T10', name: 'Olympique de Marseille', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T11', name: 'Chelsea FC', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T12', name: 'Arsenal FC', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T13', name: 'Atletico Madrid', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T14', name: 'Inter Milan', logoImageUrl: 'https://placehold.co/100x100.png' },
 ];
 
 // Get specific team objects for matches

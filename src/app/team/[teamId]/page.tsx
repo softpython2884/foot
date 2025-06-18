@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, notFound } from 'next/navigation';
-import { teams, mockMatches, leagues } from '@/lib/mockData';
+import { teams, mockMatches } from '@/lib/mockData'; // Removed leagues import as it's not directly used here
 import type { Team, Match } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -56,26 +56,38 @@ export default function TeamProfilePage() {
     );
   }
 
-  if (team === null) { // Explicitly check for null after loading
-    notFound(); // This will render the not-found.tsx page or a default Next.js 404 page
+  if (team === null) { 
+    notFound(); 
   }
   
-  if (!team) return null; // Should be covered by isLoading or team === null
+  if (!team) return null;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
         <Card className="mb-8 shadow-xl overflow-hidden">
-          <div className="relative h-48 md:h-64 w-full bg-muted">
-            <Image
-              src={team.bannerImageUrl || `https://placehold.co/1200x300.png`}
-              alt={`${team.name} Banner`}
-              layout="fill"
-              objectFit="cover"
-              data-ai-hint={`${team.name} banner stadium`}
-            />
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+          <div className="relative h-48 md:h-64 w-full bg-muted flex items-center justify-center p-4">
+            {team.logoImageUrl ? (
+              <Image
+                src={team.logoImageUrl}
+                alt={`${team.name} Logo`}
+                width={200} 
+                height={200}
+                objectFit="contain"
+                data-ai-hint={`${team.name} logo large`}
+              />
+            ) : (
+              <Image
+                src={`https://placehold.co/200x200.png`}
+                alt={`${team.name} Placeholder Logo`}
+                width={200}
+                height={200}
+                objectFit="contain"
+                data-ai-hint={`${team.name} logo large`}
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex flex-col items-center justify-end p-6">
               <h1 className="text-4xl md:text-6xl font-bold font-headline text-white text-center drop-shadow-lg">
                 {team.name}
               </h1>
@@ -83,7 +95,6 @@ export default function TeamProfilePage() {
           </div>
           <CardContent className="p-6">
             <CardTitle className="text-2xl mb-4 font-headline">Team Information</CardTitle>
-            {/* Placeholder for more team stats */}
             <p className="text-muted-foreground">Detailed statistics and information about {team.name} will be displayed here.</p>
              <div className="mt-4 flex space-x-4">
                 <Link href="/login">

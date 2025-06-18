@@ -2,7 +2,7 @@
 export interface Team {
   id: string;
   name: string;
-  bannerImageUrl?: string; // Added for team banners
+  logoImageUrl?: string; // Changed from bannerImageUrl
 }
 
 export interface League {
