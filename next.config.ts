@@ -64,6 +64,18 @@ const nextConfig: NextConfig = {
         hostname: 'www.goodstickers.fr',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.icon-icons.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.icons101.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
