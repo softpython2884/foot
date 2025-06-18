@@ -3,8 +3,9 @@ import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
-import type { User, Bet, BetWithMatchDetails } from './types';
-import { mockMatches, teams, leagues } from './mockData'; // For fetching match/team details
+import type { User, Bet, BetWithMatchDetails, MatchApp } from './types'; // Added MatchApp
+import { teams, leagues } from './mockData'; 
+import { getApiSportsFixtureById } from '@/services/apiSportsService'; // Import service
 
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
@@ -12,7 +13,6 @@ const DB_PATH = path.join(DB_DIR, 'app.db');
 let dbInstance: Database | null = null;
 
 export async function getDb(): Promise<Database> {
-  // Moved fs operations here to ensure they only run when getDb is called (server-side)
   if (!fs.existsSync(DB_DIR)) {
     fs.mkdirSync(DB_DIR, { recursive: true });
   }
@@ -29,7 +29,7 @@ export async function getDb(): Promise<Database> {
 }
 
 async function initializeDb(db: Database): Promise<void> {
-  await db.exec(`
+  await db.exec(\`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -39,14 +39,14 @@ async function initializeDb(db: Database): Promise<void> {
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-  `);
+  \`);
 
-  await db.exec(`
+  await db.exec(\`
     CREATE TABLE IF NOT EXISTS bets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
-      matchId TEXT NOT NULL,
-      teamIdBetOn TEXT NOT NULL,
+      matchId INTEGER NOT NULL,      -- Changed from TEXT to INTEGER for API fixture ID
+      teamIdBetOn INTEGER NOT NULL,  -- Changed from TEXT to INTEGER for API team ID
       amountBet INTEGER NOT NULL,
       potentialWinnings INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'won', 'lost'
@@ -54,7 +54,7 @@ async function initializeDb(db: Database): Promise<void> {
       updatedAt DATETIME,
       FOREIGN KEY (userId) REFERENCES users(id)
     );
-  `);
+  \`);
 }
 
 export async function findUserByEmail(email: string): Promise<User | undefined> {
@@ -99,7 +99,7 @@ export async function getTopUsersDb(limit: number = 10): Promise<Omit<User, 'has
 }
 
 // Bet related functions
-export async function createBetDb(userId: number, matchId: string, teamIdBetOn: string, amountBet: number, potentialWinnings: number): Promise<number | undefined> {
+export async function createBetDb(userId: number, matchId: number, teamIdBetOn: number, amountBet: number, potentialWinnings: number): Promise<number | undefined> {
   const db = await getDb();
   const result = await db.run(
     'INSERT INTO bets (userId, matchId, teamIdBetOn, amountBet, potentialWinnings, status) VALUES (?, ?, ?, ?, ?, ?)',
@@ -115,21 +115,26 @@ export async function createBetDb(userId: number, matchId: string, teamIdBetOn: 
 
 export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithMatchDetails[]> {
   const db = await getDb();
-  const bets = await db.all<Bet[]>('SELECT * FROM bets WHERE userId = ? ORDER BY createdAt DESC', userId);
+  const betsFromDb = await db.all<Bet[]>('SELECT * FROM bets WHERE userId = ? ORDER BY createdAt DESC', userId);
 
-  return bets.map(bet => {
-    const match = mockMatches.find(m => m.id === bet.matchId);
-    const teamBetOn = teams.find(t => t.id === bet.teamIdBetOn);
+  const detailedBets: BetWithMatchDetails[] = [];
+
+  for (const bet of betsFromDb) {
+    // Fetch live match details from API-Sports for each bet
+    // This could be slow if there are many bets; consider optimizing if performance becomes an issue.
+    const match: MatchApp | null = await getApiSportsFixtureById(bet.matchId); 
+    const teamBetOn = teams.find(t => t.id === bet.teamIdBetOn); // Still using mockData for team name
     
-    return {
+    detailedBets.push({
       ...bet,
       homeTeamName: match?.homeTeam.name || 'Unknown Team',
       awayTeamName: match?.awayTeam.name || 'Unknown Team',
       teamBetOnName: teamBetOn?.name || 'Unknown Team',
       matchTime: match?.matchTime || 'Unknown Date',
-      leagueName: typeof match?.league === 'string' ? match.league : match?.league?.name || 'Unknown League',
-    };
-  });
+      leagueName: match?.league?.name || 'Unknown League',
+    });
+  }
+  return detailedBets;
 }
 
 export async function getBetByIdDb(betId: number): Promise<Bet | undefined> {
@@ -148,4 +153,3 @@ export async function updateBetStatusDb(betId: number, status: 'won' | 'lost'): 
   const result = await db.run('UPDATE bets SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', status, betId);
   return (result.changes ?? 0) > 0;
 }
-

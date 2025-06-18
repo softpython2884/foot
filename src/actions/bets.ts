@@ -4,14 +4,15 @@
 import { z } from 'zod';
 import { createBetDb, getBetByIdDb, updateBetStatusDb, updateUserScoreDb, getUserBetsWithDetailsDb } from '@/lib/db';
 import type { BetWithMatchDetails } from '@/lib/types';
-import { mockMatches, teams as allTeams } from '@/lib/mockData'; // Ensure allTeams is imported if needed, or team objects are passed
+import { teams as allTeams } from '@/lib/mockData'; 
+import { getApiSportsFixtureById } from '@/services/apiSportsService'; // Import new service function
 
 const FIXED_ODDS = 2.0; // Example: all bets have 2x payout
 
 const PlaceBetSchema = z.object({
   userId: z.number().int().positive(),
-  matchId: z.string().min(1),
-  teamIdBetOn: z.string().min(1),
+  matchId: z.coerce.number().int().positive(), // matchId will be fixture ID from API (number)
+  teamIdBetOn: z.coerce.number().int().positive(), // teamId will be API team ID (number)
   amountBet: z.number().int().positive({ message: "Bet amount must be positive." }),
 });
 
@@ -19,8 +20,8 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
   try {
     const validatedFields = PlaceBetSchema.safeParse({
       userId: parseInt(formData.get('userId') as string, 10),
-      matchId: formData.get('matchId'),
-      teamIdBetOn: formData.get('teamIdBetOn'),
+      matchId: parseInt(formData.get('matchId') as string, 10), // Parse to number
+      teamIdBetOn: parseInt(formData.get('teamIdBetOn') as string, 10), // Parse to number
       amountBet: parseInt(formData.get('amountBet') as string, 10),
     });
 
@@ -30,28 +31,27 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
 
     const { userId, matchId, teamIdBetOn, amountBet } = validatedFields.data;
 
-    const match = mockMatches.find(m => m.id === matchId);
+    const match = await getApiSportsFixtureById(matchId); // Fetch match details from API
     if (!match) {
       return { error: 'Match not found.' };
     }
-    if (match.status !== 'upcoming') {
+    // API-Sports status "NS" means "Not Started"
+    if (match.statusShort !== 'NS') { 
       return { error: 'Betting is only allowed on upcoming matches.' };
     }
 
-    const teamBetOn = allTeams.find(t => t.id === teamIdBetOn);
+    const teamBetOn = allTeams.find(t => t.id === teamIdBetOn); // Still use mockData for basic team info like name
     if (!teamBetOn) {
-        return { error: 'Team to bet on not found.' };
+        return { error: 'Team to bet on not found in local data.' }; // Or fetch team details if needed
     }
     
-    // Check if the team bet on is actually playing in the match
     if (match.homeTeam.id !== teamIdBetOn && match.awayTeam.id !== teamIdBetOn) {
         return { error: `Team ${teamBetOn.name} is not participating in this match.` };
     }
 
-
-    // For now, potential winnings are simple. This could be dynamic based on odds.
     const potentialWinnings = amountBet * FIXED_ODDS;
 
+    // Pass matchId (number) and teamIdBetOn (number) to db function
     const betId = await createBetDb(userId, matchId, teamIdBetOn, amountBet, potentialWinnings);
 
     if (!betId) {
@@ -72,6 +72,8 @@ export async function getBetHistoryAction(userId: number): Promise<{ error?: str
   }
   try {
     const bets = await getUserBetsWithDetailsDb(userId);
+    // If getUserBetsWithDetailsDb needs to fetch live match details for bets, that logic would be there
+    // For now, it uses its existing logic which might rely on mockData or basic info stored with the bet.
     return { bets };
   } catch (error) {
     console.error('Get bet history error:', error);
@@ -84,8 +86,6 @@ const SettleBetSchema = z.object({
   userWon: z.boolean(),
 });
 
-// This is a simplified action for simulation/testing purposes.
-// In a real app, bet settlement would be triggered by actual match results from an API.
 export async function settleBetAction(formData: FormData): Promise<{ error?: string; success?: string }> {
   try {
     const validatedFields = SettleBetSchema.safeParse({
@@ -115,7 +115,6 @@ export async function settleBetAction(formData: FormData): Promise<{ error?: str
       scoreChange = bet.potentialWinnings;
     } else {
       newStatus = 'lost';
-      // scoreChange = -bet.amountBet; // Optional: Deduct score on loss. For now, no deduction.
     }
 
     const statusUpdated = await updateBetStatusDb(betId, newStatus);
@@ -125,7 +124,7 @@ export async function settleBetAction(formData: FormData): Promise<{ error?: str
 
     if (scoreChange !== 0) {
       const scoreUpdated = await updateUserScoreDb(bet.userId, scoreChange);
-      if (!scoreUpdated && newStatus === 'won') { // Only critical if score failed to update on a win
+      if (!scoreUpdated && newStatus === 'won') { 
         return { error: 'Bet status updated, but failed to update user score.' };
       }
     }
