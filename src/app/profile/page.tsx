@@ -19,10 +19,12 @@ import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction } from '@/actions/user';
 import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; // Import bet actions
-import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
+import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails, User } from '@/lib/types';
 import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/dateUtils';
+import { cn } from '@/lib/utils'; // Added import
+import { getUserById } from '@/lib/db';
 
 
 const nameFormSchema = z.object({
@@ -149,12 +151,15 @@ export default function ProfilePage() {
     if (result.success) {
       toast({ title: 'Bet Settled', description: result.success });
       // Refetch user data to update score in AuthContext and display
-      const updatedUser = await getUserById(currentUser.id);
-      if (updatedUser) {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { hashedPassword, ...userToAuth } = updatedUser;
+      // This needs to be a server call, not a direct DB call from client component context
+      // For simplicity, we'll assume a function `fetchUserByIdFromServer` exists or refetch all user data
+      const userFromDb: User | undefined = await getUserById(currentUser.id); // Assuming getUserById is importable and works server-side or is adapted
+      if (userFromDb) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { hashedPassword, ...userToAuth } = userFromDb;
         updateAuthContextUser(userToAuth as AuthenticatedUser);
       }
+
       fetchBetHistory(); // Refetch bet history to update status
       // Refetch leaderboard if needed, or assume score update will eventually reflect.
       const leaderboardResult = await getLeaderboardAction();
@@ -197,11 +202,15 @@ export default function ProfilePage() {
                 <button
                   onClick={() => {
                     const inputElement = document.getElementById('newName');
-                    const accordionTrigger = document.querySelector('[data-radix-collection-item][value="edit-name"] button[aria-expanded="false"]');
+                    // Try to find an AccordionTrigger that is not expanded
+                    const accordionTrigger = document.querySelector('div[data-state="closed"] > button[aria-expanded="false"][data-radix-accordion-trigger]');
+
                     if (accordionTrigger instanceof HTMLElement) {
                       accordionTrigger.click(); 
-                      setTimeout(() => inputElement?.focus(), 100);
+                      // Wait for accordion to open then focus. This might need adjustment based on animation duration.
+                      setTimeout(() => inputElement?.focus(), 150); 
                     } else if (inputElement) {
+                       // If accordion is already open, or no trigger found in closed state, just focus.
                       inputElement.focus();
                     }
                   }}
@@ -430,3 +439,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
