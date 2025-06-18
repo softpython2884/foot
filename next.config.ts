@@ -34,6 +34,12 @@ const nextConfig: NextConfig = {
         hostname: 'e1.pngegg.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'toppng.com',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
