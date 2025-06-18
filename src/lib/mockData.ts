@@ -12,7 +12,7 @@ export const leagues: League[] = [
 export const teams: Team[] = [
   { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://placehold.co/100x100.png' },
-  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThncOgOseI0qfhv5ANM_u4HzXaxA6GELfKxQ&s' },
   { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T5', name: 'Juventus', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://placehold.co/100x100.png' },
