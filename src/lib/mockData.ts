@@ -13,7 +13,7 @@ export const teams: Team[] = [
   { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThncOgOseI0qfhv5ANM_u4HzXaxA6GELfKxQ&s' },
-  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://e1.pngegg.com/pngimages/757/917/png-clipart-logo-de-la-ligue-des-champions-fc-barcelone-ligue-des-champions-uefa-la-liga-coupe-du-monde-des-clubs-de-la-fifa-ecusson-equipe-de-football-espagne.png' },
   { id: 'T5', name: 'Juventus', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://placehold.co/100x100.png' },
@@ -83,3 +83,4 @@ export const mockMatches: Match[] = [
     status: 'upcoming',
   },
 ];
+
