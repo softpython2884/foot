@@ -18,7 +18,7 @@ import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction } from '@/actions/user';
 import type { AuthenticatedUser, LeaderboardUser } from '@/lib/types';
-import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Mail, Star } from 'lucide-react';
+import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle } from 'lucide-react';
 
 const nameFormSchema = z.object({
   newName: z.string().min(2, { message: 'Name must be at least 2 characters long.' }),
@@ -138,18 +138,32 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline"><UserCircle /> User Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <UserCog size={20} className="text-muted-foreground" /> 
-                <p><span className="font-semibold">Name:</span> {currentUser.name}</p>
+            <CardContent className="space-y-6">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Name</p>
+                <button
+                  onClick={() => {
+                    const inputElement = document.getElementById('newName');
+                    if (inputElement) {
+                      inputElement.focus();
+                    }
+                  }}
+                  className="mt-1 block w-full text-left text-xl font-semibold text-primary hover:text-primary/80 transition-colors p-0 h-auto bg-transparent"
+                >
+                  {currentUser.name}
+                </button>
               </div>
-              <div className="flex items-center gap-2">
-                <Mail size={20} className="text-muted-foreground" /> 
-                <p><span className="font-semibold">Email:</span> {currentUser.email}</p>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</p>
+                <p className="mt-1 block text-xl font-semibold text-foreground">
+                  {currentUser.email}
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                 <Star size={20} className="text-muted-foreground" />
-                <p><span className="font-semibold">Score:</span> {currentUser.score}</p>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Score</p>
+                <p className="mt-1 block text-xl font-bold text-accent">
+                  {currentUser.score}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -168,7 +182,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>New Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Enter new name" {...field} />
+                          <Input id="newName" placeholder="Enter new name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -287,3 +301,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
