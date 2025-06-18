@@ -82,7 +82,7 @@ export default function HomePage() {
   const handlePsgElementClick = () => {
     console.log('PSG element clicked');
     // You can define what happens on click here, e.g., navigate to a PSG page, show details, etc.
-    toast({ title: "PSG Clicked!", description: "You clicked on the PSG element." });
+    toast({ title: "PSG Clicked!", description: "You clicked on the Paris Saint-Germain element." });
   };
 
   return (
@@ -99,11 +99,11 @@ export default function HomePage() {
           aria-label="Paris Saint-Germain Club Information"
         >
           <Image
-            src="https://placehold.co/120x120.png" 
+            src="https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png" 
             alt="PSG Logo"
             width={120}
             height={120}
-            className="rounded-full mb-3 border-2 border-primary"
+            className="mb-3 object-contain"
             data-ai-hint="PSG football club logo"
           />
           <p className="font-semibold text-xl font-headline text-primary-foreground">PSG</p>
