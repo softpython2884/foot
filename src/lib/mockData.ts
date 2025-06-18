@@ -7,6 +7,7 @@ export const leagues: League[] = [
   { id: 'L3', name: 'Serie A' },
   { id: 'L4', name: 'Bundesliga' },
   { id: 'L5', name: 'Ligue 1' },
+  { id: 'L6', name: 'Champions League' },
 ];
 
 export const teams: Team[] = [
@@ -159,14 +160,25 @@ export const mockMatches: Match[] = [
   },
   {
     id: 'M13_PSG_Dortmund',
-    league: getLeague('L4'), // Assuming this is a Champions League or similar
+    league: getLeague('L6'), // Champions League
     homeTeam: getTeam('T9'), // PSG
     awayTeam: getTeam('T8'), // Dortmund
     matchTime: new Date(new Date().setDate(new Date().getDate() + 7)).toISOString(), // In 7 days
     venue: 'Parc des Princes',
     status: 'upcoming',
   },
+  {
+    id: 'M14_PSG_Atletico',
+    league: getLeague('L6'), // Champions League
+    homeTeam: getTeam('T9'),    // Paris Saint-Germain
+    awayTeam: getTeam('T13'),   // Atletico Madrid
+    matchTime: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
+    venue: 'Parc des Princes',
+    status: 'completed',
+    homeScore: 4,
+    awayScore: 0,
+  },
 ];
-
+    
 
     
