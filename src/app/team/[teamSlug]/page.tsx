@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Shield, Trophy, Clock, Brain, Users, Building } from 'lucide-react';
+import { CalendarDays, Shield, Trophy, Clock, Brain, Users, Building, Landmark, Flag } from 'lucide-react'; // Added Landmark, Flag
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
@@ -20,9 +20,9 @@ import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
 import { BettingModal } from '@/components/BettingModal';
 import { getApiSportsTeamDetails, getApiSportsMatchesForTeam } from '@/services/apiSportsService';
-import { MatchCard } from '@/components/MatchCard'; // Import MatchCard
+import { MatchCard } from '@/components/MatchCard';
 
-const CURRENT_SEASON = 2024; // API-Sports uses start year of season
+const SEASON_FOR_MATCHES = 2023; // Align with apiSportsService for free plan access
 
 export default function TeamProfilePage() {
   const params = useParams();
@@ -31,8 +31,8 @@ export default function TeamProfilePage() {
   const { currentUser, isLoading: authIsLoading } = useAuth();
   const { toast } = useToast();
 
-  const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null); // For API fetched details
-  const [mockTeamData, setMockTeamData] = useState<Team | null>(null); // For initial banner from mock
+  const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
+  const [mockTeamData, setMockTeamData] = useState<Team | null>(null);
   const [pastMatches, setPastMatches] = useState<MatchApp[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<MatchApp[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -48,24 +48,29 @@ export default function TeamProfilePage() {
   const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null);
 
 
-  const fetchTeamData = useCallback(async (apiTeamId: number, teamName: string) => {
+  const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
     setIsLoadingData(true);
     setIsLoadingMatches(true);
+    setTeamDetails(null); // Reset previous details
+    setPastMatches([]);
+    setUpcomingMatches([]);
+
     try {
       const details = await getApiSportsTeamDetails(apiTeamId);
-      setTeamDetails(details);
+      setTeamDetails(details); // This will provide country, founded, venue etc.
 
-      const past = await getApiSportsMatchesForTeam(apiTeamId, { season: CURRENT_SEASON, status: 'FT', last: 5 });
+      // Fetch matches for the accessible season
+      const past = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT', last: 5 });
       setPastMatches(past.sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()));
       
-      const upcoming = await getApiSportsMatchesForTeam(apiTeamId, { season: CURRENT_SEASON, status: 'NS', next: 5 });
+      const upcoming = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'NS', next: 5 });
       setUpcomingMatches(upcoming.sort((a,b) => new Date(a.matchTime).getTime() - new Date(b.matchTime).getTime()));
 
-      // Fetch AI summary after getting team name (could be from details or mock)
-      const nameForAISummary = details?.name || teamName;
+      const nameForAISummary = details?.name || teamNameFromMock;
        if (nameForAISummary) {
         setIsAiLoading(true);
         setAiError(null);
+        setAiSummary(null);
         try {
           const input: TeamInfoInput = { teamName: nameForAISummary };
           const result = await getTeamInfo(input);
@@ -80,7 +85,7 @@ export default function TeamProfilePage() {
       }
 
     } catch (error) {
-      console.error("Error fetching team data from API-Sports:", error);
+      console.error("Error fetching team page data from API-Sports:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load team data from API.' });
     } finally {
       setIsLoadingData(false);
@@ -95,12 +100,12 @@ export default function TeamProfilePage() {
       setMockTeamData(foundMockTeam || null);
 
       if (foundMockTeam) {
-        fetchTeamData(foundMockTeam.id, foundMockTeam.name);
+        fetchTeamPageData(foundMockTeam.id, foundMockTeam.name);
       } else {
-        setIsLoadingData(false); // No mock team found, stop loading
+        setIsLoadingData(false); 
       }
     }
-  }, [teamSlug, fetchTeamData]);
+  }, [teamSlug, fetchTeamPageData]);
 
   const handleOpenBetModal = (match: MatchApp) => {
     if (!currentUser) {
@@ -112,7 +117,7 @@ export default function TeamProfilePage() {
       router.push('/login');
       return;
     }
-    if (match.statusShort !== 'NS') { // NS for "Not Started"
+    if (match.statusShort !== 'NS') {
       toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
       return;
     }
@@ -139,11 +144,12 @@ export default function TeamProfilePage() {
     setIsAiLoading(false);
   };
   
+  // Use API details if available, otherwise fallback to mock data for initial display
   const displayTeamName = teamDetails?.name || mockTeamData?.name;
   const displayTeamLogo = teamDetails?.logoUrl || mockTeamData?.logoImageUrl;
 
 
-  if (isLoadingData && !mockTeamData) { // Initial loading before mock team is found
+  if (isLoadingData && !mockTeamData) { 
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <Header />
@@ -155,16 +161,10 @@ export default function TeamProfilePage() {
     );
   }
 
-  if (!mockTeamData && !isLoadingData) { // Mock team not found, and not loading anymore
+  if (!mockTeamData && !isLoadingData) { 
     notFound();
   }
   
-  // Team to bet on for modal needs to be one of the teams in the match.
-  // We can pass the whole match and let the modal decide, or determine here.
-  // For simplicity, let BettingModal handle which team to default if needed,
-  // or it can present choices if teamToBetOn isn't specific enough.
-  // For now, `teamToBetOn` prop in BettingModal expects a specific TeamApp object.
-  // This logic assumes we're betting on the `displayTeamName` if they are in the match.
    let teamToBetOnForModal: TeamApp | undefined = undefined;
    if (selectedMatchForBet) {
      if (selectedMatchForBet.homeTeam.id === (teamDetails?.id || mockTeamData?.id)) {
@@ -172,18 +172,11 @@ export default function TeamProfilePage() {
      } else if (selectedMatchForBet.awayTeam.id === (teamDetails?.id || mockTeamData?.id)) {
        teamToBetOnForModal = selectedMatchForBet.awayTeam;
      } else {
-        // Fallback or error: current team (teamDetails/mockTeamData) is not in selectedMatchForBet.
-        // This case should ideally not happen if "Bet on this match" is only shown for matches of the current team.
-        // For now, we can pass one of the teams from the match or handle in modal.
-        // Let's ensure teamToBetOnForModal is always one of the participants.
-        // The modal will primarily use the `teamToBetOn` prop to indicate which team the user *intended* to bet on
-        // (i.e., the team whose page they are on).
         teamToBetOnForModal = teamDetails ? teamDetails : mockTeamData ? {
             id: mockTeamData.id,
             name: mockTeamData.name,
             logoUrl: mockTeamData.logoImageUrl
         } : undefined;
-
      }
    }
 
@@ -216,18 +209,17 @@ export default function TeamProfilePage() {
             </div>
           </div>
           <CardContent className="p-6">
-            <CardTitle className="text-2xl mb-1 font-headline">Team Information</CardTitle>
-            {isLoadingData && !teamDetails && <LoadingSpinner size="sm" />}
-            {teamDetails && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 text-sm">
-                <p><span className="font-semibold">Pays:</span> {teamDetails.country || 'N/A'}</p>
-                <p><span className="font-semibold">Fondé:</span> {teamDetails.founded || 'N/A'}</p>
-                <p><span className="font-semibold">Stade:</span> {teamDetails.venueName || 'N/A'}</p>
-                <p><span className="font-semibold">Ville du Stade:</span> {teamDetails.venueCity || 'N/A'}</p>
-                <p><span className="font-semibold">Capacité Stade:</span> {teamDetails.venueCapacity?.toLocaleString() || 'N/A'}</p>
+            <CardTitle className="text-2xl mb-3 font-headline flex items-center gap-2"><Landmark /> Informations Détaillées</CardTitle>
+            {isLoadingData && !teamDetails && <div className="py-4"><LoadingSpinner size="md" /></div>}
+            {teamDetails ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <p><Flag size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Pays:</span> {teamDetails.country || 'N/A'}</p>
+                <p><CalendarDays size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Fondé:</span> {teamDetails.founded || 'N/A'}</p>
+                <p><Building size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Stade:</span> {teamDetails.venueName || 'N/A'}</p>
+                <p><Users size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Capacité:</span> {teamDetails.venueCapacity?.toLocaleString() || 'N/A'}</p>
+                <p><Landmark size={16} className="inline mr-2 text-primary"/> <span className="font-semibold">Ville du Stade:</span> {teamDetails.venueCity || 'N/A'}</p>
               </div>
-            )}
-            {!teamDetails && !isLoadingData && <p className="text-muted-foreground mt-2">Detailed information not available.</p>}
+            ) : (!isLoadingData && <p className="text-muted-foreground mt-2">Detailed information not available from API.</p>)}
           </CardContent>
         </Card>
 
@@ -237,27 +229,28 @@ export default function TeamProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Team Summary</h3>
-              {(isAiLoading && !aiSummary) && <LoadingSpinner size="sm" />}
+              <h3 className="text-lg font-semibold mb-2">Résumé par l'IA</h3>
+              {(isAiLoading && !aiSummary) && <div className="py-2"><LoadingSpinner size="sm" /></div>}
               {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
-              {aiSummary && <CardDescription className="whitespace-pre-wrap">{aiSummary}</CardDescription>}
+              {aiSummary && <CardDescription className="whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{aiSummary}</CardDescription>}
+              {!aiSummary && !isAiLoading && !aiError && <p className="text-muted-foreground">Le résumé de l'IA est en cours de chargement ou non disponible.</p>}
             </div>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Ask a question about {displayTeamName}</h3>
+              <h3 className="text-lg font-semibold">Poser une question sur {displayTeamName}</h3>
               <Textarea
-                placeholder={`e.g., Who is their current manager?`}
+                placeholder={`Ex: Qui est l'entraîneur actuel ?`}
                 value={userQuestion}
                 onChange={(e) => setUserQuestion(e.target.value)}
                 className="resize-none"
               />
               <Button onClick={handleAskAi} disabled={isAiLoading || !userQuestion.trim() || !displayTeamName}>
-                {isAiLoading && userQuestion ? <LoadingSpinner size="sm"/> : "Ask AI"}
+                {isAiLoading && userQuestion ? <LoadingSpinner size="sm"/> : "Demander à l'IA"}
               </Button>
             </div>
             {aiAnswer && (
               <div>
-                <h3 className="text-lg font-semibold mt-4 mb-2">AI Answer:</h3>
-                <CardDescription className="whitespace-pre-wrap bg-muted/50 p-3 rounded-md">{aiAnswer}</CardDescription>
+                <h3 className="text-lg font-semibold mt-4 mb-2">Réponse de l'IA :</h3>
+                <CardDescription className="whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{aiAnswer}</CardDescription>
               </div>
             )}
              {(isAiLoading && userQuestion) && <div className="flex justify-center mt-2"><LoadingSpinner size="md" /></div>}
@@ -268,11 +261,11 @@ export default function TeamProfilePage() {
         <div className="grid md:grid-cols-2 gap-8">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Past Matches (Last 5)</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés (5 derniers)</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingMatches && pastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">No past matches found for {displayTeamName}.</p>}
+              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName} (Saison {SEASON_FOR_MATCHES}).</p>}
               {pastMatches.length > 0 && (
                 <ul className="space-y-4">
                   {pastMatches.map((match) => (
@@ -285,15 +278,15 @@ export default function TeamProfilePage() {
 
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Clock className="text-primary"/>Upcoming Matches (Next 5)</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2"><Clock className="text-primary"/>Matchs à Venir (5 prochains)</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingMatches && upcomingMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && upcomingMatches.length === 0 && <p className="text-muted-foreground text-center py-4">No upcoming matches found for {displayTeamName}.</p>}
+              {!isLoadingMatches && upcomingMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match à venir trouvé pour {displayTeamName} (Saison {SEASON_FOR_MATCHES}).</p>}
               {upcomingMatches.length > 0 && (
                 <ul className="space-y-4">
                   {upcomingMatches.map((match) => (
-                    <li key={match.id} className="p-0 border-none rounded-lg bg-transparent"> {/* MatchCard now handles its own card structure */}
+                    <li key={match.id} className="p-0 border-none rounded-lg bg-transparent">
                        <MatchCard match={match} isWatchlisted={false} onToggleWatchlist={() => { /* TODO */}} />
                         <Button
                             size="sm"
@@ -301,7 +294,7 @@ export default function TeamProfilePage() {
                             onClick={() => handleOpenBetModal(match)}
                             disabled={!currentUser || match.statusShort !== 'NS'}
                           >
-                            Bet on this match
+                            Parier sur ce match
                         </Button>
                     </li>
                   ))}
@@ -316,14 +309,14 @@ export default function TeamProfilePage() {
             isOpen={isBettingModalOpen}
             onClose={() => setIsBettingModalOpen(false)}
             match={selectedMatchForBet}
-            teamToBetOn={teamToBetOnForModal} // This is the team whose page we are on
+            teamToBetOn={teamToBetOnForModal}
             currentUser={currentUser}
           />
         )}
 
         <div className="mt-12 text-center">
             <Link href="/">
-                <Button variant="outline">Back to Home</Button>
+                <Button variant="outline">Retour à l'accueil</Button>
             </Link>
         </div>
       </main>

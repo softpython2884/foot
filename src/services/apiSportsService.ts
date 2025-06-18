@@ -16,7 +16,8 @@ import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 const API_KEY = process.env.API_SPORTS_KEY;
-const CURRENT_SEASON = 2024; // API-Sports uses the start year of the season (e.g., 2024 for 2024/25)
+// Adjusted to a season accessible by the free plan
+const CURRENT_SEASON = 2023; // Use 2023 for 2023-2024 season
 
 async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
   if (!API_KEY) {
@@ -52,6 +53,7 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
 
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
     console.error(`API-Sports logical error for ${url.toString()}:`, JSON.stringify(data.errors));
+    // Do not throw an error for logical API errors (like plan limitations), let the caller handle empty/error responses.
   }
   if (data.results === 0 && !(endpoint === '/status')) {
     console.warn(`API-Sports returned 0 results for ${url.toString()}`);
@@ -138,7 +140,10 @@ export async function getApiSportsMatchesForTeam(
   teamId: number,
   params?: { season?: number; status?: string; dateFrom?: string; dateTo?: string; last?: number; next?: number; league?: number }
 ): Promise<MatchApp[]> {
-  const queryParams: Record<string, string | number> = { team: teamId, season: params?.season || CURRENT_SEASON };
+  // Use the globally defined CURRENT_SEASON if no season is provided in params
+  const seasonToQuery = params?.season || CURRENT_SEASON;
+  const queryParams: Record<string, string | number> = { team: teamId, season: seasonToQuery };
+
 
   if (params?.status) queryParams.status = params.status;
   if (params?.dateFrom) queryParams.from = params.dateFrom;
@@ -164,11 +169,9 @@ export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): 
   const leagues: LeagueApp[] = [];
   for (const id of ids) {
     try {
-      // API-Sports seems to work best if we ask for a specific season for a league.
-      // If a general league endpoint is preferred, consult docs for /leagues without season.
       const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, current: 'true' }); // Or specify season: CURRENT_SEASON
       if (data.response && data.response.length > 0) {
-        const leagueData = data.response[0]; // Assuming ID fetches one league
+        const leagueData = data.response[0]; 
         leagues.push({
           id: leagueData.league.id,
           name: leagueData.league.name,
@@ -184,6 +187,8 @@ export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): 
   return leagues;
 }
 
+// This function is kept from previous iteration but might not be directly used on team page as we prefer past/upcoming
+// It might be useful for a general league page later.
 export async function getFixturesForLeaguePage(
   leagueId: number,
   filterType: 'upcoming' | 'live' | 'finished'
@@ -192,20 +197,20 @@ export async function getFixturesForLeaguePage(
 
   switch (filterType) {
     case 'upcoming':
-      params.from = getTodayDateString();
-      params.to = getDateNDaysFromNowString(14); 
+      // params.from = getTodayDateString(); // API-Sports 'next' param is better for upcoming
+      // params.to = getDateNDaysFromNowString(14); 
       params.status = 'NS'; 
+      params.next = 10; // Get next 10 upcoming matches for the league
       break;
     case 'live':
-      params.live = `${leagueId}`; // API-Sports "live" parameter specific format
-      // No status needed for live, API handles it.
-      // Remove season as it might conflict with 'live' based on docs.
-      delete params.season;
+      params.live = `${leagueId}`; 
+      delete params.season; // 'live' might not need season
       break;
     case 'finished':
-      params.from = getDateNDaysFromNowString(-14); 
-      params.to = getTodayDateString();
-      params.status = 'FT-AET-PEN'; // Check API-Sports docs for all finished statuses
+      // params.from = getDateNDaysFromNowString(-14); 
+      // params.to = getTodayDateString();
+      params.status = 'FT-AET-PEN'; 
+      params.last = 10; // Get last 10 finished matches for the league
       break;
   }
 
