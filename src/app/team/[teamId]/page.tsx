@@ -11,25 +11,34 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, Shield, Trophy, Clock } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { CalendarDays, Shield, Trophy, Clock, Brain } from 'lucide-react';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-import { placeBetAction } from '@/actions/bets'; // Import placeBetAction
+import { useToast } from '@/hooks/use-toast';
+import { placeBetAction } from '@/actions/bets';
+import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow'; // Import AI flow
 
 export default function TeamProfilePage() {
   const params = useParams();
   const teamId = params.teamId as string;
   const router = useRouter();
   const { currentUser, isLoading: authIsLoading } = useAuth();
-  const { toast } = useToast(); // Initialize useToast
+  const { toast } = useToast();
 
   const [team, setTeam] = useState<Team | null | undefined>(undefined);
   const [pastMatches, setPastMatches] = useState<Match[]>([]);
   const [upcomingMatches, setUpcomingMatches] = useState<Match[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isPlacingBet, setIsPlacingBet] = useState<string | null>(null); // To track which match bet is being placed for
+  const [isPlacingBet, setIsPlacingBet] = useState<string | null>(null);
+
+  // AI State
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [userQuestion, setUserQuestion] = useState<string>('');
+  const [aiAnswer, setAiAnswer] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (teamId) {
@@ -43,6 +52,24 @@ export default function TeamProfilePage() {
         );
         setPastMatches(teamMatches.filter((m) => m.status === 'completed').sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()));
         setUpcomingMatches(teamMatches.filter((m) => m.status === 'upcoming').sort((a,b) => new Date(a.matchTime).getTime() - new Date(b.matchTime).getTime()));
+
+        // Fetch initial AI summary for the team
+        const fetchAiSummary = async () => {
+          setIsAiLoading(true);
+          setAiError(null);
+          try {
+            const input: TeamInfoInput = { teamName: foundTeam.name };
+            const result = await getTeamInfo(input);
+            setAiSummary(result.response);
+          } catch (error) {
+            console.error("Error fetching AI summary:", error);
+            setAiError("Failed to load AI summary. Please try again later.");
+            setAiSummary("Could not load team summary.");
+          }
+          setIsAiLoading(false);
+        };
+        fetchAiSummary();
+
       } else {
         setTeam(null);
       }
@@ -62,7 +89,7 @@ export default function TeamProfilePage() {
 
     setIsPlacingBet(match.id);
     const amountString = window.prompt(`Enter amount to bet on ${match.homeTeam.id === teamId ? match.homeTeam.name : match.awayTeam.name} to win:`);
-    if (amountString === null) { // User cancelled prompt
+    if (amountString === null) { 
       setIsPlacingBet(null);
       return;
     }
@@ -77,10 +104,6 @@ export default function TeamProfilePage() {
     const formData = new FormData();
     formData.append('userId', currentUser.id.toString());
     formData.append('matchId', match.id);
-    // For simplicity, if on team A's page, and match is A vs B, bet is on A.
-    // If match is B vs A, bet is still on A.
-    // This assumes user always bets on the team whose page they are viewing.
-    // A more complex UI would allow choosing which team to bet on in any match.
     const teamToBetOn = (match.homeTeam.id === teamId || match.awayTeam.id === teamId) ? teamId : ''; 
     
     if (!teamToBetOn) {
@@ -107,12 +130,27 @@ export default function TeamProfilePage() {
       router.push('/login');
     } else if (currentUser) {
       console.log(`Action for ${actionUrl} triggered by ${currentUser.name}`);
-      // For now, redirect to login for non-bet actions as placeholder
-      // For bet actions, it's handled by handlePlaceBet directly.
       if (!actionUrl.includes('/bet')) {
-        router.push('/login'); // Placeholder redirect for store/follow
+        router.push('/login'); 
       }
     }
+  };
+
+  const handleAskAi = async () => {
+    if (!team || !userQuestion.trim()) return;
+    setIsAiLoading(true);
+    setAiAnswer(null);
+    setAiError(null);
+    try {
+      const input: TeamInfoInput = { teamName: team.name, question: userQuestion };
+      const result = await getTeamInfo(input);
+      setAiAnswer(result.response);
+    } catch (error) {
+      console.error("Error asking AI:", error);
+      setAiError("Failed to get answer from AI. Please try again later.");
+      setAiAnswer("Sorry, I couldn't answer that question right now.");
+    }
+    setIsAiLoading(false);
   };
 
 
@@ -172,6 +210,40 @@ export default function TeamProfilePage() {
                 <Button variant="outline" onClick={() => handleProtectedAction(`/team/${teamId}/store`)}>Team Store</Button>
                 <Button onClick={() => handleProtectedAction(`/team/${teamId}/follow`)}>Follow Team</Button>
              </div>
+          </CardContent>
+        </Card>
+
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Team Summary</h3>
+              {isAiLoading && !aiSummary && <LoadingSpinner size="sm" />}
+              {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
+              {aiSummary && <CardDescription className="whitespace-pre-wrap">{aiSummary}</CardDescription>}
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Ask a question about {team.name}</h3>
+              <Textarea 
+                placeholder={`e.g., Who is their current manager?`}
+                value={userQuestion}
+                onChange={(e) => setUserQuestion(e.target.value)}
+                className="resize-none"
+              />
+              <Button onClick={handleAskAi} disabled={isAiLoading || !userQuestion.trim()}>
+                {isAiLoading && userQuestion ? <LoadingSpinner size="sm"/> : "Ask AI"}
+              </Button>
+            </div>
+            {aiAnswer && (
+              <div>
+                <h3 className="text-lg font-semibold mt-4 mb-2">AI Answer:</h3>
+                <CardDescription className="whitespace-pre-wrap bg-muted/50 p-3 rounded-md">{aiAnswer}</CardDescription>
+              </div>
+            )}
+             {isAiLoading && userQuestion && <div className="flex justify-center mt-2"><LoadingSpinner size="md" /></div>}
+             {aiError && userQuestion && <p className="text-destructive mt-2">{aiError}</p>}
           </CardContent>
         </Card>
 
@@ -249,3 +321,5 @@ export default function TeamProfilePage() {
     </div>
   );
 }
+
+    
