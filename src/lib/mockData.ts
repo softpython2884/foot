@@ -10,28 +10,28 @@ export const leagues: League[] = [
 ];
 
 export const teams: Team[] = [
-  { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/5/5b/Logo_Manchester_United_FC.svg/langfr-250px-Logo_Manchester_United_FC.svg.png' },
-  { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://stylfoot.fr/3835-thickbox_01icon/logo-liverpool.jpg' },
-  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://logo-marque.com/wp-content/uploads/2020/11/Real-Madrid-Logo.png' },
-  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://logo-marque.com/wp-content/uploads/2020/04/Barcelona-Logo.png' },
-  { id: 'T5', name: 'Juventus', logoImageUrl: 'https://www.goodstickers.fr/22995/autocollant-bouclier-de-juventus.jpg' },
-  { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://brandlogos.net/wp-content/uploads/2013/07/ac-milan-club-vector-logo.png' },
-  { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/768px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png' },
+  { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/b/b0/Logo_Manchester_United.svg/1200px-Logo_Manchester_United.svg.png' },
+  { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/0/0a/Liverpool_FC.svg/1200px-Liverpool_FC.svg.png' },
+  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/c/c7/Logo_Real_Madrid.svg/1200px-Logo_Real_Madrid.svg.png' },
+  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/a/a1/Logo_FC_Barcelona.svg/1200px-Logo_FC_Barcelona.svg.png' },
+  { id: 'T5', name: 'Juventus', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/9/9f/Logo_Juventus_FC_2017.svg/1200px-Logo_Juventus_FC_2017.svg.png' },
+  { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Logo_of_AC_Milan.svg/1200px-Logo_of_AC_Milan.svg.png' },
+  { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/1200px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png' },
   { id: 'T8', name: 'Borussia Dortmund', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Borussia_Dortmund_logo.svg/1200px-Borussia_Dortmund_logo.svg.png' },
-  { id: 'T9', name: 'Paris Saint-Germain', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png' },
-  { id: 'T10', name: 'Olympique de Marseille', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/4/43/Logo_Olympique_de_Marseille.svg/1612px-Logo_Olympique_de_Marseille.svg.png' },
-  { id: 'T11', name: 'Chelsea FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/Chelsea_FC.svg/1200px-Chelsea_FC.svg.png' },
-  { id: 'T12', name: 'Arsenal FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/5/53/Arsenal_FC.svg/1200px-Arsenal_FC.svg.png' },
-  { id: 'T13', name: 'Atletico Madrid', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Atletico_Madrid_2017_logo.svg/1200px-Atletico_Madrid_2017_logo.svg.png' },
+  { id: 'T9', name: 'Paris Saint-Germain', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1200px-Paris_Saint-Germain_Logo.svg.png' },
+  { id: 'T10', name: 'Olympique de Marseille', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/4/43/Logo_Olympique_de_Marseille.svg/1200px-Logo_Olympique_de_Marseille.svg.png' },
+  { id: 'T11', name: 'Chelsea FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/5/51/Logo_Chelsea.svg/1200px-Logo_Chelsea.svg.png' },
+  { id: 'T12', name: 'Arsenal FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/b/bf/Logo_Arsenal_FC.svg/1200px-Logo_Arsenal_FC.svg.png' },
+  { id: 'T13', name: 'Atletico Madrid', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/1/10/Atletico_Madrid_logo_2017.png/1024px-Atletico_Madrid_logo_2017.png' },
   { id: 'T14', name: 'Inter Milan', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/05/FC_Internazionale_Milano_2021.svg/1200px-FC_Internazionale_Milano_2021.svg.png' },
-  { id: 'T15', name: 'Manchester City', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/e/eb/Manchester_City_FC_badge.svg/1200px-Manchester_City_FC_badge.svg.png' },
-  { id: 'T16', name: 'Tottenham Hotspur', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/b/b4/Tottenham_Hotspur.svg/1200px-Tottenham_Hotspur.svg.png' },
-  { id: 'T17', name: 'Sevilla FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/3/3b/Sevilla_FC_logo.svg/1200px-Sevilla_FC_logo.svg.png' },
+  { id: 'T15', name: 'Manchester City', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/b/ba/Logo_Manchester_City_FC.svg/1200px-Logo_Manchester_City_FC.svg.png' },
+  { id: 'T16', name: 'Tottenham Hotspur', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/5/5c/Logo_Tottenham_Hotspur.svg/1200px-Logo_Tottenham_Hotspur.svg.png' },
+  { id: 'T17', name: 'Sevilla FC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/3/3b/Logo_Sevilla_FC.svg/1200px-Logo_Sevilla_FC.svg.png' },
   { id: 'T18', name: 'Napoli', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/28/S.S.C._Napoli_logo.svg/1200px-S.S.C._Napoli_logo.svg.png' },
-  { id: 'T19', name: 'AS Roma', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f7/AS_Roma_logo_%282017%29.svg/1200px-AS_Roma_logo_%282017%29.svg.png' },
-  { id: 'T20', name: 'RB Leipzig', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/0/04/RB_Leipzig_2014_logo.svg/1200px-RB_Leipzig_2014_logo.svg.png' },
-  { id: 'T21', name: 'AS Monaco', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/9a/AS_Monaco_FC.svg/1200px-AS_Monaco_FC.svg.png' },
-  { id: 'T22', name: 'Lille OSC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/15/Lille_OSC_logo.svg/1200px-Lille_OSC_logo.svg.png' },
+  { id: 'T19', name: 'AS Roma', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/9/93/Logo_AS_Roma_2017.svg/1200px-Logo_AS_Roma_2017.svg.png' },
+  { id: 'T20', name: 'RB Leipzig', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/0/04/RB_Leipzig_2014_Logo.svg/1200px-RB_Leipzig_2014_Logo.svg.png' },
+  { id: 'T21', name: 'AS Monaco', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/b/ba/AS_Monaco_FC_logo.svg/1200px-AS_Monaco_FC_logo.svg.png' },
+  { id: 'T22', name: 'Lille OSC', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/f/fd/Lille_OSC_logo_2018.svg/1200px-Lille_OSC_logo_2018.svg.png' },
 ];
 
 // Get specific team objects for matches
@@ -83,11 +83,11 @@ export const mockMatches: Match[] = [
   },
   {
     id: 'M5',
-    league: getLeague('L5'),
-    homeTeam: getTeam('T8'),
+    league: getLeague('L5'), // Should be Bundesliga or a league for Dortmund vs PSG
+    homeTeam: getTeam('T8'), // Dortmund
     awayTeam: getTeam('T9'), // PSG
     matchTime: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(), // In 5 days
-    venue: 'Signal Iduna Park',
+    venue: 'Signal Iduna Park', // Or Parc des Princes if PSG is home
     status: 'upcoming',
   },
    {
@@ -119,5 +119,43 @@ export const mockMatches: Match[] = [
     homeScore: 1,
     awayScore: 1
   },
+  // Adding some matches for newer teams
+  {
+    id: 'M9',
+    league: getLeague('L4'), // Bundesliga
+    homeTeam: getTeam('T7'), // Bayern Munich
+    awayTeam: getTeam('T20'), // RB Leipzig
+    matchTime: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Allianz Arena',
+    status: 'upcoming',
+  },
+  {
+    id: 'M10',
+    league: getLeague('L3'), // Serie A
+    homeTeam: getTeam('T19'), // AS Roma
+    awayTeam: getTeam('T6'), // AC Milan
+    matchTime: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Stadio Olimpico',
+    status: 'upcoming',
+  },
+   {
+    id: 'M11',
+    league: getLeague('L5'), // Ligue 1
+    homeTeam: getTeam('T21'), // AS Monaco
+    awayTeam: getTeam('T22'), // Lille OSC
+    matchTime: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(), 
+    venue: 'Stade Louis II',
+    status: 'upcoming',
+  },
+  {
+    id: 'M12',
+    league: getLeague('L1'),
+    homeTeam: getTeam('T16'), // Tottenham
+    awayTeam: getTeam('T2'), // Liverpool
+    matchTime: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // Yesterday
+    venue: 'Tottenham Hotspur Stadium',
+    status: 'completed',
+    homeScore: 2,
+    awayScore: 2,
+  },
 ];
-
