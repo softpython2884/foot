@@ -6,7 +6,8 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MatchList } from '@/components/MatchList';
 import { WatchlistDisplay } from '@/components/WatchlistDisplay'; 
-import { getApiCompetitions, getApiMatchesForCompetition, getDateNDaysFromNowString, getTodayDateString } from '@/services/footballDataApi';
+import { getApiCompetitions, getApiMatchesForCompetition } from '@/services/footballDataApi';
+import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils'; // Updated import
 import type { ApiCompetition, ApiMatch, Match as AppMatch } from '@/lib/types'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

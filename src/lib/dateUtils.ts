@@ -16,3 +16,15 @@ export function formatMatchDateTime(isoString: string): { date: string; time: st
     return { date: 'Invalid Date', time: 'Invalid Time' };
   }
 }
+
+// Example function to get today's date in YYYY-MM-DD format
+export function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+// Example function to get date N days from now in YYYY-MM-DD format
+export function getDateNDaysFromNowString(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().split('T')[0];
+}
