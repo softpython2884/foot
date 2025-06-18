@@ -82,6 +82,12 @@ const nextConfig: NextConfig = {
         hostname: 'tmssl.akamaized.net',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'crests.football-data.org',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

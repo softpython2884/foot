@@ -1,12 +1,13 @@
+
 'use client';
 
-import type { Match } from '@/lib/types';
+import type { Match as AppMatch } from '@/lib/types'; // Use AppMatch
 import { MatchCard } from './MatchCard';
 import { Heart } from 'lucide-react';
 
 interface WatchlistDisplayProps {
-  watchlistMatches: Match[];
-  onToggleWatchlist: (matchId: string) => void;
+  watchlistMatches: AppMatch[]; // Expect AppMatch
+  onToggleWatchlist: (matchId: string | number) => void; // ID can be string or number
 }
 
 export function WatchlistDisplay({
@@ -26,7 +27,7 @@ export function WatchlistDisplay({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {watchlistMatches.map((match) => (
               <MatchCard
-                key={match.id}
+                key={match.id.toString()} // Ensure key is string
                 match={match}
                 isWatchlisted={true} 
                 onToggleWatchlist={onToggleWatchlist}
