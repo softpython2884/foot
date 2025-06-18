@@ -12,13 +12,12 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { CalendarDays, Shield, Trophy, Clock, Brain, Users, Building, Landmark, Flag, Info } from 'lucide-react'; 
-import { formatMatchDateTime } from '@/lib/dateUtils';
+import { Shield, Trophy, Brain, Users } from 'lucide-react'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
-import { BettingModal } from '@/components/BettingModal';
+import { BettingModal } from '@/components/BettingModal'; // BettingModal will be adapted later
 import { getApiSportsTeamDetails, getApiSportsMatchesForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
@@ -27,8 +26,8 @@ const SEASON_FOR_MATCHES = 2023;
 export default function TeamProfilePage() {
   const params = useParams();
   const teamSlug = params.teamSlug as string;
-  const router = useRouter();
-  const { currentUser, isLoading: authIsLoading } = useAuth();
+  const router = useRouter(); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const { currentUser, isLoading: authIsLoading } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
   const { toast } = useToast();
 
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
@@ -43,8 +42,8 @@ export default function TeamProfilePage() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const [isBettingModalOpen, setIsBettingModalOpen] = useState(false);
-  const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null);
+  const [isBettingModalOpen, setIsBettingModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
 
 
   const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
@@ -57,8 +56,12 @@ export default function TeamProfilePage() {
       const details = await getApiSportsTeamDetails(apiTeamId);
       setTeamDetails(details); 
 
-      const past = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT', last: 10 });
-      setPastMatches(past.sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()));
+      // Fetch all finished matches for the season, then sort and slice client-side
+      const allFinishedMatches = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT'});
+      const sortedFinishedMatches = allFinishedMatches
+        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime())
+        .slice(0, 10); // Take the 10 most recent
+      setPastMatches(sortedFinishedMatches);
       
       const nameForAISummary = details?.name || teamNameFromMock;
        if (nameForAISummary) {
@@ -101,24 +104,24 @@ export default function TeamProfilePage() {
     }
   }, [teamSlug, fetchTeamPageData]);
 
-  const handleOpenBetModal = (match: MatchApp) => {
-    if (!currentUser) {
-      toast({
-        title: 'Authentication Required',
-        description: 'Please log in to place a bet.',
-        variant: 'destructive',
-      });
-      router.push('/login');
-      return;
-    }
-    if (match.statusShort !== 'NS') { // This check is now less relevant as upcoming matches are removed
-      toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
-      return;
-    }
+  // const handleOpenBetModal = (match: MatchApp) => { // BettingModal logic will be revisited
+  //   if (!currentUser) {
+  //     toast({
+  //       title: 'Authentication Required',
+  //       description: 'Please log in to place a bet.',
+  //       variant: 'destructive',
+  //     });
+  //     router.push('/login');
+  //     return;
+  //   }
+  //   if (match.statusShort !== 'NS') { 
+  //     toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
+  //     return;
+  //   }
     
-    setSelectedMatchForBet(match);
-    setIsBettingModalOpen(true);
-  };
+  //   setSelectedMatchForBet(match);
+  //   setIsBettingModalOpen(true);
+  // };
 
   const handleAskAi = async () => {
     const teamNameToUse = teamDetails?.name || mockTeamData?.name;
@@ -158,20 +161,20 @@ export default function TeamProfilePage() {
     notFound();
   }
   
-   let teamToBetOnForModal: TeamApp | undefined = undefined;
-   if (selectedMatchForBet) {
-     if (selectedMatchForBet.homeTeam.id === (teamDetails?.id || mockTeamData?.id)) {
-       teamToBetOnForModal = selectedMatchForBet.homeTeam;
-     } else if (selectedMatchForBet.awayTeam.id === (teamDetails?.id || mockTeamData?.id)) {
-       teamToBetOnForModal = selectedMatchForBet.awayTeam;
-     } else {
-        teamToBetOnForModal = teamDetails ? teamDetails : mockTeamData ? {
-            id: mockTeamData.id,
-            name: mockTeamData.name,
-            logoUrl: mockTeamData.logoImageUrl
-        } : undefined;
-     }
-   }
+  // let teamToBetOnForModal: TeamApp | undefined = undefined; // BettingModal logic deferred
+  //  if (selectedMatchForBet) {
+  //    if (selectedMatchForBet.homeTeam.id === (teamDetails?.id || mockTeamData?.id)) {
+  //      teamToBetOnForModal = selectedMatchForBet.homeTeam;
+  //    } else if (selectedMatchForBet.awayTeam.id === (teamDetails?.id || mockTeamData?.id)) {
+  //      teamToBetOnForModal = selectedMatchForBet.awayTeam;
+  //    } else {
+  //       teamToBetOnForModal = teamDetails ? teamDetails : mockTeamData ? {
+  //           id: mockTeamData.id,
+  //           name: mockTeamData.name,
+  //           logoUrl: mockTeamData.logoImageUrl
+  //       } : undefined;
+  //    }
+  //  }
 
 
   return (
@@ -207,7 +210,7 @@ export default function TeamProfilePage() {
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
             <CardDescription>
-              Utilisez l'assistant IA pour obtenir un résumé de l'équipe ou poser des questions spécifiques sur son histoire, son stade, son pays, etc.
+              Utilisez l'assistant IA pour obtenir un résumé de l'équipe ou poser des questions spécifiques sur son histoire, son stade, son pays, sa forme actuelle, etc.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -241,28 +244,26 @@ export default function TeamProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-8"> {/* Removed md:grid-cols-2 as upcoming matches are removed */}
+        <div className="grid grid-cols-1 gap-8">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés ({pastMatches.length > 0 ? `${pastMatches.length} derniers` : 'Saison ' + SEASON_FOR_MATCHES})</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés (10 derniers de la saison {SEASON_FOR_MATCHES})</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoadingMatches && pastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName || 'cette équipe'} (Saison {SEASON_FOR_MATCHES}).</p>}
+              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName || 'cette équipe'} (Saison {SEASON_FOR_MATCHES}). Cela peut être dû aux limitations du plan API gratuit.</p>}
               {pastMatches.length > 0 && (
                 <ul className="space-y-4">
                   {pastMatches.map((match) => (
-                     <MatchCard key={match.id} match={match} isWatchlisted={false} onToggleWatchlist={() => { /* TODO */}} />
+                     <MatchCard key={match.id} match={match} isWatchlisted={false} onToggleWatchlist={() => { /* Watchlist logic TODO */}} />
                   ))}
                 </ul>
               )}
-              {/* Future: "Load More" button could go here */}
             </CardContent>
           </Card>
-
-          {/* Upcoming matches section removed */}
         </div>
 
+        {/* Betting Modal logic deferred
         {selectedMatchForBet && teamToBetOnForModal && currentUser && (
           <BettingModal
             isOpen={isBettingModalOpen}
@@ -272,6 +273,7 @@ export default function TeamProfilePage() {
             currentUser={currentUser}
           />
         )}
+        */}
 
         <div className="mt-12 text-center">
             <Link href="/">

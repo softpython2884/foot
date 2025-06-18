@@ -18,8 +18,8 @@ function slugify(text: string): string {
 export const teams: Team[] = [
   { id: 33, name: 'Manchester United', logoImageUrl: 'https://media.api-sports.io/football/teams/33.png', slug: 'manchester-united' },
   { id: 40, name: 'Liverpool FC', logoImageUrl: 'https://media.api-sports.io/football/teams/40.png', slug: 'liverpool-fc' },
-  { id: 529, name: 'Real Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/529.png', slug: 'real-madrid' },
-  { id: 530, name: 'FC Barcelona', logoImageUrl: 'https://media.api-sports.io/football/teams/530.png', slug: 'fc-barcelona' },
+  { id: 530, name: 'Real Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/530.png', slug: 'real-madrid' }, // Corrected ID and Logo
+  { id: 529, name: 'FC Barcelona', logoImageUrl: 'https://media.api-sports.io/football/teams/529.png', slug: 'fc-barcelona' }, // Corrected ID and Logo
   { id: 496, name: 'Juventus', logoImageUrl: 'https://media.api-sports.io/football/teams/496.png', slug: 'juventus' },
   { id: 489, name: 'AC Milan', logoImageUrl: 'https://media.api-sports.io/football/teams/489.png', slug: 'ac-milan' },
   { id: 157, name: 'Bayern Munich', logoImageUrl: 'https://media.api-sports.io/football/teams/157.png', slug: 'bayern-munich' },

@@ -12,11 +12,10 @@ import type {
   MatchApp,
   TeamApp
 } from '@/lib/types';
-import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils';
+// import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils'; // Not used currently
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 const API_KEY = process.env.API_SPORTS_KEY;
-// Adjusted to a season accessible by the free plan
 const CURRENT_SEASON = 2023; // Use 2023 for 2023-2024 season
 
 async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
@@ -138,18 +137,18 @@ export async function getApiSportsFixtureById(fixtureId: number): Promise<MatchA
 
 export async function getApiSportsMatchesForTeam(
   teamId: number,
-  params?: { season?: number; status?: string; dateFrom?: string; dateTo?: string; last?: number; next?: number; league?: number }
+  params?: { season?: number; status?: string; dateFrom?: string; dateTo?: string; /* last?: number; */ next?: number; league?: number }
 ): Promise<MatchApp[]> {
-  // Use the globally defined CURRENT_SEASON if no season is provided in params
   const seasonToQuery = params?.season || CURRENT_SEASON;
+  // Remove 'last' parameter as it's not supported on free plan
+  // const { last, ...otherParams } = params || {}; // eslint-disable-line @typescript-eslint/no-unused-vars
   const queryParams: Record<string, string | number> = { team: teamId, season: seasonToQuery };
 
-
   if (params?.status) queryParams.status = params.status;
-  if (params?.dateFrom) queryParams.from = params.dateFrom;
-  if (params?.dateTo) queryParams.to = params.dateTo;
-  if (params?.last) queryParams.last = params.last; // Get X last fixtures
-  if (params?.next) queryParams.next = params.next; // Get X next fixtures
+  if (params?.dateFrom) queryParams.from = params.dateFrom; // 'from' for API
+  if (params?.dateTo) queryParams.to = params.dateTo; // 'to' for API
+  // if (params?.last) queryParams.last = params.last; // REMOVED
+  if (params?.next) queryParams.next = params.next;
   if (params?.league) queryParams.league = params.league;
 
 
@@ -165,11 +164,12 @@ export async function getApiSportsMatchesForTeam(
   }
 }
 
+// Not actively used but kept for potential future use
 export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): Promise<LeagueApp[]> {
   const leagues: LeagueApp[] = [];
   for (const id of ids) {
     try {
-      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, current: 'true' }); // Or specify season: CURRENT_SEASON
+      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, season: CURRENT_SEASON }); // Specify season
       if (data.response && data.response.length > 0) {
         const leagueData = data.response[0]; 
         leagues.push({
@@ -185,43 +185,4 @@ export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): 
     }
   }
   return leagues;
-}
-
-// This function is kept from previous iteration but might not be directly used on team page as we prefer past/upcoming
-// It might be useful for a general league page later.
-export async function getFixturesForLeaguePage(
-  leagueId: number,
-  filterType: 'upcoming' | 'live' | 'finished'
-): Promise<MatchApp[]> {
-  let params: Record<string, string | number | boolean> = { league: leagueId, season: CURRENT_SEASON };
-
-  switch (filterType) {
-    case 'upcoming':
-      // params.from = getTodayDateString(); // API-Sports 'next' param is better for upcoming
-      // params.to = getDateNDaysFromNowString(14); 
-      params.status = 'NS'; 
-      params.next = 10; // Get next 10 upcoming matches for the league
-      break;
-    case 'live':
-      params.live = `${leagueId}`; 
-      delete params.season; // 'live' might not need season
-      break;
-    case 'finished':
-      // params.from = getDateNDaysFromNowString(-14); 
-      // params.to = getTodayDateString();
-      params.status = 'FT-AET-PEN'; 
-      params.last = 10; // Get last 10 finished matches for the league
-      break;
-  }
-
-  try {
-    const data = await fetchFromApiSports<ApiSportsFixturesApiResponse>('/fixtures', params);
-    if (data.response && data.response.length > 0) {
-      return data.response.map(mapApiFixtureToMatchApp);
-    }
-    return [];
-  } catch (error) {
-    console.error(`Error fetching ${filterType} fixtures for league ${leagueId} from API-Sports:`, error);
-    return [];
-  }
 }
