@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Image from 'next/image';
 import type { Match, League, Team } from '@/lib/types';
-import { mockMatches, leagues as mockLeagues, teams as mockTeams } from '@/lib/mockData';
+import { leagues as mockLeagues, teams as mockTeams, mockMatches } from '@/lib/mockData'; // mockMatches will be empty
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { MatchList } from '@/components/MatchList';
@@ -20,16 +21,14 @@ export default function HomePage() {
   const [selectedLeague, setSelectedLeague] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>('');
   
-  const [watchlist, setWatchlist] = useState<string[]>([]); // Array of match IDs
+  const [watchlist, setWatchlist] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    // Simulate data fetching
-    setAllMatches(mockMatches);
+    setAllMatches(mockMatches); // mockMatches is now an empty array
     setLeagues(mockLeagues);
     setTeams(mockTeams);
 
-    // Load watchlist from localStorage if available
     const storedWatchlist = localStorage.getItem('footyScheduleWatchlist');
     if (storedWatchlist) {
       setWatchlist(JSON.parse(storedWatchlist));
@@ -37,7 +36,6 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    // Save watchlist to localStorage whenever it changes
     localStorage.setItem('footyScheduleWatchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
@@ -61,7 +59,7 @@ export default function HomePage() {
 
   const handleToggleWatchlist = (matchId: string) => {
     setWatchlist(prev => {
-      const match = allMatches.find(m => m.id === matchId);
+      const match = allMatches.find(m => m.id === matchId); // Will likely be undefined if allMatches is empty
       const matchName = match ? `${match.homeTeam.name} vs ${match.awayTeam.name}` : "Match";
 
       if (prev.includes(matchId)) {
@@ -81,10 +79,36 @@ export default function HomePage() {
     toast({ title: "Filters Cleared", description: "All match filters have been reset." });
   };
 
+  const handlePsgElementClick = () => {
+    console.log('PSG element clicked');
+    // You can define what happens on click here, e.g., navigate to a PSG page, show details, etc.
+    toast({ title: "PSG Clicked!", description: "You clicked on the PSG element." });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
       <main className="flex-grow container mx-auto px-4 py-8">
+        
+        <div 
+          className="flex flex-col items-center p-6 bg-card rounded-xl shadow-xl cursor-pointer hover:bg-muted transition-all duration-300 ease-in-out mb-10 transform hover:scale-105"
+          onClick={handlePsgElementClick}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handlePsgElementClick(); }}}
+          aria-label="Paris Saint-Germain Club Information"
+        >
+          <Image
+            src="https://placehold.co/120x120.png" 
+            alt="PSG Logo"
+            width={120}
+            height={120}
+            className="rounded-full mb-3 border-2 border-primary"
+            data-ai-hint="PSG football club logo"
+          />
+          <p className="font-semibold text-xl font-headline text-primary-foreground">PSG</p>
+        </div>
+
         <Tabs defaultValue="all-matches" className="w-full">
           <TabsList className="grid w-full grid-cols-2 md:w-1/2 lg:w-1/3 mx-auto mb-8">
             <TabsTrigger value="all-matches" className="font-headline">All Matches</TabsTrigger>
