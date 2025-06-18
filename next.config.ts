@@ -40,6 +40,12 @@ const nextConfig: NextConfig = {
         hostname: 'toppng.com',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'brandlogos.net',
+        port: '',
+        pathname: '/**',
       }
     ],
   },

@@ -15,7 +15,7 @@ export const teams: Team[] = [
   { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThncOgOseI0qfhv5ANM_u4HzXaxA6GELfKxQ&s' },
   { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://e1.pngegg.com/pngimages/757/917/png-clipart-logo-de-la-ligue-des-champions-fc-barcelone-ligue-des-champions-uefa-la-liga-coupe-du-monde-des-clubs-de-la-fifa-ecusson-equipe-de-football-espagne.png' },
   { id: 'T5', name: 'Juventus', logoImageUrl: 'https://placehold.co/100x100.png' },
-  { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://brandlogos.net/wp-content/uploads/2013/07/ac-milan-club-vector-logo.png' },
   { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T8', name: 'Borussia Dortmund', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T9', name: 'Paris Saint-Germain', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png' },
