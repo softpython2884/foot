@@ -25,3 +25,13 @@ export interface RecommendedMatch {
   matchTime: string; // ISO string format
   reason: string;
 }
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  hashedPassword?: string; // Optional on client, required on server
+  score: number;
+  rank: number;
+  createdAt: string;
+}
