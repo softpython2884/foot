@@ -14,7 +14,7 @@ import { getTodayDateString, getDateNDaysFromNowString } from '@/lib/dateUtils';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 const API_KEY = process.env.API_SPORTS_KEY;
-export const CURRENT_SEASON = 2024; // Use 2024 for 2024-2025 season, or 2023 for 2023-2024
+const CURRENT_SEASON = 2024; // Use 2024 for 2024-2025 season, or 2023 for 2023-2024
 
 async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number>): Promise<T> {
   if (!API_KEY) {
@@ -30,8 +30,6 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
 
   const headers = new Headers();
   headers.append('x-apisports-key', API_KEY);
-  // As per docs, for direct API-Sports access, only x-apisports-key is needed.
-  // x-rapidapi-host and x-rapidapi-key are for RapidAPI proxy.
 
   const response = await fetch(url.toString(), {
     method: 'GET',
@@ -48,8 +46,6 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
   const data = await response.json();
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
     console.error(`API-Sports logical error for ${url.toString()}:`, data.errors);
-    // Depending on the error structure, you might want to throw a more specific error.
-    // For now, we'll let it proceed and the calling function can check data.response
   }
   return data as T;
 }
@@ -62,31 +58,42 @@ const POPULAR_LEAGUE_IDS = {
   BUNDESLIGA: 78,
   LIGUE_1: 61,
   CHAMPIONS_LEAGUE: 2,
-  // Add more as needed
-  // EUROPA_LEAGUE: 3,
-  // EREDIVISIE: 88, // Netherlands
-  // PRIMEIRA_LIGA: 94, // Portugal
 };
 
 export async function getAppLeagues(): Promise<LeagueApp[]> {
   try {
     const leagueResponses: ApiSportsLeagueResponseItem[] = [];
-    for (const id of Object.values(POPULAR_LEAGUE_IDS)) {
-        // Fetching one by one to ensure we get details if the bulk ID query isn't supported or optimal
-        const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id });
-        if (data.response && data.response.length > 0) {
-            leagueResponses.push(...data.response);
+    // Fetching details for each popular league
+    for (const leagueId of Object.values(POPULAR_LEAGUE_IDS)) {
+      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: leagueId, season: CURRENT_SEASON });
+      if (data.response && data.response.length > 0) {
+        // Find the specific season (CURRENT_SEASON) if multiple are returned
+        const leagueWithSeason = data.response.find(r => r.seasons.some(s => s.year === CURRENT_SEASON && s.current));
+        if (leagueWithSeason) {
+            leagueResponses.push(leagueWithSeason);
         } else {
-            console.warn(`No league data returned for ID: ${id}`);
+            // Fallback to the first response if the current season is not explicitly marked or found
+            const fallbackLeague = data.response[0];
+            if (fallbackLeague) {
+                leagueResponses.push(fallbackLeague);
+                console.warn(`League ID ${leagueId}: Current season ${CURRENT_SEASON} not explicitly found, using first available season data.`);
+            } else {
+                console.warn(`No league data returned for ID: ${leagueId}`);
+            }
         }
+      } else {
+        console.warn(`No league data returned for ID: ${leagueId}`);
+      }
     }
     
-    return leagueResponses.map(item => ({
-      id: item.league.id,
-      name: item.league.name,
-      logoUrl: item.league.logo,
-      country: item.country.name,
-    }));
+    return leagueResponses
+      .filter(item => item && item.league) // Ensure item and item.league are defined
+      .map(item => ({
+        id: item.league.id,
+        name: item.league.name,
+        logoUrl: item.league.logo,
+        country: item.country.name,
+      }));
   } catch (error) {
     console.error('Error fetching app leagues from API-Sports:', error);
     return [];
@@ -133,24 +140,15 @@ export async function getFixtures(
 
   switch (filterType) {
     case 'upcoming':
-      params.date = getTodayDateString(); // API-Sports uses 'date' for a specific day's upcoming matches
-                                        // For a range, it's 'from' and 'to'
-      // To get a range of upcoming matches (e.g., next 7 days):
-      // params.from = getTodayDateString();
-      // params.to = getDateNDaysFromNowString(7);
+      params.from = getTodayDateString();
+      params.to = getDateNDaysFromNowString(14); // Fetch for next 14 days
       params.status = 'NS'; // Not Started
       break;
     case 'live':
-      // The 'live' parameter can take 'all' or 'L1-L2-L3' (league IDs)
-      // For a specific league:
-      params = { live: `${leagueId}` }; 
-      // Note: season might not be needed or used with 'live' parameter, check API behavior
-      delete params.season; // remove season if live takes precedence
-      delete params.league;
+      params = { live: `${leagueId}` }; // API supports specific league ID for live games
       break;
     case 'finished':
-      // For a range of finished matches (e.g., last 7 days):
-      params.from = getDateNDaysFromNowString(-7);
+      params.from = getDateNDaysFromNowString(-14); // Fetch for last 14 days
       params.to = getTodayDateString();
       params.status = 'FT'; // Finished
       break;
@@ -167,3 +165,23 @@ export async function getFixtures(
     return [];
   }
 }
+
+// Function to get team details - not currently used but good for future
+// export async function getTeamDetails(teamId: number): Promise<TeamApp | null> {
+//   try {
+//     const data = await fetchFromApiSports<any>('/teams', { id: teamId });
+//     if (data.response && data.response.length > 0) {
+//       const teamData = data.response[0].team;
+//       return {
+//         id: teamData.id,
+//         name: teamData.name,
+//         logoUrl: teamData.logo,
+//         // slug: slugify(teamData.name) // If needed
+//       };
+//     }
+//     return null;
+//   } catch (error) {
+//     console.error(`Error fetching team details for ID ${teamId}:`, error);
+//     return null;
+//   }
+// }
