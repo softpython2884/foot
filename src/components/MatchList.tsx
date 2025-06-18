@@ -1,11 +1,11 @@
 
-import type { Match as AppMatch } from '@/lib/types'; // Use AppMatch
+import type { MatchApp } from '@/lib/types'; // Use MatchApp
 import { MatchCard } from './MatchCard';
 
 interface MatchListProps {
-  matches: AppMatch[]; // Expect AppMatch
-  watchlist: string[]; // Keep as string[] for now, MatchCard handles numeric ID internally for its key
-  onToggleWatchlist: (matchId: string | number) => void; // ID can be string or number
+  matches: MatchApp[]; // Expect MatchApp
+  watchlist: string[]; // Watchlist IDs from page.tsx are strings after map
+  onToggleWatchlist: (matchId: number) => void; // Match ID is number
 }
 
 export function MatchList({ matches, watchlist, onToggleWatchlist }: MatchListProps) {
@@ -17,7 +17,7 @@ export function MatchList({ matches, watchlist, onToggleWatchlist }: MatchListPr
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 py-6">
       {matches.map((match) => (
         <MatchCard
-          key={match.id.toString()} // Ensure key is string
+          key={match.id} // API ID is number
           match={match}
           isWatchlisted={watchlist.includes(match.id.toString())}
           onToggleWatchlist={onToggleWatchlist}
