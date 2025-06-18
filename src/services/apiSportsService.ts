@@ -2,23 +2,26 @@
 'use server';
 
 import type {
-  ApiSportsLeaguesApiResponse,
-  ApiSportsLeagueResponseItem,
   ApiSportsFixturesApiResponse,
   ApiSportsFixtureResponseItem,
+  ApiSportsTeamApiResponse,
+  ApiSportsTeamResponseItem,
+  ApiSportsLeaguesApiResponse,
+  ApiSportsLeagueResponseItem,
   LeagueApp,
   MatchApp,
   TeamApp
 } from '@/lib/types';
-import { getTodayDateString, getDateNDaysFromNowString } from '@/lib/dateUtils';
+import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils';
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 const API_KEY = process.env.API_SPORTS_KEY;
-const CURRENT_SEASON = 2024; // Use 2024 for 2024-2025 season, or 2023 for 2023-2024
+const CURRENT_SEASON = 2024; // API-Sports uses the start year of the season (e.g., 2024 for 2024/25)
 
-async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number>): Promise<T> {
+async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
   if (!API_KEY) {
-    throw new Error('API_SPORTS_KEY is not configured in .env');
+    console.error('API_SPORTS_KEY is not configured in .env');
+    throw new Error('API_SPORTS_KEY is not configured.');
   }
 
   const url = new URL(`${BASE_URL}${endpoint}`);
@@ -30,6 +33,10 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
 
   const headers = new Headers();
   headers.append('x-apisports-key', API_KEY);
+  // As per API-Football docs, x-rapidapi-host is for RapidAPI proxy, not direct API-Sports.
+  // headers.append('x-rapidapi-host', 'v3.football.api-sports.io'); 
+
+  console.log(`Fetching from API-Sports: ${url.toString()}`);
 
   const response = await fetch(url.toString(), {
     method: 'GET',
@@ -44,82 +51,72 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
   }
   
   const data = await response.json();
+
+  // Check for logical errors returned by the API in the response body
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
-    console.error(`API-Sports logical error for ${url.toString()}:`, data.errors);
+    console.error(`API-Sports logical error for ${url.toString()}:`, JSON.stringify(data.errors));
+    // Depending on the severity or type of error, you might choose to throw here or return a partial/empty result.
+    // For now, we'll let it pass and the calling function can handle empty `data.response`.
+  }
+  if (data.results === 0 && !(endpoint === '/status')) { // /status endpoint might have 0 results if not subscribed to a plan directly
+    console.warn(`API-Sports returned 0 results for ${url.toString()}`);
   }
   return data as T;
 }
 
-// Targeted popular league IDs
-const POPULAR_LEAGUE_IDS = {
-  PREMIER_LEAGUE: 39,
-  LA_LIGA: 140,
-  SERIE_A: 135,
-  BUNDESLIGA: 78,
-  LIGUE_1: 61,
-  CHAMPIONS_LEAGUE: 2,
-};
+function mapApiTeamToTeamApp(apiTeamData: ApiSportsTeamResponseItem): TeamApp {
+  return {
+    id: apiTeamData.team.id,
+    name: apiTeamData.team.name,
+    logoUrl: apiTeamData.team.logo,
+    country: apiTeamData.team.country,
+    founded: apiTeamData.team.founded,
+    venueName: apiTeamData.venue.name,
+    venueCity: apiTeamData.venue.city,
+    venueCapacity: apiTeamData.venue.capacity,
+    // slug is usually generated client-side or from mockData if needed for routing
+  };
+}
 
-export async function getAppLeagues(): Promise<LeagueApp[]> {
+export async function getApiSportsTeamDetails(teamId: number): Promise<TeamApp | null> {
   try {
-    const leagueResponses: ApiSportsLeagueResponseItem[] = [];
-    // Fetching details for each popular league
-    for (const leagueId of Object.values(POPULAR_LEAGUE_IDS)) {
-      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: leagueId, season: CURRENT_SEASON });
-      if (data.response && data.response.length > 0) {
-        // Find the specific season (CURRENT_SEASON) if multiple are returned
-        const leagueWithSeason = data.response.find(r => r.seasons.some(s => s.year === CURRENT_SEASON && s.current));
-        if (leagueWithSeason) {
-            leagueResponses.push(leagueWithSeason);
-        } else {
-            // Fallback to the first response if the current season is not explicitly marked or found
-            const fallbackLeague = data.response[0];
-            if (fallbackLeague) {
-                leagueResponses.push(fallbackLeague);
-                console.warn(`League ID ${leagueId}: Current season ${CURRENT_SEASON} not explicitly found, using first available season data.`);
-            } else {
-                console.warn(`No league data returned for ID: ${leagueId}`);
-            }
-        }
-      } else {
-        console.warn(`No league data returned for ID: ${leagueId}`);
-      }
+    const data = await fetchFromApiSports<ApiSportsTeamApiResponse>('/teams', { id: teamId });
+    if (data.response && data.response.length > 0) {
+      return mapApiTeamToTeamApp(data.response[0]);
     }
-    
-    return leagueResponses
-      .filter(item => item && item.league) // Ensure item and item.league are defined
-      .map(item => ({
-        id: item.league.id,
-        name: item.league.name,
-        logoUrl: item.league.logo,
-        country: item.country.name,
-      }));
+    return null;
   } catch (error) {
-    console.error('Error fetching app leagues from API-Sports:', error);
-    return [];
+    console.error(`Error fetching team details for ID ${teamId} from API-Sports:`, error);
+    return null;
   }
 }
 
 
 function mapApiFixtureToMatchApp(apiFixture: ApiSportsFixtureResponseItem): MatchApp {
+   // Basic TeamApp structure from fixture data
+  const homeTeamApp: TeamApp = {
+    id: apiFixture.teams.home.id,
+    name: apiFixture.teams.home.name,
+    logoUrl: apiFixture.teams.home.logo,
+  };
+  const awayTeamApp: TeamApp = {
+    id: apiFixture.teams.away.id,
+    name: apiFixture.teams.away.name,
+    logoUrl: apiFixture.teams.away.logo,
+  };
+   const leagueApp: LeagueApp = {
+    id: apiFixture.league.id,
+    name: apiFixture.league.name,
+    logoUrl: apiFixture.league.logo,
+    country: apiFixture.league.country,
+    season: apiFixture.league.season,
+  };
+
   return {
     id: apiFixture.fixture.id,
-    league: {
-      id: apiFixture.league.id,
-      name: apiFixture.league.name,
-      logoUrl: apiFixture.league.logo,
-      country: apiFixture.league.country,
-    },
-    homeTeam: {
-      id: apiFixture.teams.home.id,
-      name: apiFixture.teams.home.name,
-      logoUrl: apiFixture.teams.home.logo,
-    },
-    awayTeam: {
-      id: apiFixture.teams.away.id,
-      name: apiFixture.teams.away.name,
-      logoUrl: apiFixture.teams.away.logo,
-    },
+    league: leagueApp,
+    homeTeam: homeTeamApp,
+    awayTeam: awayTeamApp,
     matchTime: apiFixture.fixture.date,
     statusShort: apiFixture.fixture.status.short,
     statusLong: apiFixture.fixture.status.long,
@@ -131,8 +128,64 @@ function mapApiFixtureToMatchApp(apiFixture: ApiSportsFixtureResponseItem): Matc
   };
 }
 
+// Fetch fixtures for a specific team
+export async function getApiSportsMatchesForTeam(
+  teamId: number,
+  params?: { season?: number; status?: string; dateFrom?: string; dateTo?: string; last?: number; next?: number; league?: number }
+): Promise<MatchApp[]> {
+  const queryParams: Record<string, string | number> = { team: teamId, season: params?.season || CURRENT_SEASON };
 
-export async function getFixtures(
+  if (params?.status) queryParams.status = params.status;
+  if (params?.dateFrom) queryParams.from = params.dateFrom;
+  if (params?.dateTo) queryParams.to = params.dateTo;
+  if (params?.last) queryParams.last = params.last;
+  if (params?.next) queryParams.next = params.next;
+  if (params?.league) queryParams.league = params.league;
+
+
+  try {
+    const data = await fetchFromApiSports<ApiSportsFixturesApiResponse>('/fixtures', queryParams);
+    if (data.response && data.response.length > 0) {
+      return data.response.map(mapApiFixtureToMatchApp);
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error fetching fixtures for team ${teamId} from API-Sports:`, error);
+    return [];
+  }
+}
+
+// Fetches details for a list of league IDs.
+export async function getApiSportsLeagues(leagueIds: number[]): Promise<LeagueApp[]> {
+  const leagues: LeagueApp[] = [];
+  // API-Sports league endpoint doesn't support fetching multiple leagues by ID in one call.
+  // We must iterate or fetch them one by one if specific multiple leagues are needed.
+  // For now, this will fetch individually if multiple IDs are passed.
+  // Consider if this is needed frequently or if data can be seeded/cached differently.
+  for (const id of leagueIds) {
+    try {
+      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, season: CURRENT_SEASON });
+      if (data.response && data.response.length > 0) {
+        const leagueData = data.response[0];
+        leagues.push({
+          id: leagueData.league.id,
+          name: leagueData.league.name,
+          logoUrl: leagueData.league.logo,
+          country: leagueData.country.name,
+          season: CURRENT_SEASON, // Assuming we fetched for current season
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching league details for ID ${id} from API-Sports:`, error);
+    }
+  }
+  return leagues;
+}
+
+
+// This function is for the main match schedule page (if you build one)
+// Not currently used by the homepage or team detail page in this iteration.
+export async function getFixturesForLeaguePage(
   leagueId: number,
   filterType: 'upcoming' | 'live' | 'finished'
 ): Promise<MatchApp[]> {
@@ -145,12 +198,15 @@ export async function getFixtures(
       params.status = 'NS'; // Not Started
       break;
     case 'live':
-      params = { live: `${leagueId}` }; // API supports specific league ID for live games
+      // For live games, API expects 'live' param with league ID(s) or 'all'
+      // Example: live=39 (for Premier League) or live=all
+      // If leagueId is specific, use it. Otherwise, 'all' might hit rate limits faster.
+      params = { live: `${leagueId}` }; 
       break;
     case 'finished':
       params.from = getDateNDaysFromNowString(-14); // Fetch for last 14 days
       params.to = getTodayDateString();
-      params.status = 'FT'; // Finished
+      params.status = 'FT'; // Finished (or other finished statuses: AET, PEN)
       break;
   }
 
@@ -165,23 +221,3 @@ export async function getFixtures(
     return [];
   }
 }
-
-// Function to get team details - not currently used but good for future
-// export async function getTeamDetails(teamId: number): Promise<TeamApp | null> {
-//   try {
-//     const data = await fetchFromApiSports<any>('/teams', { id: teamId });
-//     if (data.response && data.response.length > 0) {
-//       const teamData = data.response[0].team;
-//       return {
-//         id: teamData.id,
-//         name: teamData.name,
-//         logoUrl: teamData.logo,
-//         // slug: slugify(teamData.name) // If needed
-//       };
-//     }
-//     return null;
-//   } catch (error) {
-//     console.error(`Error fetching team details for ID ${teamId}:`, error);
-//     return null;
-//   }
-// }

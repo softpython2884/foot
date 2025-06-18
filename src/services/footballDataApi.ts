@@ -1,9 +1,20 @@
 
 // This file is no longer used and can be deleted.
 // The new service for API-Sports is src/services/apiSportsService.ts
+
 // 'use server';
 
-// import type { ApiCompetitionsResponse, ApiMatchesResponse, ApiCompetition, ApiMatch } from '@/lib/types';
+// import type {
+//   ApiCompetitionsResponse,
+//   ApiMatchesResponse,
+//   ApiCompetition,
+//   ApiMatch,
+//   LeagueApp,
+//   MatchApp,
+//   TeamApp
+// } from '@/lib/types'; // Ensure types are correctly imported or defined
+// import { getTodayDateString, getDateNDaysFromNowString } from '@/lib/dateUtils';
+
 
 // const BASE_URL = 'https://api.football-data.org/v4';
 // const API_KEY = process.env.FOOTBALL_DATA_API_KEY;
@@ -30,42 +41,102 @@
 //   return response.json() as Promise<T>;
 // }
 
-// export async function getApiCompetitions(codes: string[] = ['PL', 'CL', 'BL1', 'SA', 'PD', 'FL1']): Promise<ApiCompetition[]> {
+
+// function mapApiCompetitionToLeagueApp(apiCompetition: ApiCompetition): LeagueApp {
+//   return {
+//     id: apiCompetition.id,
+//     name: apiCompetition.name,
+//     logoUrl: apiCompetition.emblem,
+//     country: apiCompetition.area.name,
+//     // season is not directly available in ApiCompetition, might need to be passed or derived
+//   };
+// }
+
+// export async function getAppLeagues(codes: string[] = ['PL', 'CL', 'BL1', 'SA', 'PD', 'FL1']): Promise<LeagueApp[]> {
 //   try {
-//     const competitions: ApiCompetition[] = [];
+//     const apiCompetitions: ApiCompetition[] = [];
 //     for (const code of codes) {
 //       try {
 //         const competition = await fetchWithToken<ApiCompetition>(`/competitions/${code}`);
-//         competitions.push(competition);
+//         apiCompetitions.push(competition);
 //       } catch (error) {
 //         console.warn(`Could not fetch competition with code ${code}:`, error);
 //       }
 //     }
-//     return competitions.filter(comp => comp != null);
+//     return apiCompetitions.filter(comp => comp != null).map(mapApiCompetitionToLeagueApp);
 //   } catch (error) {
 //     console.error('Error fetching competitions:', error);
 //     return [];
 //   }
 // }
 
+// function mapApiMatchToMatchApp(apiMatch: ApiMatch): MatchApp {
+//   return {
+//     id: apiMatch.id,
+//     league: {
+//       id: apiMatch.competition.id,
+//       name: apiMatch.competition.name,
+//       logoUrl: apiMatch.competition.emblem,
+//       country: apiMatch.area?.name, // area might not be on match.competition directly
+//       season: apiMatch.season?.startDate ? parseInt(apiMatch.season.startDate.substring(0,4)) : undefined,
+//     },
+//     homeTeam: {
+//       id: apiMatch.homeTeam.id,
+//       name: apiMatch.homeTeam.name,
+//       logoUrl: apiMatch.homeTeam.crest,
+//     },
+//     awayTeam: {
+//       id: apiMatch.awayTeam.id,
+//       name: apiMatch.awayTeam.name,
+//       logoUrl: apiMatch.awayTeam.crest,
+//     },
+//     matchTime: apiMatch.utcDate,
+//     statusShort: apiMatch.status.toUpperCase().replace(/_/g, ' ').substring(0,2), // Approximation
+//     statusLong: apiMatch.status.replace(/_/g, ' '),
+//     elapsedTime: undefined, // Not directly available in football-data.org like in API-Sports
+//     venueName: undefined, // Not directly available
+//     venueCity: undefined, // Not directly available
+//     homeScore: apiMatch.score?.fullTime?.home,
+//     awayScore: apiMatch.score?.fullTime?.away,
+//   };
+// }
 
-// export async function getApiMatchesForCompetition(
+
+// export async function getFixtures(
 //   competitionCode: string,
-//   params?: { dateFrom?: string; dateTo?: string; status?: 'SCHEDULED' | 'LIVE' | 'FINISHED' }
-// ): Promise<ApiMatch[]> {
+//   filterType: 'upcoming' | 'live' | 'finished'
+// ): Promise<MatchApp[]> {
+//   let params: { dateFrom?: string; dateTo?: string; status?: 'SCHEDULED' | 'LIVE' | 'IN_PLAY' | 'PAUSED' | 'FINISHED' | 'POSTPONED' | 'SUSPENDED' | 'CANCELLED' } = {};
+
+//   switch (filterType) {
+//     case 'upcoming':
+//       params.dateFrom = getTodayDateString();
+//       params.dateTo = getDateNDaysFromNowString(14);
+//       params.status = 'SCHEDULED';
+//       break;
+//     case 'live':
+//       params.status = 'LIVE'; // Or 'IN_PLAY', 'PAUSED' - football-data.org might group these
+//       break;
+//     case 'finished':
+//       params.dateFrom = getDateNDaysFromNowString(-14);
+//       params.dateTo = getTodayDateString();
+//       params.status = 'FINISHED';
+//       break;
+//   }
+
 //   try {
 //     const queryParams = new URLSearchParams();
-//     if (params?.dateFrom) queryParams.append('dateFrom', params.dateFrom);
-//     if (params?.dateTo) queryParams.append('dateTo', params.dateTo);
-//     if (params?.status) queryParams.append('status', params.status);
+//     if (params.dateFrom) queryParams.append('dateFrom', params.dateFrom);
+//     if (params.dateTo) queryParams.append('dateTo', params.dateTo);
+//     if (params.status) queryParams.append('status', params.status);
 
 //     const queryString = queryParams.toString();
 //     const endpoint = `/competitions/${competitionCode}/matches${queryString ? `?${queryString}` : ''}`;
     
 //     const response = await fetchWithToken<ApiMatchesResponse>(endpoint);
-//     return response.matches || [];
+//     return (response.matches || []).map(mapApiMatchToMatchApp);
 //   } catch (error) {
-//     console.error(`Error fetching matches for competition ${competitionCode}:`, error);
+//     console.error(`Error fetching ${filterType} matches for competition ${competitionCode}:`, error);
 //     return [];
 //   }
 // }

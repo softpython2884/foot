@@ -83,18 +83,18 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
-      // {
-      //   protocol: 'https',
-      //   hostname: 'crests.football-data.org',
-      //   port: '',
-      //   pathname: '/**',
-      // },
       {
         protocol: 'https',
-        hostname: 'media.api-sports.io',
+        hostname: 'media.api-sports.io', // Added for API-Sports
         port: '',
         pathname: '/**',
       }
+      // {
+      //   protocol: 'https',
+      //   hostname: 'crests.football-data.org', // Removed
+      //   port: '',
+      //   pathname: '/**',
+      // },
     ],
   },
 };

@@ -13,27 +13,31 @@ import { cn } from '@/lib/utils';
 interface MatchCardProps {
   match: MatchApp;
   isWatchlisted: boolean;
-  onToggleWatchlist: (matchId: number) => void; // ID is now number from API
-  // isRecommended?: boolean; // Removed for now as recommendation logic is not yet integrated with new API
+  onToggleWatchlist: (matchId: number) => void;
 }
 
 export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCardProps) {
   const [formattedDateTime, setFormattedDateTime] = useState({ date: 'Loading...', time: 'Loading...' });
 
   useEffect(() => {
-    setFormattedDateTime(formatMatchDateTime(match.matchTime));
+    // Ensure matchTime is valid before formatting
+    if (match.matchTime) {
+        setFormattedDateTime(formatMatchDateTime(match.matchTime));
+    } else {
+        setFormattedDateTime({ date: 'Date N/A', time: 'Time N/A' });
+    }
   }, [match.matchTime]);
 
   const getStatusColor = (statusShort: string) => {
     if (['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE'].includes(statusShort)) return 'text-red-500'; // Live/Ongoing
     if (statusShort === 'FT' || statusShort === 'AET' || statusShort === 'PEN') return 'text-gray-500'; // Finished
     if (statusShort === 'NS') return 'text-green-500'; // Not Started
-    if (['PST', 'SUSP', 'INT', 'CANC', 'ABD', 'AWD', 'WO'].includes(statusShort)) return 'text-yellow-600'; // Postponed/Cancelled
-    return 'text-muted-foreground';
+    if (['PST', 'SUSP', 'INT', 'CANC', 'ABD', 'AWD', 'WO'].includes(statusShort)) return 'text-yellow-600'; // Postponed/Cancelled/Other
+    return 'text-muted-foreground'; // Default for other statuses like TBD etc.
   };
 
   return (
-    <Card className="w-full max-w-md shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card text-card-foreground">
+    <Card className="w-full shadow-lg hover:shadow-xl transition-shadow duration-300 flex flex-col bg-card text-card-foreground">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -47,9 +51,9 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
                 className="rounded-full"
                 data-ai-hint={`${match.homeTeam.name} logo`}
               />
-            ) : <div className="w-7 h-7 bg-muted rounded-full flex items-center justify-center text-xs">?</div>}
+            ) : <div className="w-7 h-7 bg-muted rounded-full flex items-center justify-center text-xs">{match.homeTeam.name?.charAt(0) || '?'}</div>}
             <CardTitle className="font-headline text-lg truncate" title={match.homeTeam.name}>
-              {match.homeTeam.name}
+              {match.homeTeam.name || 'Home Team'}
             </CardTitle>
           </div>
 
@@ -57,13 +61,13 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
             <span className="text-muted-foreground mx-2 text-lg font-semibold">vs</span>
           ) : (
             <span className="text-2xl font-bold text-primary mx-2">
-              {match.homeScore ?? '-'} : {match.awayScore ?? '-'}
+              {typeof match.homeScore === 'number' ? match.homeScore : '-'} : {typeof match.awayScore === 'number' ? match.awayScore : '-'}
             </span>
           )}
 
           <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
             <CardTitle className="font-headline text-lg truncate text-right" title={match.awayTeam.name}>
-              {match.awayTeam.name}
+              {match.awayTeam.name || 'Away Team'}
             </CardTitle>
             {match.awayTeam.logoUrl ? (
               <Image
@@ -75,17 +79,19 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
                 className="rounded-full"
                 data-ai-hint={`${match.awayTeam.name} logo`}
               />
-            ) : <div className="w-7 h-7 bg-muted rounded-full flex items-center justify-center text-xs">?</div>}
+            ) : <div className="w-7 h-7 bg-muted rounded-full flex items-center justify-center text-xs">{match.awayTeam.name?.charAt(0) || '?'}</div>}
           </div>
         </div>
-        <CardDescription className="flex items-center gap-2 pt-1 text-muted-foreground">
-          {match.league.logoUrl ? (
-            <Image src={match.league.logoUrl} alt={`${match.league.name} emblem`} width={16} height={16} style={{ objectFit: 'contain' }} />
-          ) : (
-            <Shield size={16} />
-          )}
-          {match.league.name} {match.league.country && `(${match.league.country})`}
-        </CardDescription>
+        {match.league && (
+          <CardDescription className="flex items-center gap-2 pt-1 text-muted-foreground">
+            {match.league.logoUrl ? (
+              <Image src={match.league.logoUrl} alt={`${match.league.name} emblem`} width={16} height={16} style={{ objectFit: 'contain' }} />
+            ) : (
+              <Shield size={16} />
+            )}
+            {match.league.name} {match.league.country && `(${match.league.country})`}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="flex-grow space-y-3">
         <div className="flex items-center gap-2 text-sm">
@@ -96,18 +102,20 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
           <Clock size={16} className="text-primary" />
           <span>{formattedDateTime.time} (Your Local Time)</span>
         </div>
-        <div className="flex items-center gap-1 text-sm capitalize">
-          <Tv size={16} className={cn(getStatusColor(match.statusShort))} />
-          <span className={cn("font-medium", getStatusColor(match.statusShort))}>
-            {match.statusLong}
-          </span>
-          {match.elapsedTime && ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE'].includes(match.statusShort) && (
-            <span className="text-xs text-red-500">({match.elapsedTime}')</span>
-          )}
-        </div>
+        {match.statusLong && (
+          <div className="flex items-center gap-1 text-sm capitalize">
+            <Tv size={16} className={cn(getStatusColor(match.statusShort))} />
+            <span className={cn("font-medium", getStatusColor(match.statusShort))}>
+              {match.statusLong}
+            </span>
+            {typeof match.elapsedTime === 'number' && ['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE'].includes(match.statusShort) && (
+              <span className="text-xs text-red-500">({match.elapsedTime}')</span>
+            )}
+          </div>
+        )}
         {match.venueName && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users size={16} />
+            <Users size={16} /> {/* Using Users icon for venue, could be MapPin too */}
             <span>{match.venueName}{match.venueCity && `, ${match.venueCity}`}</span>
           </div>
         )}

@@ -18,7 +18,7 @@ export default function HomePage() {
           </h2>
           {teams.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {teams.map((team: Team) => (
+              {teams.map((team: Team) => ( // team here is from mockData, which now includes API ID
                 <TeamBannerCard key={team.id} team={team} />
               ))}
             </div>
