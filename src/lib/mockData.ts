@@ -10,16 +10,16 @@ export const leagues: League[] = [
 ];
 
 export const teams: Team[] = [
-  { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://toppng.com/uploads/preview/manchester-united-logo-png-free-11660341645zdrkcrqzmk.png' },
-  { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZWmkUo08wH9DVmeaB9rp4YerDQ-eOEqRtIg&s' },
-  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThncOgOseI0qfhv5ANM_u4HzXaxA6GELfKxQ&s' },
-  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://e1.pngegg.com/pngimages/757/917/png-clipart-logo-de-la-ligue-des-champions-fc-barcelone-ligue-des-champions-uefa-la-liga-coupe-du-monde-des-clubs-de-la-fifa-ecusson-equipe-de-football-espagne.png' },
-  { id: 'T5', name: 'Juventus', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T1', name: 'Manchester United', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/5/5b/Logo_Manchester_United_FC.svg/langfr-250px-Logo_Manchester_United_FC.svg.png' },
+  { id: 'T2', name: 'Liverpool FC', logoImageUrl: 'https://stylfoot.fr/3835-thickbox_01icon/logo-liverpool.jpg' },
+  { id: 'T3', name: 'Real Madrid', logoImageUrl: 'https://logo-marque.com/wp-content/uploads/2020/11/Real-Madrid-Logo.png' },
+  { id: 'T4', name: 'FC Barcelona', logoImageUrl: 'https://logo-marque.com/wp-content/uploads/2020/04/Barcelona-Logo.png' },
+  { id: 'T5', name: 'Juventus', logoImageUrl: 'https://www.goodstickers.fr/22995/autocollant-bouclier-de-juventus.jpg' },
   { id: 'T6', name: 'AC Milan', logoImageUrl: 'https://brandlogos.net/wp-content/uploads/2013/07/ac-milan-club-vector-logo.png' },
-  { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T7', name: 'Bayern Munich', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1b/FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg/768px-FC_Bayern_M%C3%BCnchen_logo_%282017%29.svg.png' },
   { id: 'T8', name: 'Borussia Dortmund', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T9', name: 'Paris Saint-Germain', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1024px-Paris_Saint-Germain_Logo.svg.png' },
-  { id: 'T10', name: 'Olympique de Marseille', logoImageUrl: 'https://placehold.co/100x100.png' },
+  { id: 'T10', name: 'Olympique de Marseille', logoImageUrl: 'https://upload.wikimedia.org/wikipedia/fr/thumb/4/43/Logo_Olympique_de_Marseille.svg/1612px-Logo_Olympique_de_Marseille.svg.png' },
   { id: 'T11', name: 'Chelsea FC', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T12', name: 'Arsenal FC', logoImageUrl: 'https://placehold.co/100x100.png' },
   { id: 'T13', name: 'Atletico Madrid', logoImageUrl: 'https://placehold.co/100x100.png' },

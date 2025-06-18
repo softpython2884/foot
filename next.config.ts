@@ -46,6 +46,24 @@ const nextConfig: NextConfig = {
         hostname: 'brandlogos.net',
         port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'logo-marque.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'stylfoot.fr',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'www.goodstickers.fr',
+        port: '',
+        pathname: '/**',
       }
     ],
   },
