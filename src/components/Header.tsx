@@ -5,19 +5,19 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuSub,
   DropdownMenuSubTrigger,
   DropdownMenuSubContent,
   DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
-import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop } from 'lucide-react'; // Added icons
+import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop, Check } from 'lucide-react'; // Added Check
 import { useTheme } from '@/context/ThemeContext'; // Import useTheme
 
 export function Header() {
@@ -27,7 +27,7 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    router.push('/'); 
+    router.push('/');
   };
 
   const themeDisplayNames: Record<string, string> = {
