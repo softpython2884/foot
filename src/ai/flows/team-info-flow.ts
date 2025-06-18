@@ -18,7 +18,7 @@ const TeamInfoInputSchema = z.object({
 export type TeamInfoInput = z.infer<typeof TeamInfoInputSchema>;
 
 const TeamInfoOutputSchema = z.object({
-  response: z.string().describe('The AI-generated information or answer about the team.'),
+  response: z.string().describe('The AI-generated information or answer about the team, potentially using Markdown for formatting.'),
 });
 export type TeamInfoOutput = z.infer<typeof TeamInfoOutputSchema>;
 
@@ -31,14 +31,15 @@ const teamInfoPrompt = ai.definePrompt({
   input: {schema: TeamInfoInputSchema},
   output: {schema: TeamInfoOutputSchema},
   prompt: `Réponds toujours en français. Tu es un assistant expert en football très compétent.
-L'utilisateur pose une question sur l'équipe : {{{teamName}}}.
+L'utilisateur s'intéresse à l'équipe : {{{teamName}}}.
+Utilise le format Markdown pour la mise en forme de ta réponse. Par exemple, tu peux mettre des informations importantes en **gras** ou en *italique*. Pour les listes, utilise des tirets ou des numéros.
 
 {{#if question}}
 Veuillez répondre spécifiquement à la question suivante concernant {{{teamName}}} :
 "{{{question}}}"
-Fournissez une réponse concise et informative. Formatez clairement votre réponse.
+Fournis une réponse concise et informative, en utilisant Markdown pour la clarté.
 {{else}}
-Fournissez un résumé général et intéressant sur {{{teamName}}}. Incluez des faits clés comme leur ligue, leurs réalisations notables, les joueurs célèbres ou leur forme actuelle si possible. Limitez-vous à quelques phrases captivantes.
+Fournis un résumé général et intéressant sur {{{teamName}}}. Inclue des faits clés comme leur ligue, leurs réalisations notables, les joueurs célèbres (passés ou présents), leur stade, leur pays d'origine, ou leur forme actuelle si possible. Limite-toi à quelques phrases captivantes et bien formatées avec Markdown.
 {{/if}}
 `,
 });
@@ -57,3 +58,4 @@ const teamInfoFlow = ai.defineFlow(
     return output;
   }
 );
+

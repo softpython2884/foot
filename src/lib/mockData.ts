@@ -18,8 +18,8 @@ function slugify(text: string): string {
 export const teams: Team[] = [
   { id: 33, name: 'Manchester United', logoImageUrl: 'https://media.api-sports.io/football/teams/33.png', slug: 'manchester-united' },
   { id: 40, name: 'Liverpool FC', logoImageUrl: 'https://media.api-sports.io/football/teams/40.png', slug: 'liverpool-fc' },
-  { id: 530, name: 'Real Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/530.png', slug: 'real-madrid' }, // Corrected ID and Logo
-  { id: 529, name: 'FC Barcelona', logoImageUrl: 'https://media.api-sports.io/football/teams/529.png', slug: 'fc-barcelona' }, // Corrected ID and Logo
+  { id: 541, name: 'Real Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/541.png', slug: 'real-madrid' },
+  { id: 529, name: 'FC Barcelona', logoImageUrl: 'https://media.api-sports.io/football/teams/529.png', slug: 'fc-barcelona' },
   { id: 496, name: 'Juventus', logoImageUrl: 'https://media.api-sports.io/football/teams/496.png', slug: 'juventus' },
   { id: 489, name: 'AC Milan', logoImageUrl: 'https://media.api-sports.io/football/teams/489.png', slug: 'ac-milan' },
   { id: 157, name: 'Bayern Munich', logoImageUrl: 'https://media.api-sports.io/football/teams/157.png', slug: 'bayern-munich' },
@@ -28,7 +28,7 @@ export const teams: Team[] = [
   { id: 81, name: 'Olympique de Marseille', logoImageUrl: 'https://media.api-sports.io/football/teams/81.png', slug: 'olympique-de-marseille' },
   { id: 49, name: 'Chelsea FC', logoImageUrl: 'https://media.api-sports.io/football/teams/49.png', slug: 'chelsea-fc' },
   { id: 42, name: 'Arsenal FC', logoImageUrl: 'https://media.api-sports.io/football/teams/42.png', slug: 'arsenal-fc' },
-  { id: 531, name: 'Atletico Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/531.png', slug: 'atletico-madrid' },
+  { id: 530, name: 'Atlético Madrid', logoImageUrl: 'https://media.api-sports.io/football/teams/530.png', slug: 'atletico-madrid' },
   { id: 505, name: 'Inter Milan', logoImageUrl: 'https://media.api-sports.io/football/teams/505.png', slug: 'inter-milan' },
   { id: 50, name: 'Manchester City', logoImageUrl: 'https://media.api-sports.io/football/teams/50.png', slug: 'manchester-city' },
   { id: 47, name: 'Tottenham Hotspur', logoImageUrl: 'https://media.api-sports.io/football/teams/47.png', slug: 'tottenham-hotspur' },
@@ -48,3 +48,4 @@ export const leagues: League[] = [
   { id: 61, name: 'Ligue 1', logoUrl: 'https://media.api-sports.io/football/leagues/61.png', country: 'France', season: 2023 },
   { id: 2, name: 'Champions League', logoUrl: 'https://media.api-sports.io/football/leagues/2.png', country: 'Europe', season: 2023 },
 ];
+

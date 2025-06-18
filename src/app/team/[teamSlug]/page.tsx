@@ -12,16 +12,37 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Shield, Trophy, Brain, Users } from 'lucide-react'; 
+import { Brain, Users, Trophy } from 'lucide-react'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
-import { BettingModal } from '@/components/BettingModal'; // BettingModal will be adapted later
+// import { BettingModal } from '@/components/BettingModal'; // BettingModal will be adapted later
 import { getApiSportsTeamDetails, getApiSportsMatchesForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
 const SEASON_FOR_MATCHES = 2023; 
+const PAST_MATCHES_INCREMENT = 10;
+
+// Simple Markdown to HTML converter
+function simpleMarkdownToHtml(markdown: string): string {
+  if (!markdown) return '';
+  let html = markdown;
+  // Bold: **text** or __text__
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
+  // Italic: *text* or _text_
+  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+  // Basic lists (ul with li for lines starting with - or *)
+  html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
+  html = html.replace(/^\* (.*$)/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); // Wrap consecutive li in ul
+  // Newlines to <br> (be careful with this one, might add too many)
+  // html = html.replace(/\n/g, '<br />');
+  return html;
+}
+
 
 export default function TeamProfilePage() {
   const params = useParams();
@@ -32,7 +53,9 @@ export default function TeamProfilePage() {
 
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
   const [mockTeamData, setMockTeamData] = useState<Team | null>(null);
-  const [pastMatches, setPastMatches] = useState<MatchApp[]>([]);
+  const [allPastMatches, setAllPastMatches] = useState<MatchApp[]>([]);
+  const [visiblePastMatchesCount, setVisiblePastMatchesCount] = useState(PAST_MATCHES_INCREMENT);
+  
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
 
@@ -42,26 +65,26 @@ export default function TeamProfilePage() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const [isBettingModalOpen, setIsBettingModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // const [isBettingModalOpen, setIsBettingModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
 
 
   const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
     setIsLoadingData(true);
     setIsLoadingMatches(true);
     setTeamDetails(null); 
-    setPastMatches([]);
+    setAllPastMatches([]);
+    setVisiblePastMatchesCount(PAST_MATCHES_INCREMENT);
+
 
     try {
       const details = await getApiSportsTeamDetails(apiTeamId);
       setTeamDetails(details); 
 
-      // Fetch all finished matches for the season, then sort and slice client-side
-      const allFinishedMatches = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT'});
-      const sortedFinishedMatches = allFinishedMatches
-        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime())
-        .slice(0, 10); // Take the 10 most recent
-      setPastMatches(sortedFinishedMatches);
+      const fetchedPastMatches = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT'});
+      const sortedFinishedMatches = fetchedPastMatches
+        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime());
+      setAllPastMatches(sortedFinishedMatches);
       
       const nameForAISummary = details?.name || teamNameFromMock;
        if (nameForAISummary) {
@@ -103,25 +126,12 @@ export default function TeamProfilePage() {
       }
     }
   }, [teamSlug, fetchTeamPageData]);
+  
+  const handleLoadMorePastMatches = () => {
+    setVisiblePastMatchesCount(prevCount => prevCount + PAST_MATCHES_INCREMENT);
+  };
 
-  // const handleOpenBetModal = (match: MatchApp) => { // BettingModal logic will be revisited
-  //   if (!currentUser) {
-  //     toast({
-  //       title: 'Authentication Required',
-  //       description: 'Please log in to place a bet.',
-  //       variant: 'destructive',
-  //     });
-  //     router.push('/login');
-  //     return;
-  //   }
-  //   if (match.statusShort !== 'NS') { 
-  //     toast({ variant: 'destructive', title: 'Betting Closed', description: 'You can only bet on upcoming matches.' });
-  //     return;
-  //   }
-    
-  //   setSelectedMatchForBet(match);
-  //   setIsBettingModalOpen(true);
-  // };
+  const displayedPastMatches = allPastMatches.slice(0, visiblePastMatchesCount);
 
   const handleAskAi = async () => {
     const teamNameToUse = teamDetails?.name || mockTeamData?.name;
@@ -161,22 +171,6 @@ export default function TeamProfilePage() {
     notFound();
   }
   
-  // let teamToBetOnForModal: TeamApp | undefined = undefined; // BettingModal logic deferred
-  //  if (selectedMatchForBet) {
-  //    if (selectedMatchForBet.homeTeam.id === (teamDetails?.id || mockTeamData?.id)) {
-  //      teamToBetOnForModal = selectedMatchForBet.homeTeam;
-  //    } else if (selectedMatchForBet.awayTeam.id === (teamDetails?.id || mockTeamData?.id)) {
-  //      teamToBetOnForModal = selectedMatchForBet.awayTeam;
-  //    } else {
-  //       teamToBetOnForModal = teamDetails ? teamDetails : mockTeamData ? {
-  //           id: mockTeamData.id,
-  //           name: mockTeamData.name,
-  //           logoUrl: mockTeamData.logoImageUrl
-  //       } : undefined;
-  //    }
-  //  }
-
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -207,24 +201,26 @@ export default function TeamProfilePage() {
         </Card>
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader>
-            <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
-            <CardDescription>
-              Utilisez l'assistant IA pour obtenir un résumé de l'équipe ou poser des questions spécifiques sur son histoire, son stade, son pays, sa forme actuelle, etc.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 pt-6">
             <div>
-              <h3 className="text-lg font-semibold mb-2">Résumé par l'IA</h3>
-              {(isAiLoading && !aiSummary) && <div className="py-2"><LoadingSpinner size="sm" /></div>}
+              {(isAiLoading && !aiSummary) && <div className="py-2 flex justify-center"><LoadingSpinner size="md" /></div>}
               {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
-              {aiSummary && <CardDescription className="whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{aiSummary}</CardDescription>}
-              {!aiSummary && !isAiLoading && !aiError && <p className="text-muted-foreground">Le résumé de l'IA est en cours de chargement ou non disponible.</p>}
+              {aiSummary && (
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-md mb-4">
+                  <div dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(aiSummary) }} />
+                </div>
+              )}
+              {!aiSummary && !isAiLoading && !aiError && <p className="text-muted-foreground text-center">Le résumé de l'IA est en cours de chargement ou non disponible.</p>}
             </div>
+             <CardHeader className="px-0 py-2">
+                <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
+                <CardDescription>
+                Utilisez l'assistant IA pour obtenir des informations détaillées sur l'équipe (son histoire, son stade, son pays, ses joueurs clés, sa forme actuelle, etc.) ou poser des questions spécifiques. L'IA utilisera le format Markdown pour mettre en évidence les informations importantes.
+                </CardDescription>
+            </CardHeader>
             <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Poser une question sur {displayTeamName || 'cette équipe'}</h3>
               <Textarea
-                placeholder={`Ex: Quelle est la capacité du stade de ${displayTeamName || 'cette équipe'} ?`}
+                placeholder={`Posez une question sur ${displayTeamName || 'cette équipe'}...`}
                 value={userQuestion}
                 onChange={(e) => setUserQuestion(e.target.value)}
                 className="resize-none"
@@ -236,7 +232,9 @@ export default function TeamProfilePage() {
             {aiAnswer && (
               <div>
                 <h3 className="text-lg font-semibold mt-4 mb-2">Réponse de l'IA :</h3>
-                <CardDescription className="whitespace-pre-wrap bg-muted/30 p-3 rounded-md">{aiAnswer}</CardDescription>
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-3 rounded-md">
+                   <div dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(aiAnswer) }} />
+                </div>
               </div>
             )}
              {(isAiLoading && userQuestion) && <div className="flex justify-center mt-2"><LoadingSpinner size="md" /></div>}
@@ -247,33 +245,33 @@ export default function TeamProfilePage() {
         <div className="grid grid-cols-1 gap-8">
           <Card className="shadow-lg">
             <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés (10 derniers de la saison {SEASON_FOR_MATCHES})</CardTitle>
+              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Matchs Passés (Saison {SEASON_FOR_MATCHES})</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoadingMatches && pastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && pastMatches.length === 0 && <p className="text-muted-foreground text-center py-4">Aucun match passé trouvé pour {displayTeamName || 'cette équipe'} (Saison {SEASON_FOR_MATCHES}). Cela peut être dû aux limitations du plan API gratuit.</p>}
-              {pastMatches.length > 0 && (
+              {isLoadingMatches && displayedPastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
+              {!isLoadingMatches && allPastMatches.length === 0 && (
+                <p className="text-muted-foreground text-center py-4">
+                  Aucun match passé trouvé pour {displayTeamName || 'cette équipe'} (Saison {SEASON_FOR_MATCHES}).
+                  Cela peut être dû aux limitations du plan API gratuit ou au fait qu'aucun match n'est disponible pour cette période.
+                </p>
+              )}
+              {displayedPastMatches.length > 0 && (
                 <ul className="space-y-4">
-                  {pastMatches.map((match) => (
+                  {displayedPastMatches.map((match) => (
                      <MatchCard key={match.id} match={match} isWatchlisted={false} onToggleWatchlist={() => { /* Watchlist logic TODO */}} />
                   ))}
                 </ul>
               )}
+              {!isLoadingMatches && allPastMatches.length > visiblePastMatchesCount && (
+                <div className="mt-6 text-center">
+                  <Button onClick={handleLoadMorePastMatches}>
+                    Charger plus de matchs passés
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
-
-        {/* Betting Modal logic deferred
-        {selectedMatchForBet && teamToBetOnForModal && currentUser && (
-          <BettingModal
-            isOpen={isBettingModalOpen}
-            onClose={() => setIsBettingModalOpen(false)}
-            match={selectedMatchForBet}
-            teamToBetOn={teamToBetOnForModal}
-            currentUser={currentUser}
-          />
-        )}
-        */}
 
         <div className="mt-12 text-center">
             <Link href="/">
@@ -285,3 +283,4 @@ export default function TeamProfilePage() {
     </div>
   );
 }
+
