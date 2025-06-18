@@ -12,7 +12,7 @@ interface TeamBannerCardProps {
 
 export function TeamBannerCard({ team }: TeamBannerCardProps) {
   return (
-    <Link href={`/team/${team.id}`} passHref>
+    <Link href={`/team/${team.id}`} passHref className="group">
       <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 cursor-pointer h-full flex flex-col items-center justify-center bg-card">
         <CardHeader className="p-4 flex items-center justify-center">
           <Image
@@ -34,3 +34,4 @@ export function TeamBannerCard({ team }: TeamBannerCardProps) {
     </Link>
   );
 }
+
