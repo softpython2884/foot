@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Button } from './ui/button';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { UserCircle, LogOut, LayoutDashboard } from 'lucide-react'; // Added icons
 
 export function Header() {
   const { currentUser, logout, isLoading } = useAuth();
@@ -12,7 +14,7 @@ export function Header() {
 
   const handleLogout = () => {
     logout();
-    router.push('/'); // Redirect to home page after logout
+    router.push('/'); 
   };
 
   return (
@@ -30,14 +32,33 @@ export function Header() {
         </Link>
         <nav className="flex items-center gap-2">
           {isLoading ? (
-            <p className="text-sm">Loading...</p>
+             <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80" disabled>
+                <UserCircle className="mr-2 h-5 w-5 animate-pulse" /> Loading...
+            </Button>
           ) : currentUser ? (
-            <>
-              <span className="text-sm hidden sm:inline">Welcome, {currentUser.name}!</span>
-              <Button onClick={handleLogout} variant="ghost" className="text-primary-foreground hover:bg-primary/80">
-                Log Out
-              </Button>
-            </>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="text-primary-foreground hover:bg-primary/80 px-3">
+                  <UserCircle className="mr-0 sm:mr-2 h-5 w-5" />
+                  <span className="hidden sm:inline">{currentUser.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild className="cursor-pointer">
+                  <Link href="/profile">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <>
               <Button asChild variant="ghost" className="text-primary-foreground hover:bg-primary/80">

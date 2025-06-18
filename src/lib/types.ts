@@ -43,3 +43,5 @@ export interface User {
 
 // Type for user data stored in AuthContext and localStorage (without password)
 export type AuthenticatedUser = Omit<User, 'hashedPassword'>;
+
+export type LeaderboardUser = Omit<User, 'hashedPassword'>;

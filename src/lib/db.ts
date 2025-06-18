@@ -1,7 +1,9 @@
+
 import sqlite3 from 'sqlite3';
 import { open, type Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
+import type { User } from './types';
 
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
@@ -31,17 +33,21 @@ async function initializeDb(db: Database): Promise<void> {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       hashedPassword TEXT NOT NULL,
-      score INTEGER DEFAULT 0,
-      rank INTEGER DEFAULT 0,
+      score INTEGER DEFAULT 0 NOT NULL,
+      rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 }
 
-// Example of a query function
-export async function findUserByEmail(email: string) {
+export async function findUserByEmail(email: string): Promise<User | undefined> {
   const db = await getDb();
-  return db.get('SELECT id, name, email, hashedPassword, score, rank, createdAt FROM users WHERE email = ?', email);
+  return db.get<User>('SELECT id, name, email, hashedPassword, score, rank, createdAt FROM users WHERE email = ?', email);
+}
+
+export async function getUserById(id: number): Promise<User | undefined> {
+  const db = await getDb();
+  return db.get<User>('SELECT id, name, email, hashedPassword, score, rank, createdAt FROM users WHERE id = ?', id);
 }
 
 export async function createUser(name: string, email: string, hashedPassword: string):Promise<number | undefined> {
@@ -53,4 +59,24 @@ export async function createUser(name: string, email: string, hashedPassword: st
     hashedPassword
   );
   return result.lastID;
+}
+
+export async function updateUserNameDb(userId: number, newName: string): Promise<{ success: boolean }> {
+  const db = await getDb();
+  const result = await db.run('UPDATE users SET name = ? WHERE id = ?', newName, userId);
+  return { success: (result.changes ?? 0) > 0 };
+}
+
+export async function updateUserPasswordDb(userId: number, newHashedPassword: string): Promise<{ success: boolean }> {
+  const db = await getDb();
+  const result = await db.run('UPDATE users SET hashedPassword = ? WHERE id = ?', newHashedPassword, userId);
+  return { success: (result.changes ?? 0) > 0 };
+}
+
+export async function getTopUsersDb(limit: number = 10): Promise<Omit<User, 'hashedPassword'>[]> {
+  const db = await getDb();
+  return db.all<Omit<User, 'hashedPassword'>[]>(
+    'SELECT id, name, email, score, rank, createdAt FROM users ORDER BY score DESC, name ASC LIMIT ?',
+    limit
+  );
 }
