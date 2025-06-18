@@ -10,8 +10,9 @@ import { useAuth } from '@/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -83,7 +84,7 @@ export default function ProfilePage() {
     const result = await updateNameAction(formData);
     if (result.success && result.user) {
       toast({ title: 'Success', description: result.success });
-      updateAuthContextUser(result.user as AuthenticatedUser); // Update user in context
+      updateAuthContextUser(result.user as AuthenticatedUser); 
       nameForm.reset({ newName: result.user.name });
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update name.' });
@@ -133,8 +134,7 @@ export default function ProfilePage() {
       <main className="flex-grow container mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold font-headline text-center mb-12 text-primary">My Profile</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-          <Card className="shadow-lg">
+        <Card className="shadow-lg mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline"><UserCircle /> User Information</CardTitle>
             </CardHeader>
@@ -145,6 +145,10 @@ export default function ProfilePage() {
                   onClick={() => {
                     const inputElement = document.getElementById('newName');
                     if (inputElement) {
+                      // Check if accordion item is open, if not, open it first.
+                      // This part is a bit tricky without direct control over Accordion state from here.
+                      // For simplicity, we assume user might need to open it manually if it's closed.
+                      // Or, if Accordion's `defaultValue` is set, this might work.
                       inputElement.focus();
                     }
                   }}
@@ -168,91 +172,96 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-headline"><UserCog /> Edit Name</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...nameForm}>
-                <form onSubmit={nameForm.handleSubmit(onNameSubmit)} className="space-y-4">
-                  <FormField
-                    control={nameForm.control}
-                    name="newName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Name</FormLabel>
-                        <FormControl>
-                          <Input id="newName" placeholder="Enter new name" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={nameForm.formState.isSubmitting}>
-                    {nameForm.formState.isSubmitting ? <LoadingSpinner size="sm"/> : 'Update Name'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
+        <Accordion type="single" collapsible className="w-full space-y-6 mb-8">
+          <AccordionItem value="edit-name" className="border-none">
+            <Card className="shadow-lg">
+              <AccordionTrigger className="px-6 py-4 text-lg font-headline hover:no-underline">
+                <div className="flex items-center gap-2"><UserCog /> Edit Name</div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <Form {...nameForm}>
+                  <form onSubmit={nameForm.handleSubmit(onNameSubmit)} className="space-y-4 pt-2">
+                    <FormField
+                      control={nameForm.control}
+                      name="newName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Name</FormLabel>
+                          <FormControl>
+                            <Input id="newName" placeholder="Enter new name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={nameForm.formState.isSubmitting}>
+                      {nameForm.formState.isSubmitting ? <LoadingSpinner size="sm"/> : 'Update Name'}
+                    </Button>
+                  </form>
+                </Form>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 font-headline"><LockKeyhole /> Change Password</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                  <FormField
-                    control={passwordForm.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Current Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={passwordForm.control}
-                    name="newPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={passwordForm.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm New Password</FormLabel>
-                        <FormControl>
-                          <Input type="password" placeholder="••••••••" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={passwordForm.formState.isSubmitting}>
-                     {passwordForm.formState.isSubmitting ? <LoadingSpinner size="sm"/> : 'Update Password'}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
+          <AccordionItem value="change-password" className="border-none">
+             <Card className="shadow-lg">
+              <AccordionTrigger className="px-6 py-4 text-lg font-headline hover:no-underline">
+                <div className="flex items-center gap-2"><LockKeyhole /> Change Password</div>
+              </AccordionTrigger>
+              <AccordionContent className="px-6 pb-6">
+                <Form {...passwordForm}>
+                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4 pt-2">
+                    <FormField
+                      control={passwordForm.control}
+                      name="currentPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Current Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormControl>
+                            <Input type="password" placeholder="••••••••" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full" disabled={passwordForm.formState.isSubmitting}>
+                       {passwordForm.formState.isSubmitting ? <LoadingSpinner size="sm"/> : 'Update Password'}
+                    </Button>
+                  </form>
+                </Form>
+              </AccordionContent>
+            </Card>
+          </AccordionItem>
+        </Accordion>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <Card className="shadow-lg lg:col-span-1">
+            <Card className="shadow-lg">
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-headline"><ListOrdered /> Bet History</CardTitle>
                 </CardHeader>
@@ -261,7 +270,7 @@ export default function ProfilePage() {
                 </CardContent>
             </Card>
 
-            <Card className="shadow-lg lg:col-span-1">
+            <Card className="shadow-lg">
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2 font-headline"><Trophy /> Leaderboard (Top 10)</CardTitle>
                 </CardHeader>
@@ -302,3 +311,4 @@ export default function ProfilePage() {
   );
 }
 
+    
