@@ -7,16 +7,21 @@ import type {
   ApiSportsTeamApiResponse,
   ApiSportsTeamResponseItem,
   ApiSportsLeaguesApiResponse,
-  ApiSportsLeagueResponseItem,
+  ApiSportsCoachApiResponse,
+  ApiSportsCoachResponseItem,
+  ApiSportsSquadApiResponse,
+  ApiSportsSquadPlayerResponseItem,
   LeagueApp,
   MatchApp,
-  TeamApp
+  TeamApp,
+  CoachApp,
+  PlayerApp,
+  ApiSportsPlayerInfoInSquad
 } from '@/lib/types';
-// import { getDateNDaysFromNowString, getTodayDateString } from '@/lib/dateUtils'; // Not used currently
 
 const BASE_URL = 'https://v3.football.api-sports.io';
 const API_KEY = process.env.API_SPORTS_KEY;
-const CURRENT_SEASON = 2023; // Use 2023 for 2023-2024 season
+const CURRENT_SEASON = 2023; // Use 2023 for 2023-2024 season (due to free plan limits)
 
 async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
   if (!API_KEY) {
@@ -52,7 +57,6 @@ async function fetchFromApiSports<T>(endpoint: string, params?: Record<string, s
 
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
     console.error(`API-Sports logical error for ${url.toString()}:`, JSON.stringify(data.errors));
-    // Do not throw an error for logical API errors (like plan limitations), let the caller handle empty/error responses.
   }
   if (data.results === 0 && !(endpoint === '/status')) {
     console.warn(`API-Sports returned 0 results for ${url.toString()}`);
@@ -85,7 +89,6 @@ export async function getApiSportsTeamDetails(teamId: number): Promise<TeamApp |
     return null;
   }
 }
-
 
 function mapApiFixtureToMatchApp(apiFixture: ApiSportsFixtureResponseItem): MatchApp {
   const homeTeamApp: TeamApp = {
@@ -137,20 +140,17 @@ export async function getApiSportsFixtureById(fixtureId: number): Promise<MatchA
 
 export async function getApiSportsMatchesForTeam(
   teamId: number,
-  params?: { season?: number; status?: string; dateFrom?: string; dateTo?: string; /* last?: number; */ next?: number; league?: number }
+  params?: { season?: number; status?: string; /* dateFrom?: string; dateTo?: string; last?: number; */ next?: number; league?: number }
 ): Promise<MatchApp[]> {
   const seasonToQuery = params?.season || CURRENT_SEASON;
-  // Remove 'last' parameter as it's not supported on free plan
-  // const { last, ...otherParams } = params || {}; // eslint-disable-line @typescript-eslint/no-unused-vars
   const queryParams: Record<string, string | number> = { team: teamId, season: seasonToQuery };
 
   if (params?.status) queryParams.status = params.status;
-  if (params?.dateFrom) queryParams.from = params.dateFrom; // 'from' for API
-  if (params?.dateTo) queryParams.to = params.dateTo; // 'to' for API
-  // if (params?.last) queryParams.last = params.last; // REMOVED
+  // if (params?.dateFrom) queryParams.from = params.dateFrom; // 'from' for API
+  // if (params?.dateTo) queryParams.to = params.dateTo; // 'to' for API
+  // if (params?.last) queryParams.last = params.last; // Not supported on free plan
   if (params?.next) queryParams.next = params.next;
   if (params?.league) queryParams.league = params.league;
-
 
   try {
     const data = await fetchFromApiSports<ApiSportsFixturesApiResponse>('/fixtures', queryParams);
@@ -164,12 +164,11 @@ export async function getApiSportsMatchesForTeam(
   }
 }
 
-// Not actively used but kept for potential future use
 export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): Promise<LeagueApp[]> {
   const leagues: LeagueApp[] = [];
   for (const id of ids) {
     try {
-      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, season: CURRENT_SEASON }); // Specify season
+      const data = await fetchFromApiSports<ApiSportsLeaguesApiResponse>('/leagues', { id: id, season: CURRENT_SEASON });
       if (data.response && data.response.length > 0) {
         const leagueData = data.response[0]; 
         leagues.push({
@@ -185,4 +184,58 @@ export async function getAppLeagues(ids: number[] = [39, 140, 135, 78, 61, 2]): 
     }
   }
   return leagues;
+}
+
+function mapApiCoachToCoachApp(apiCoachData: ApiSportsCoachResponseItem): CoachApp | null {
+  // The API response for /coachs?team=X nests the coach info inside the first item of the response array
+  // and doesn't always have a top-level 'coach' object, but rather the coach details directly.
+  if (!apiCoachData || !apiCoachData.id || !apiCoachData.name) return null;
+  
+  return {
+    id: apiCoachData.id,
+    name: apiCoachData.name,
+    photoUrl: apiCoachData.photo,
+    nationality: apiCoachData.nationality,
+    age: apiCoachData.age,
+  };
+}
+
+export async function getApiSportsCoachForTeam(teamId: number): Promise<CoachApp | null> {
+  try {
+    const data = await fetchFromApiSports<ApiSportsCoachApiResponse>('/coachs', { team: teamId });
+    if (data.response && data.response.length > 0) {
+      // API might return multiple coaches if there were changes, take the first one as current
+      return mapApiCoachToCoachApp(data.response[0]);
+    }
+    return null;
+  } catch (error) {
+    console.error(`Error fetching coach for team ${teamId} from API-Sports:`, error);
+    return null;
+  }
+}
+
+function mapApiPlayerInSquadToPlayerApp(apiPlayer: ApiSportsPlayerInfoInSquad): PlayerApp {
+  return {
+    id: apiPlayer.id,
+    name: apiPlayer.name || 'N/A',
+    photoUrl: apiPlayer.photo,
+    number: apiPlayer.number,
+    position: apiPlayer.position,
+    age: apiPlayer.age,
+  };
+}
+
+export async function getApiSportsSquadForTeam(teamId: number): Promise<PlayerApp[]> {
+  try {
+    const data = await fetchFromApiSports<ApiSportsSquadApiResponse>('/players/squads', { team: teamId });
+    // The response is an array, and each item contains a `team` object and a `players` array.
+    // We assume we're interested in the first (and usually only) item for a given team ID.
+    if (data.response && data.response.length > 0 && data.response[0].players) {
+      return data.response[0].players.map(mapApiPlayerInSquadToPlayerApp);
+    }
+    return [];
+  } catch (error) {
+    console.error(`Error fetching squad for team ${teamId} from API-Sports:`, error);
+    return [];
+  }
 }

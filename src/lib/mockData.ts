@@ -1,20 +1,17 @@
 
-import type { League, Team } from './types'; // Team will now include API ID
+import type { League, Team } from './types';
 
-// Helper function to generate slugs
 function slugify(text: string): string {
   return text
     .toString()
     .toLowerCase()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars
-    .replace(/--+/g, '-') // Replace multiple - with single -
-    .replace(/^-+/, '') // Trim - from start of text
-    .replace(/-+$/, ''); // Trim - from end of text
+    .replace(/\s+/g, '-') 
+    .replace(/[^\w-]+/g, '') 
+    .replace(/--+/g, '-') 
+    .replace(/^-+/, '') 
+    .replace(/-+$/, ''); 
 }
 
-// These are primarily for the homepage display and linking to team pages.
-// The `id` here is the API-Sports ID.
 export const teams: Team[] = [
   { id: 33, name: 'Manchester United', logoImageUrl: 'https://media.api-sports.io/football/teams/33.png', slug: 'manchester-united' },
   { id: 40, name: 'Liverpool FC', logoImageUrl: 'https://media.api-sports.io/football/teams/40.png', slug: 'liverpool-fc' },
@@ -48,4 +45,3 @@ export const leagues: League[] = [
   { id: 61, name: 'Ligue 1', logoUrl: 'https://media.api-sports.io/football/leagues/61.png', country: 'France', season: 2023 },
   { id: 2, name: 'Champions League', logoUrl: 'https://media.api-sports.io/football/leagues/2.png', country: 'Europe', season: 2023 },
 ];
-

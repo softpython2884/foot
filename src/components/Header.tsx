@@ -17,8 +17,8 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
-import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop, Check } from 'lucide-react'; // Added Check
-import { useTheme } from '@/context/ThemeContext'; // Import useTheme
+import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop, Check } from 'lucide-react';
+import { useTheme } from '@/context/ThemeContext';
 
 export function Header() {
   const { currentUser, logout, isLoading: authLoading } = useAuth();

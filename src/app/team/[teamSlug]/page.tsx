@@ -6,58 +6,57 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import { teams as mockTeams } from '@/lib/mockData'; 
-import type { Team, TeamApp, MatchApp } from '@/lib/types';
+import type { Team, TeamApp, MatchApp, CoachApp, PlayerApp } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy } from 'lucide-react'; 
+import { Brain, Users, Trophy, UserSquare, Shirt, CalendarClock, BarChart3 } from 'lucide-react'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
-// import { BettingModal } from '@/components/BettingModal'; // BettingModal will be adapted later
-import { getApiSportsTeamDetails, getApiSportsMatchesForTeam } from '@/services/apiSportsService';
+import { getApiSportsTeamDetails, getApiSportsMatchesForTeam, getApiSportsCoachForTeam, getApiSportsSquadForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
 const SEASON_FOR_MATCHES = 2023; 
-const PAST_MATCHES_INCREMENT = 10;
+const INITIAL_PAST_MATCHES_COUNT = 10;
+const LOAD_MORE_INCREMENT = 10;
 
-// Simple Markdown to HTML converter
 function simpleMarkdownToHtml(markdown: string): string {
   if (!markdown) return '';
   let html = markdown;
-  // Bold: **text** or __text__
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
-  // Italic: *text* or _text_
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
   html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-  // Basic lists (ul with li for lines starting with - or *)
   html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
   html = html.replace(/^\* (.*$)/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); // Wrap consecutive li in ul
-  // Newlines to <br> (be careful with this one, might add too many)
-  // html = html.replace(/\n/g, '<br />');
+  html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>');
   return html;
 }
-
 
 export default function TeamProfilePage() {
   const params = useParams();
   const teamSlug = params.teamSlug as string;
-  const router = useRouter(); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const { currentUser, isLoading: authIsLoading } = useAuth(); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const router = useRouter(); 
+  const { currentUser, isLoading: authIsLoading } = useAuth(); 
   const { toast } = useToast();
 
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
   const [mockTeamData, setMockTeamData] = useState<Team | null>(null);
-  const [allPastMatches, setAllPastMatches] = useState<MatchApp[]>([]);
-  const [visiblePastMatchesCount, setVisiblePastMatchesCount] = useState(PAST_MATCHES_INCREMENT);
   
+  const [allPastMatches, setAllPastMatches] = useState<MatchApp[]>([]);
+  const [visiblePastMatchesCount, setVisiblePastMatchesCount] = useState(INITIAL_PAST_MATCHES_COUNT);
+  
+  const [coach, setCoach] = useState<CoachApp | null>(null);
+  const [players, setPlayers] = useState<PlayerApp[]>([]);
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingMatches, setIsLoadingMatches] = useState(false);
+  const [isLoadingCoach, setIsLoadingCoach] = useState(false);
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
 
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState<string>('');
@@ -65,26 +64,46 @@ export default function TeamProfilePage() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // const [isBettingModalOpen, setIsBettingModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  // const [selectedMatchForBet, setSelectedMatchForBet] = useState<MatchApp | null>(null); // eslint-disable-line @typescript-eslint/no-unused-vars
-
-
   const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
     setIsLoadingData(true);
     setIsLoadingMatches(true);
+    setIsLoadingCoach(true);
+    setIsLoadingPlayers(true);
+
     setTeamDetails(null); 
     setAllPastMatches([]);
-    setVisiblePastMatchesCount(PAST_MATCHES_INCREMENT);
-
+    setVisiblePastMatchesCount(INITIAL_PAST_MATCHES_COUNT);
+    setCoach(null);
+    setPlayers([]);
 
     try {
-      const details = await getApiSportsTeamDetails(apiTeamId);
-      setTeamDetails(details); 
+      const detailsPromise = getApiSportsTeamDetails(apiTeamId);
+      const pastMatchesPromise = getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT'});
+      const coachPromise = getApiSportsCoachForTeam(apiTeamId);
+      const squadPromise = getApiSportsSquadForTeam(apiTeamId);
+      
+      const [details, fetchedPastMatches, fetchedCoach, fetchedPlayers] = await Promise.all([
+        detailsPromise,
+        pastMatchesPromise,
+        coachPromise,
+        squadPromise
+      ]);
 
-      const fetchedPastMatches = await getApiSportsMatchesForTeam(apiTeamId, { season: SEASON_FOR_MATCHES, status: 'FT'});
-      const sortedFinishedMatches = fetchedPastMatches
-        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime());
-      setAllPastMatches(sortedFinishedMatches);
+      setTeamDetails(details);
+      if (fetchedPastMatches.length > 0) {
+        const sortedFinishedMatches = fetchedPastMatches
+          .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime());
+        setAllPastMatches(sortedFinishedMatches);
+      } else {
+        setAllPastMatches([]);
+      }
+      setIsLoadingMatches(false);
+      
+      setCoach(fetchedCoach);
+      setIsLoadingCoach(false);
+
+      setPlayers(fetchedPlayers);
+      setIsLoadingPlayers(false);
       
       const nameForAISummary = details?.name || teamNameFromMock;
        if (nameForAISummary) {
@@ -107,12 +126,13 @@ export default function TeamProfilePage() {
     } catch (error) {
       console.error("Error fetching team page data from API-Sports:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load team data from API.' });
+      setIsLoadingMatches(false);
+      setIsLoadingCoach(false);
+      setIsLoadingPlayers(false);
     } finally {
       setIsLoadingData(false);
-      setIsLoadingMatches(false);
     }
   }, [toast]);
-
 
   useEffect(() => {
     if (teamSlug) {
@@ -128,7 +148,7 @@ export default function TeamProfilePage() {
   }, [teamSlug, fetchTeamPageData]);
   
   const handleLoadMorePastMatches = () => {
-    setVisiblePastMatchesCount(prevCount => prevCount + PAST_MATCHES_INCREMENT);
+    setVisiblePastMatchesCount(prevCount => prevCount + LOAD_MORE_INCREMENT);
   };
 
   const displayedPastMatches = allPastMatches.slice(0, visiblePastMatchesCount);
@@ -153,7 +173,6 @@ export default function TeamProfilePage() {
   
   const displayTeamName = teamDetails?.name || mockTeamData?.name;
   const displayTeamLogo = teamDetails?.logoUrl || mockTeamData?.logoImageUrl;
-
 
   if (isLoadingData && !mockTeamData) { 
     return (
@@ -206,13 +225,13 @@ export default function TeamProfilePage() {
               {(isAiLoading && !aiSummary) && <div className="py-2 flex justify-center"><LoadingSpinner size="md" /></div>}
               {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
               {aiSummary && (
-                <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-md mb-4">
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-md mb-6">
                   <div dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(aiSummary) }} />
                 </div>
               )}
               {!aiSummary && !isAiLoading && !aiError && <p className="text-muted-foreground text-center">Le résumé de l'IA est en cours de chargement ou non disponible.</p>}
             </div>
-             <CardHeader className="px-0 py-2">
+             <CardHeader className="px-0 pt-0 pb-2">
                 <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary"/>AI Team Assistant</CardTitle>
                 <CardDescription>
                 Utilisez l'assistant IA pour obtenir des informations détaillées sur l'équipe (son histoire, son stade, son pays, ses joueurs clés, sa forme actuelle, etc.) ou poser des questions spécifiques. L'IA utilisera le format Markdown pour mettre en évidence les informations importantes.
@@ -239,6 +258,69 @@ export default function TeamProfilePage() {
             )}
              {(isAiLoading && userQuestion) && <div className="flex justify-center mt-2"><LoadingSpinner size="md" /></div>}
              {aiError && userQuestion && <p className="text-destructive mt-2">{aiError}</p>}
+          </CardContent>
+        </Card>
+
+        {/* Coach Section */}
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><UserSquare className="text-primary"/>Entraîneur Actuel</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingCoach ? (
+              <div className="flex justify-center py-4"><LoadingSpinner /></div>
+            ) : coach ? (
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                <Image
+                  src={coach.photoUrl || `https://placehold.co/100x100.png`}
+                  alt={coach.name || 'Photo Entraîneur'}
+                  width={100}
+                  height={100}
+                  className="rounded-lg shadow-md"
+                  data-ai-hint="coach portrait"
+                />
+                <div>
+                  <h3 className="text-xl font-semibold">{coach.name}</h3>
+                  {coach.nationality && <p className="text-muted-foreground">Nationalité : {coach.nationality}</p>}
+                  {coach.age && <p className="text-muted-foreground">Âge : {coach.age} ans</p>}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">Informations sur l'entraîneur non disponibles.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Players Squad Section */}
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><Users className="text-primary"/>Effectif Actuel</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingPlayers ? (
+              <div className="flex justify-center py-4"><LoadingSpinner /></div>
+            ) : players.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {players.map((player) => (
+                  <Card key={player.id || player.name} className="flex flex-col items-center p-4 text-center bg-muted/30">
+                    <Image
+                      src={player.photoUrl || `https://placehold.co/80x80.png`}
+                      alt={player.name || 'Photo Joueur'}
+                      width={80}
+                      height={80}
+                      className="rounded-full mb-2 shadow-md"
+                      data-ai-hint="player portrait"
+                    />
+                    <p className="font-semibold text-sm">{player.name}</p>
+                    {player.number && <p className="text-xs text-muted-foreground">Numéro : {player.number}</p>}
+                    {player.position && <p className="text-xs text-muted-foreground">Poste : {player.position}</p>}
+                    {player.age && <p className="text-xs text-muted-foreground">Âge : {player.age}</p>}
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-4">Informations sur l'effectif non disponibles.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -283,4 +365,3 @@ export default function TeamProfilePage() {
     </div>
   );
 }
-
