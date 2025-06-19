@@ -64,7 +64,7 @@ export default function BasketballTeamProfilePage() {
     setIsLoadingData(true);
     setIsLoadingRoster(true);
     setIsLoadingResults(true);
-    setIsAiLoading(true); // Start AI loading for summary
+    setIsAiLoading(true); 
 
     try {
       const [detailsResult, rosterResult, gamesResult, summaryResult] = await Promise.allSettled([
@@ -79,20 +79,32 @@ export default function BasketballTeamProfilePage() {
       } else {
         console.error("Failed to fetch Basketball team details:", detailsResult.status === 'rejected' ? detailsResult.reason : 'Team details API call succeeded but returned no data.');
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load team details.' });
-        // Keep mockTeamData if API fails
       }
+      setIsLoadingData(false);
 
       if (rosterResult.status === 'fulfilled') {
         if (rosterResult.value && rosterResult.value.length > 0) {
           setRoster(rosterResult.value);
         } else {
-          console.info(`No live basketball roster found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON}. Falling back to mock data.`);
-          setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
-          toast({ variant: 'default', title: 'Info', description: 'No live roster data found, showing mock data if available.' });
+          console.info(`No live basketball roster found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON}. Falling back to mock data if available.`);
+          const mockRosterForTeam = mockBasketballPlayers.filter(p => {
+            const playerTeamNamePart = p.name?.split(' (')[1]?.replace(')','');
+            return teamName.includes(playerTeamNamePart || "____"); // Match if team name is part of player's mock name
+          });
+          setRoster(mockRosterForTeam);
+          if (mockRosterForTeam.length > 0) {
+            toast({ variant: 'default', title: 'Info', description: 'No live roster data found, showing mock data.' });
+          } else {
+            toast({ variant: 'default', title: 'Info', description: 'No live or mock roster data found for this team.' });
+          }
         }
-      } else { // rosterResult.status === 'rejected'
+      } else { 
         console.error("Failed to fetch Basketball roster due to API error:", rosterResult.reason);
-        setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
+        const mockRosterForTeam = mockBasketballPlayers.filter(p => {
+            const playerTeamNamePart = p.name?.split(' (')[1]?.replace(')','');
+            return teamName.includes(playerTeamNamePart || "____");
+        });
+        setRoster(mockRosterForTeam);
         toast({ variant: 'default', title: 'Info', description: 'Could not load live roster due to an API error, showing mock data if available.' });
       }
       setIsLoadingRoster(false);
@@ -104,10 +116,10 @@ export default function BasketballTeamProfilePage() {
           console.info(`No live basketball game results found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON}. Falling back to mock data.`);
           const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
           setGameResults(mockGamesForTeam);
-          toast({ variant: 'default', title: 'Info', description: 'No live game results found, showing mock data if available.' });
+          toast({ variant: 'default', title: 'Info', description: (mockGamesForTeam.length > 0 ? 'No live game results found, showing mock data.' : 'No live or mock game results found.') });
         }
-      } else { // gamesResult.status === 'rejected'
-        console.error("Failed to fetch Basketball game results due to API error:", gamesResult.reason);
+      } else { 
+        console.error("Failed to fetch Basketball game results:", gamesResult.status === 'rejected' ? gamesResult.reason : 'No game data');
         const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
         setGameResults(mockGamesForTeam);
         toast({ variant: 'default', title: 'Info', description: 'Could not load live game results due to an API error, showing mock data if available.' });
@@ -122,17 +134,18 @@ export default function BasketballTeamProfilePage() {
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
       
-
     } catch (error) {
       console.error("Overall error fetching Basketball page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all Basketball page data.' });
-       // Fallback to mocks in case of complete failure
-       setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
+       const mockRosterForTeam = mockBasketballPlayers.filter(p => {
+            const playerTeamNamePart = p.name?.split(' (')[1]?.replace(')','');
+            return teamName.includes(playerTeamNamePart || "____");
+        });
+       setRoster(mockRosterForTeam);
        const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
        setGameResults(mockGamesForTeam);
     } finally {
-      setIsLoadingData(false); // General data loading done (details)
-      setIsAiLoading(false); // AI summary loading finished
+      setIsAiLoading(false); 
     }
   }, [currentSport.apiBaseUrl, toast]);
 
@@ -247,7 +260,12 @@ export default function BasketballTeamProfilePage() {
         
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Users className="text-primary"/>Team Roster ({CURRENT_BASKETBALL_SEASON}-{CURRENT_BASKETBALL_SEASON+1})</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+                <Users className="text-primary"/>Team Roster ({CURRENT_BASKETBALL_SEASON}-{CURRENT_BASKETBALL_SEASON+1})
+            </CardTitle>
+            <CardDescription>L'API actuelle ne fournit pas les photos réelles des joueurs de basketball. Des images placeholder sont utilisées.</CardDescription>
+          </CardHeader>
           <CardContent>
             {isLoadingRoster ? <div className="flex justify-center py-5"><LoadingSpinner/></div> : 
              roster.length > 0 ? (
@@ -255,11 +273,11 @@ export default function BasketballTeamProfilePage() {
                 {roster.map((player) => (
                   <Card key={player.id || player.name} className="p-3 bg-card shadow-sm hover:shadow-md transition-shadow text-center">
                      <div className="relative w-20 h-20 mx-auto mb-2">
-                        {player.photoUrl && !player.photoUrl.includes('placehold.co') ? (
-                            <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="cover" className="rounded-full shadow-md" data-ai-hint={`${player.name} portrait`}/>
+                        {player.photoUrl ? (
+                            <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="contain" className="rounded-full shadow-md" data-ai-hint="player placeholder"/>
                         ) : (
-                            <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-2xl font-bold text-muted-foreground" data-ai-hint={`${player.name} placeholder`}>
-                                {player.name?.split(' ').map(n => n[0]).join('') || '?'}
+                            <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-2xl font-bold text-muted-foreground" data-ai-hint="player initials">
+                                {(player.firstName?.charAt(0) || '') + (player.lastName?.charAt(0) || '') || '?'}
                             </div>
                         )}
                     </div>
@@ -302,28 +320,32 @@ export default function BasketballTeamProfilePage() {
                             <span className={`font-bold text-lg ${game.homeScore != null && game.awayScore != null && game.awayScore > game.homeScore ? 'text-primary' : 'text-foreground'}`}>{game.awayScore ?? '-'}</span>
                         </div>
                         {game.league.name && <p className="text-xs text-muted-foreground text-center mt-1">{game.league.name} - {game.league.season}</p>}
-                         {/* Display Quarter Scores */}
                         {(game.homeQuarterScores || game.awayQuarterScores) && (
                             <div className="mt-2 text-xs text-muted-foreground">
-                                <div className="flex justify-around">
-                                    <span>Qtrs</span>
-                                    <span>H</span>
-                                    <span>A</span>
+                                <div className="flex justify-around font-semibold">
+                                    <span></span>
+                                    <span>Q1</span>
+                                    <span>Q2</span>
+                                    <span>Q3</span>
+                                    <span>Q4</span>
+                                    {game.homeOvertimeScore != null || game.awayOvertimeScore != null ? <span>OT</span> : null}
                                 </div>
-                                {([1, 2, 3, 4]).map((q, index) => (
-                                <div key={`q-${index}`} className="flex justify-around items-center">
-                                    <span>Q{q}</span>
-                                    <span>{game.homeQuarterScores?.[index] ?? '-'}</span>
-                                    <span>{game.awayQuarterScores?.[index] ?? '-'}</span>
+                                <div className="flex justify-around items-center">
+                                    <span className="font-semibold w-10 text-left">{game.homeTeam.name.substring(0,3).toUpperCase()}</span>
+                                    <span>{game.homeQuarterScores?.[0] ?? '-'}</span>
+                                    <span>{game.homeQuarterScores?.[1] ?? '-'}</span>
+                                    <span>{game.homeQuarterScores?.[2] ?? '-'}</span>
+                                    <span>{game.homeQuarterScores?.[3] ?? '-'}</span>
+                                    {game.homeOvertimeScore != null ? <span>{game.homeOvertimeScore}</span> : (game.awayOvertimeScore != null ? <span>-</span> : null) }
                                 </div>
-                                ))}
-                                {game.homeOvertimeScore != null || game.awayOvertimeScore != null ? (
-                                <div className="flex justify-around items-center font-semibold">
-                                    <span>OT</span>
-                                    <span>{game.homeOvertimeScore ?? '-'}</span>
-                                    <span>{game.awayOvertimeScore ?? '-'}</span>
+                                 <div className="flex justify-around items-center">
+                                    <span className="font-semibold w-10 text-left">{game.awayTeam.name.substring(0,3).toUpperCase()}</span>
+                                    <span>{game.awayQuarterScores?.[0] ?? '-'}</span>
+                                    <span>{game.awayQuarterScores?.[1] ?? '-'}</span>
+                                    <span>{game.awayQuarterScores?.[2] ?? '-'}</span>
+                                    <span>{game.awayQuarterScores?.[3] ?? '-'}</span>
+                                    {game.awayOvertimeScore != null ? <span>{game.awayOvertimeScore}</span> : (game.homeOvertimeScore != null ? <span>-</span> : null)}
                                 </div>
-                                ) : null}
                             </div>
                         )}
                     </Card>
@@ -349,3 +371,5 @@ export default function BasketballTeamProfilePage() {
   );
 }
 
+
+    
