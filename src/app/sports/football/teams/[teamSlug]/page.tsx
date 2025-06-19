@@ -89,6 +89,7 @@ export default function FootballTeamProfilePage() {
 
     try {
       const detailsPromise = getFootballTeamDetails(apiTeamId, currentSport.apiBaseUrl);
+      // Fetch all finished matches for the season, then sort and slice client-side
       const pastMatchesPromise = getFootballMatchesForTeam(apiTeamId, SEASON_FOR_FOOTBALL_MATCHES, { status: 'FT' }, currentSport.apiBaseUrl);
       const coachPromise = getFootballCoachForTeam(apiTeamId, currentSport.apiBaseUrl);
       const squadPromise = getFootballSquadForTeam(apiTeamId, currentSport.apiBaseUrl);
@@ -248,7 +249,7 @@ export default function FootballTeamProfilePage() {
                 <div dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(aiSummary) }} />
               </div>
             )}
-            {!aiSummary && !isAiLoading && !aiError && !isLoadingData && <p className="text-muted-foreground text-center">AI summary is loading or not available. Ask a question below!</p>}
+            {!aiSummary && !isAiLoading && !aiError && !isLoadingData && <p className="text-muted-foreground text-center">AI summary is loading or not available. Ask a question below for more details including stadium, country, founded year etc.</p>}
 
 
             <CardHeader className="px-0 pt-0 pb-2">
@@ -383,3 +384,5 @@ export default function FootballTeamProfilePage() {
     </div>
   );
 }
+
+    
