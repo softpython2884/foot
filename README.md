@@ -23,10 +23,11 @@ Bienvenue sur SportSphere ! Cette application Next.js vous permet de consulter l
     *   [Fonctionnalités IA (Genkit)](#fonctionnalités-ia-genkit)
     *   [Gestion de l'État (Context API)](#gestion-de-létat-context-api)
     *   [Données Fictives (Mock Data)](#données-fictives-mock-data)
-7.  [Clés API](#clés-api)
-8.  [Qualité du Code](#qualité-du-code)
-9.  [Dépannage](#dépannage)
-10. [Contribuer et Étendre à d'Autres Sports](#contribuer-et-étendre-à-dautres-sports)
+7.  [API Publique](#api-publique)
+8.  [Clés API](#clés-api)
+9.  [Qualité du Code](#qualité-du-code)
+10. [Dépannage](#dépannage)
+11. [Contribuer et Étendre à d'Autres Sports](#contribuer-et-étendre-à-dautres-sports)
 
 ## Aperçu du Projet
 
@@ -107,6 +108,14 @@ Voici un aperçu des dossiers importants :
 ├── src/
 │   ├── app/                  # Pages et layouts (Next.js App Router)
 │   │   ├── (auth)/           # Routes liées à l'authentification (ex: login, register)
+│   │   ├── api/              # Endpoints de l'API publique
+│   │   │   ├── sports/
+│   │   │   │   ├── route.ts
+│   │   │   │   └── [sportSlug]/
+│   │   │   │       └── teams/
+│   │   │   │           ├── route.ts
+│   │   │   │           └── [teamSlug]/  # (spécifique football pour l'instant)
+│   │   │   │               └── route.ts
 │   │   ├── sports/
 │   │   │   └── [sportSlug]/
 │   │   │       ├── teams/
@@ -199,7 +208,7 @@ Voici un aperçu des dossiers importants :
 
 *   Utilisé pour les résumés d'équipes (principalement football pour l'instant).
 *   Configuration dans `src/ai/genkit.ts`. Flows dans `src/ai/flows/`.
-*   Le flow `team-info-flow.ts` est conçu pour être adaptable à différentes entités sportives, pas seulement les équipes de foot.
+*   Le flow `team-info-flow.ts` est conçu pour être adaptable à différentes entités sportives, pas seulement les équipes de foot. Il supporte maintenant le Markdown pour la mise en forme des réponses.
 
 ### Gestion de l'État (Context API)
 
@@ -214,6 +223,73 @@ Voici un aperçu des dossiers importants :
     *   `footballLeagues`: Données statiques pour quelques ligues de football.
 *   Pour ajouter une nouvelle équipe de football à afficher sur la page `/sports/football/teams`, ajoutez-la à `footballTeams` avec son ID API-Sports correct et une URL de logo.
 *   Pour supporter un nouveau sport, ajoutez-le à `supportedSports` et créez les pages et services nécessaires.
+
+## API Publique
+
+L'application expose une API publique en lecture seule pour accéder à certaines de ses données.
+
+**URL de base :** `/api`
+
+### Endpoints disponibles :
+
+1.  **Lister tous les sports supportés**
+    *   **Endpoint :** `GET /api/sports`
+    *   **Description :** Retourne la liste de tous les sports configurés dans l'application.
+    *   **Exemple de réponse :**
+        ```json
+        [
+          {
+            "name": "Football",
+            "slug": "football",
+            "apiBaseUrl": "https://v3.football.api-sports.io",
+            "apiKeyHeaderName": "x-apisports-key",
+            "apiKeyEnvVar": "API_SPORTS_KEY_FOOTBALL",
+            "iconUrl": "https://media.api-sports.io/football/leagues/39.png"
+          },
+          // ... autres sports
+        ]
+        ```
+
+2.  **Lister les équipes pour un sport spécifique**
+    *   **Endpoint :** `GET /api/sports/{sportSlug}/teams`
+    *   **Paramètres d'URL :**
+        *   `sportSlug` (string, requis) : Le slug du sport (ex: "football").
+    *   **Description :** Retourne la liste des équipes pour le sport spécifié. Actuellement, seules les équipes de football sont entièrement supportées.
+    *   **Exemple de réponse (pour football) :**
+        ```json
+        [
+          {
+            "id": 33,
+            "name": "Manchester United",
+            "logoUrl": "https://media.api-sports.io/football/teams/33.png",
+            "slug": "manchester-united",
+            "sportSlug": "football"
+            // ... autres champs de TeamApp
+          },
+          // ... autres équipes
+        ]
+        ```
+
+3.  **Obtenir les détails d'une équipe de football**
+    *   **Endpoint :** `GET /api/sports/football/teams/{teamSlug}`
+    *   **Paramètres d'URL :**
+        *   `teamSlug` (string, requis) : Le slug de l'équipe de football (ex: "manchester-united").
+    *   **Description :** Retourne des informations détaillées sur une équipe de football, y compris les détails de l'équipe, les 10 derniers matchs passés, l'entraîneur actuel, l'effectif et un résumé généré par l'IA.
+    *   **Exemple de réponse (structure) :**
+        ```json
+        {
+          "teamDetails": { /* ... objet TeamApp ... */ },
+          "pastMatches": [ /* ... tableau d'objets MatchApp ... */ ],
+          "coach": { /* ... objet CoachApp ou null ... */ },
+          "squad": [ /* ... tableau d'objets PlayerApp ... */ ],
+          "aiSummary": "Résumé textuel de l'IA sur l'équipe..."
+        }
+        ```
+
+**Notes importantes sur l'API :**
+*   L'API est actuellement en lecture seule.
+*   Les données pour les sports autres que le football sont limitées ou non implémentées.
+*   L'utilisation de l'API peut être soumise aux mêmes limitations de quota que l'application principale, car certains endpoints appellent des API externes (API-Sports).
 
 ## Clés API
 
@@ -234,7 +310,7 @@ Voici un aperçu des dossiers importants :
 *   **Erreurs API (429 Too Many Requests) :** Dépassement du quota. Attendez ou vérifiez votre dashboard API-Sports.
 *   **Problèmes de Build Next.js :** Lisez les erreurs (types, imports, Server Actions/Components).
 *   **Hydration Mismatches (React) :** Différence entre rendu serveur et client. Utilisez `useEffect` pour le code dépendant du navigateur.
-*   **Données non affichées pour une saison :** L'API-Sports (plan gratuit) a des restrictions sur les saisons. Pour le football, la constante `FOOTBALL_CURRENT_SEASON` dans `src/services/apiSportsService.ts` est réglée sur une saison supportée (ex: 2023 pour la saison 2023-2024).
+*   **Données non affichées pour une saison :** L'API-Sports (plan gratuit) a des restrictions sur les saisons. Pour le football, la constante pour les matchs est réglée sur une saison supportée (ex: 2023 pour la saison 2023-2024).
 
 ## Contribuer et Étendre à d'Autres Sports
 
