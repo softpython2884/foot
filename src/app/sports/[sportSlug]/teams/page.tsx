@@ -22,21 +22,28 @@ import { cn } from '@/lib/utils';
 
 export default function SportTeamsPage() {
   const params = useParams();
-  const sportSlug = params.sportSlug as string;
   const router = useRouter();
   const { toast } = useToast();
   const { currentUser } = useAuth();
 
-  // Derive sport directly instead of using useState for it initially
+  const sportSlug = params.sportSlug as string;
+
+  // Derive sport directly. If not found, call notFound().
+  // This must happen before any hooks that depend on `sport`.
   if (!sportSlug) {
-    notFound(); // Should ideally not happen if route is matched
+    // This case should ideally be caught by Next.js routing if the slug is missing entirely.
+    // However, good to have a safeguard.
+    notFound();
   }
+
   const sport = supportedSports.find(s => s.slug === sportSlug);
 
   if (!sport) {
-    notFound(); // Call notFound if sport is not found for the slug
+    // If the sportSlug from the URL doesn't match any supported sport, render 404.
+    notFound();
   }
 
+  // States for data fetched based on the `sport` object
   const [teamsToShow, setTeamsToShow] = useState<Team[]>([]);
   const [pageTitleSuffix, setPageTitleSuffix] = useState("Entities");
   const [managedEvents, setManagedEvents] = useState<ManagedEventApp[]>([]);
@@ -48,12 +55,8 @@ export default function SportTeamsPage() {
 
 
   useEffect(() => {
-    // Sport is now derived above, no need to set it in useEffect
-    if (!sport) {
-      // This case should be handled by the notFound() call above
-      // but as a safeguard for useEffect dependencies.
-      return;
-    }
+    // `sport` is guaranteed to be defined here due to the notFound() call above.
+    // So, we can safely use `sport.slug` and `sport.name`.
 
     let currentTeams: Team[] = [];
     let suffix = "Entities";
@@ -75,14 +78,14 @@ export default function SportTeamsPage() {
       try {
         const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live`);
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({error: 'Failed to fetch events and parse error'}));
-          throw new Error(errorData.error || `Failed to fetch ${sport.name} events`);
+          const errorData = await response.json().catch(() => ({error: `Failed to fetch ${sport.name} events and parse error response`}));
+          throw new Error(errorData.error || `Failed to fetch ${sport.name} events. Status: ${response.status}`);
         }
         const data: ManagedEventApp[] = await response.json();
         setManagedEvents(data);
       } catch (error) {
         console.error(`Error fetching managed ${sport.name} events:`, error);
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+        toast({ variant: 'destructive', title: 'Error Loading Events', description: (error as Error).message });
         setManagedEvents([]);
       }
       setIsLoadingEvents(false);
@@ -90,7 +93,7 @@ export default function SportTeamsPage() {
 
     fetchManagedEvents();
 
-  }, [sportSlug, sport, toast]); // sport is now a dependency
+  }, [sport, toast]); // Depend on the `sport` object itself.
 
   const handleOpenBettingModal = (event: ManagedEventApp | MatchApp, team: TeamApp) => {
     if (!currentUser) {
@@ -122,19 +125,8 @@ export default function SportTeamsPage() {
     return 'text-muted-foreground';
   };
 
-  // If sport is null here, it means notFound() was called earlier and this won't render
-  if (!sport) {
-      return (
-        <div className="flex flex-col min-h-screen bg-background">
-            <Header />
-            <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
-                <LoadingSpinner size="lg"/>
-            </main>
-            <Footer />
-        </div>
-    );
-  }
-
+  // If `sport` was not found, `notFound()` would have been called and this component instance
+  // would cease rendering. Thus, `sport` can be assumed to be defined from this point onwards.
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -261,3 +253,4 @@ export default function SportTeamsPage() {
     </div>
   );
 }
+
