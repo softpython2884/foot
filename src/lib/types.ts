@@ -1,4 +1,5 @@
 
+
 // --- API-Sports Specific Response Types ---
 
 export interface ApiSportsTeamMinimal {
@@ -215,42 +216,303 @@ export interface ApiSportsSquadApiResponse {
   response: ApiSportsSquadPlayerResponseItem[];
 }
 
+// --- F1 API Types ---
+export interface ApiSportsF1ConstructorResponseItem {
+  id: number;
+  name: string;
+  logo: string | null;
+  base: string | null;
+  first_team_entry: number | null;
+  world_championships: number | null;
+  highest_race_finish: {
+    position: number | null;
+    number: number | null;
+  } | null;
+  pole_positions: number | null;
+  fastest_laps: number | null;
+  president: string | null;
+  director: string | null;
+  technical_manager: string | null;
+  chassis: string | null;
+  engine: string | null;
+  tyres: string | null;
+}
+export interface ApiSportsF1ConstructorApiResponse {
+  response: ApiSportsF1ConstructorResponseItem[];
+}
+
+export interface ApiSportsF1DriverResponseItem {
+  id: number;
+  name: string;
+  abbr: string | null; // Abbreviation
+  image: string | null; // Photo URL
+  nationality: string | null;
+  country: { // Country object
+    name: string | null;
+    code: string | null;
+  } | null;
+  birthdate: string | null;
+  birthplace: string | null;
+  number: number | null; // Driver number
+  grands_prix_entered: number | null;
+  world_championships: number | null;
+  podiums: number | null;
+  highest_race_finish: {
+    position: number | null;
+    number: number | null;
+  } | null;
+  highest_grid_position: number | null;
+  career_points: string | null; // Can be string "0"
+  teams: Array<{ // Array of teams the driver has raced for in the season
+    season: number;
+    team: {
+      id: number;
+      name: string;
+      logo: string | null;
+    };
+  }>;
+}
+export interface ApiSportsF1DriversApiResponse {
+  response: ApiSportsF1DriverResponseItem[];
+}
+
+export interface ApiSportsF1RaceResponseItem {
+  id: number;
+  competition: { // League/Competition info
+    id: number;
+    name: string;
+    location: {
+      country: string | null;
+      city: string | null;
+    };
+  };
+  circuit: {
+    id: number;
+    name: string;
+    image: string | null;
+  };
+  season: number;
+  type: string; // E.g., "Race"
+  date: string; // ISO 8601 date string
+  status: string; // E.g., "Finished"
+  teams?: Array<{ // Results per team/constructor
+    team: {
+      id: number;
+      name: string;
+      logo: string | null;
+    };
+    drivers: Array<{ // Results per driver in that team for that race
+      driver: {
+        id: number;
+        name: string;
+        abbr: string | null;
+        number: number | null;
+        image: string | null;
+      };
+      position: number | null;
+      grid: number | null;
+      laps: number | null;
+      time: string | null; // E.g., "1:23:45.678" or "DNF"
+      points: number | null;
+    }>
+  }>;
+  results?: Array<{ // Alternative results structure if not per team
+    driver: {
+        id: number;
+        name: string;
+        abbr: string | null;
+        number: number | null;
+        image: string | null;
+      };
+    team: {
+      id: number;
+      name: string;
+      logo: string | null;
+    };
+    position: number | null;
+    grid: number | null;
+    laps: number | null;
+    time: string | null;
+    points: number | null;
+  }>
+}
+export interface ApiSportsF1RacesApiResponse {
+  response: ApiSportsF1RaceResponseItem[];
+}
+
+
+// --- Basketball API Types ---
+export interface ApiSportsBasketballTeamResponseItem { // Similar to Football's Team Response
+  id: number;
+  name: string;
+  logo: string | null;
+  national: boolean;
+  country: {
+    id: number;
+    name: string;
+    code: string | null;
+    flag: string | null;
+  } | null;
+  // Basketball specific fields might be here
+  conference?: string;
+  division?: string;
+}
+export interface ApiSportsBasketballTeamApiResponse {
+  response: ApiSportsBasketballTeamResponseItem[];
+}
+
+export interface ApiSportsBasketballPlayerResponseItem {
+  id: number;
+  firstname: string | null;
+  lastname: string | null;
+  birth: {
+    date: string | null;
+    country: string | null;
+  } | null;
+  nba: {
+    start: number | null; // Start year in NBA
+    pro: number | null; // Years pro
+  } | null;
+  height: {
+    feets: string | null; // e.g. "6"
+    inches: string | null; // e.g. "8"
+    meters: string | null; // e.g. "2.03"
+  } | null;
+  weight: {
+    pounds: string | null; // e.g. "250"
+    kilograms: string | null; // e.g. "113.4"
+  } | null;
+  college: string | null;
+  affiliation: string | null; // Often same as college
+  leagues: {
+    [key: string]: { // e.g., "standard", "vegas"
+      jersey: number | null;
+      active: boolean;
+      pos: string | null; // Position e.g. "F-C"
+    }
+  }
+  // Image might not be directly in player info from /players endpoint, might need other source or be part of team squad list
+  photoUrl?: string; // Placeholder if we find a way to get it
+}
+export interface ApiSportsBasketballPlayersApiResponse {
+  response: ApiSportsBasketballPlayerResponseItem[];
+}
+
+// For Squads in Basketball - using a more specific structure
+export interface ApiSportsBasketballSquadPlayer {
+  id: number;
+  name: string; // Typically "firstname lastname"
+  // API-Sports might provide details differently for basketball, check their docs
+  // Assuming 'number' and 'position' might be in a 'leagues.standard' object or similar
+  jersey?: number | null;
+  position?: string | null;
+  photoUrl?: string; // Placeholder
+}
+
+export interface ApiSportsBasketballSquadResponseItem {
+  team: {
+    id: number;
+    name: string;
+    logo: string | null;
+  };
+  players: ApiSportsBasketballSquadPlayer[]; // Adjust if API structure is different
+}
+export interface ApiSportsBasketballSquadsApiResponse {
+   response: ApiSportsBasketballSquadResponseItem[];
+}
+
+
+export interface ApiSportsBasketballGameResponseItem {
+  id: number; // Game ID
+  date: string; // ISO 8601 datetime string
+  time: string; // E.g., "02:30"
+  timestamp: number;
+  timezone: string;
+  stage: string | null; // E.g., "Regular Season", "Playoffs"
+  week: string | null;
+  status: {
+    long: string; // "Finished", "Scheduled"
+    short: string; // "FT", "NS"
+    timer: string | null; // Current game clock if live
+  };
+  league: {
+    id: number;
+    name: string;
+    type: string; // "League", "Cup"
+    season: number;
+    logo: string | null;
+  };
+  country: {
+    id: number;
+    name: string;
+    code: string;
+    flag: string | null;
+  };
+  teams: {
+    home: ApiSportsTeamMinimal & {logo?: string}; // Add logo here if API provides it
+    away: ApiSportsTeamMinimal & {logo?: string};
+  };
+  scores: {
+    home: {
+      quarter_1: number | null;
+      quarter_2: number | null;
+      quarter_3: number | null;
+      quarter_4: number | null;
+      over_time: number | null;
+      total: number | null;
+    };
+    away: {
+      quarter_1: number | null;
+      quarter_2: number | null;
+      quarter_3: number | null;
+      quarter_4: number | null;
+      over_time: number | null;
+      total: number | null;
+    };
+  };
+}
+export interface ApiSportsBasketballGamesApiResponse {
+  response: ApiSportsBasketballGameResponseItem[];
+}
+
 
 // --- Application specific, simplified types ---
 export interface SportDefinition {
   name: string;
   slug: string;
   apiBaseUrl: string;
-  apiKeyHeaderName: string; // e.g., 'x-apisports-key' or 'x-rapidapi-key'
-  apiKeyEnvVar: string; // Name of the environment variable storing the key
-  iconUrl?: string; // URL for a representative icon/image of the sport
-  // Potentially add more sport-specific config here later
+  apiKeyHeaderName: string;
+  apiKeyEnvVar: string;
+  iconUrl?: string;
 }
 
-// TeamApp is the primary type for teams/entities used within the application logic
 export interface TeamApp {
-  id: number; // This will be the API-specific ID for the team/entity
+  id: number;
   name: string;
-  logoUrl?: string | null; // Standardized field name for logo/image
-  slug?: string; // Generated for URL routing
-  country?: string | null; // Applicable to many sports
-  founded?: number | null; // Applicable to many sports
-  venueName?: string | null; // Stadium/Venue name
+  logoUrl?: string | null;
+  slug?: string;
+  country?: string | null;
+  founded?: number | null;
+  venueName?: string | null;
   venueCity?: string | null;
   venueCapacity?: number | null;
-  sportSlug: string; // To know which sport this team/entity belongs to
+  sportSlug: string;
 
-  // F1 specific (optional, for F1 entities)
-  base?: string; // e.g., "Brackley, UK" for Mercedes F1
-  championships?: number; // e.g., Total F1 championships
+  // F1 specific
+  base?: string | null;
+  championships?: number | null;
+  director?: string | null;
+  technicalManager?: string | null;
+  chassis?: string | null;
+  engine?: string | null;
 
-  // Basketball specific (optional, for Basketball entities)
-  conference?: string; // e.g., "Western", "Eastern"
-  division?: string; // e.g., "Pacific", "Atlantic"
+  // Basketball specific
+  conference?: string | null;
+  division?: string | null;
 }
 
 export interface LeagueApp {
-  id: number; // API-specific ID
+  id: number;
   name: string;
   logoUrl?: string | null;
   country?: string;
@@ -259,11 +521,11 @@ export interface LeagueApp {
 }
 
 export interface MatchApp {
-  id: number; // API-specific ID
+  id: number;
   league: LeagueApp;
-  homeTeam: TeamApp; // Or a more generic SportEntityApp if needed
-  awayTeam: TeamApp; // Or a more generic SportEntityApp if needed
-  matchTime: string; // ISO8601 string
+  homeTeam: TeamApp;
+  awayTeam: TeamApp;
+  matchTime: string;
   statusShort: string;
   statusLong: string;
   elapsedTime?: number | null;
@@ -291,11 +553,63 @@ export interface PlayerApp {
   number?: number | null;
   position?: string | null;
   age?: number | null;
+  nationality?: string | null; // Added for F1 drivers
   sportSlug: string;
 }
 
+// F1 Specific App Types
+export interface F1DriverApp extends PlayerApp { // Extends PlayerApp for common fields
+  abbr?: string | null;
+  grandsPrixEntered?: number | null;
+  worldChampionships?: number | null;
+  podiums?: number | null;
+  careerPoints?: string | null;
+  birthDate?: string | null;
+}
 
-// --- User and Betting types (remain largely the same for now) ---
+export interface F1RaceResultApp {
+  id: number; // Race ID
+  competitionName: string;
+  circuitName: string;
+  circuitImage?: string | null;
+  date: string; // ISO 8601 string
+  season: number;
+  type: string; // E.g., "Race"
+  status: string;
+  // Simplified results for the team's drivers
+  driverResults: Array<{
+    driverName: string;
+    driverImage?: string | null;
+    driverNumber?: number | null;
+    position: number | null;
+    grid: number | null;
+    laps: number | null;
+    time: string | null;
+    points: number | null;
+  }>;
+}
+
+// Basketball Specific App Types
+export interface BasketballPlayerApp extends PlayerApp { // Extends PlayerApp
+  firstName?: string | null;
+  lastName?: string | null;
+  birthDate?: string | null;
+  heightMeters?: string | null;
+  weightKilograms?: string | null;
+  college?: string | null;
+  nbaStartYear?: number | null;
+  yearsPro?: number | null;
+}
+
+export interface BasketballGameResultApp extends MatchApp { // Extends MatchApp
+  homeQuarterScores?: (number | null)[];
+  awayQuarterScores?: (number | null)[];
+  homeOvertimeScore?: number | null;
+  awayOvertimeScore?: number | null;
+}
+
+
+// --- User and Betting types ---
 export interface User {
   id: number;
   name: string;
@@ -312,14 +626,14 @@ export type LeaderboardUser = Omit<User, 'hashedPassword'>;
 export interface Bet {
   id: number;
   userId: number;
-  matchId: number; // This will be the API-specific fixture ID
-  teamIdBetOn: number; // API-specific team ID
+  matchId: number;
+  teamIdBetOn: number;
   amountBet: number;
   potentialWinnings: number;
   status: 'pending' | 'won' | 'lost';
   createdAt: string;
   updatedAt?: string;
-  sportSlug: string; // To associate bet with a sport
+  sportSlug: string;
 }
 
 export interface BetWithMatchDetails extends Bet {
@@ -331,14 +645,10 @@ export interface BetWithMatchDetails extends Bet {
 }
 
 // --- Mock Data specific types ---
-// Team interface for mock data will use TeamApp to ensure consistency
 export interface Team extends TeamApp {
-  shortName?: string; // Kept for potential backward compatibility or specific display needs
+  shortName?: string;
 }
 
-// League interface for mock data can extend LeagueApp
 export interface League extends LeagueApp {
   code?: string;
 }
-
-    
