@@ -24,12 +24,20 @@ interface ManagedEventEditorCardProps {
   onEventUpdated: () => void;
 }
 
+const numericStringSchema = z.preprocess(
+  (val) => (val === null || val === undefined || val === '' ? '' : String(val)), // Convertit en chaîne, ou en chaîne vide
+  z.string().optional().refine(
+    (val) => val === '' || /^\d+$/.test(val),
+    { message: "Must be a non-negative integer or empty." }
+  )
+);
+
 const updateEventStatusFormSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string)),
-  homeScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a non-negative integer or empty." }),
-  awayScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a non-negative integer or empty." }),
+  homeScore: numericStringSchema,
+  awayScore: numericStringSchema,
   winningTeamId: z.string().optional(), // Stays as string, server will coerce
-  elapsedTime: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Elapsed time must be a non-negative integer or empty." }),
+  elapsedTime: numericStringSchema,
   notes: z.string().optional(),
 });
 
@@ -45,7 +53,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
       status: event.status,
       homeScore: event.homeScore?.toString() ?? '',
       awayScore: event.awayScore?.toString() ?? '',
-      winningTeamId: event.winningTeamId?.toString() ?? '', // Keep as string
+      winningTeamId: event.winningTeamId?.toString() ?? '',
       elapsedTime: event.elapsedTime?.toString() ?? '',
       notes: event.notes ?? '',
     },
@@ -56,17 +64,19 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
     const formData = new FormData();
     formData.append('eventId', event.id.toString());
     formData.append('status', data.status);
-    // Send scores and elapsed time as strings if they exist, server will coerce
-    if (data.homeScore) formData.append('homeScore', data.homeScore);
-    if (data.awayScore) formData.append('awayScore', data.awayScore);
-    if (data.winningTeamId) formData.append('winningTeamId', data.winningTeamId); // Send as string
-    if (data.elapsedTime) formData.append('elapsedTime', data.elapsedTime);
+    
+    // Envoyer les scores et le temps écoulé seulement s'ils ont une valeur (pas une chaîne vide)
+    // Le serveur gère les chaînes vides ou null comme null
+    if (data.homeScore && data.homeScore !== '') formData.append('homeScore', data.homeScore);
+    if (data.awayScore && data.awayScore !== '') formData.append('awayScore', data.awayScore);
+    if (data.winningTeamId && data.winningTeamId !== '') formData.append('winningTeamId', data.winningTeamId);
+    if (data.elapsedTime && data.elapsedTime !== '') formData.append('elapsedTime', data.elapsedTime);
     if (data.notes) formData.append('notes', data.notes);
 
     const result = await updateManagedEventAction(formData);
     if (result.success) {
       toast({ title: 'Success', description: result.success });
-      onEventUpdated(); // Refresh the list on parent
+      onEventUpdated(); 
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update event.' });
        if (result.details) {
@@ -81,9 +91,9 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
   };
 
   const { date, time } = formatMatchDateTime(event.eventTime);
-  const sportTeams = event.sportSlug === 'football' ? footballTeams :
-                     event.sportSlug === 'formula-1' ? formula1Entities :
-                     event.sportSlug === 'basketball' ? basketballTeams : [];
+  // const sportTeams = event.sportSlug === 'football' ? footballTeams :
+  //                    event.sportSlug === 'formula-1' ? formula1Entities :
+  //                    event.sportSlug === 'basketball' ? basketballTeams : [];
 
 
   return (
@@ -172,7 +182,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                         <FormLabel>Winning Team (auto-set if scores differ, or select for draws/manual override)</FormLabel>
                         <Select 
                             onValueChange={field.onChange} 
-                            value={field.value?.toString()} // Ensure value is string for Select
+                            value={field.value ?? ''} // Ensure value is string for Select, default to empty string if null/undefined
                             disabled={
                                 (form.getValues('homeScore') !== '' && form.getValues('awayScore') !== '' && 
                                  !isNaN(Number(form.getValues('homeScore'))) && !isNaN(Number(form.getValues('awayScore'))) &&
@@ -197,7 +207,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Notes / Key Events</FormLabel>
-                    <FormControl><Textarea placeholder="e.g., Mi-temps: 1-0, Carton rouge pour Joueur Z..." {...field} /></FormControl>
+                    <FormControl><Textarea placeholder="e.g., Mi-temps: 1-0, Carton rouge pour Joueur Z..." {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
