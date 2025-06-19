@@ -13,8 +13,8 @@ import type {
   ApiSportsSquadPlayerResponseItem,
   ApiSportsF1ConstructorApiResponse,
   ApiSportsF1ConstructorResponseItem,
-  ApiSportsF1RankingDriversApiResponse, // Changed from ApiSportsF1DriversApiResponse
-  ApiSportsF1RankingDriverResponseItem, // Changed from ApiSportsF1DriverResponseItem
+  ApiSportsF1RankingDriversApiResponse,
+  ApiSportsF1RankingDriverResponseItem,
   ApiSportsF1RacesApiResponse,
   ApiSportsF1RaceResponseItem,
   ApiSportsBasketballTeamApiResponse,
@@ -33,13 +33,13 @@ import type {
   BasketballPlayerApp,
   BasketballGameResultApp,
   ApiSportsPlayerInfoInSquad,
-  ApiSportsF1DriverInfo, // Ensure this is imported or defined if used by F1RaceResultApp mapping
+  ApiSportsF1DriverInfo,
 } from '@/lib/types';
 import { supportedSports } from '@/lib/mockData';
 
 const FOOTBALL_CURRENT_SEASON = 2023;
-const F1_CURRENT_SEASON = 2024;
-const BASKETBALL_CURRENT_SEASON_STRING = "2023-2024"; // For NBA API "YYYY-YYYY"
+const F1_CURRENT_SEASON = 2024; // Make sure this is the season you want data for
+const BASKETBALL_CURRENT_SEASON_STRING = "2023-2024";
 
 async function fetchDataForSport<T>(
   sportApiBaseUrl: string,
@@ -63,12 +63,10 @@ async function fetchDataForSport<T>(
   const headers = new Headers();
   headers.append(apiKeyHeader, apiKey);
 
-  // console.log(`Fetching from API-Sports (${sportApiBaseUrl}): ${url.toString()}`);
-
   const response = await fetch(url.toString(), {
     method: 'GET',
     headers: headers,
-    next: { revalidate: 3600 }
+    next: { revalidate: 3600 } // Cache for 1 hour
   });
 
   if (!response.ok) {
@@ -81,10 +79,8 @@ async function fetchDataForSport<T>(
 
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
     console.error(`API-Sports logical error for ${url.toString()}:`, JSON.stringify(data.errors));
+    // Potentially throw an error here or return a specific structure indicating API-level error
   }
-  // if (data.results === 0 && !(endpoint === '/status')) {
-  //   console.warn(`API-Sports returned 0 results for ${url.toString()}`);
-  // }
   return data as T;
 }
 
@@ -94,6 +90,7 @@ function getApiKeyForSport(sportSlug: string): string | undefined {
         console.error(`Sport with slug ${sportSlug} not found in supportedSports.`);
         return undefined;
     }
+    // All sports under api-sports.io use the same key for this project's setup
     return process.env.API_SPORTS_KEY;
 }
 
@@ -154,6 +151,7 @@ function mapApiFixtureToMatchApp(apiFixture: ApiSportsFixtureResponseItem, sport
     country: apiFixture.league.country,
     season: typeof apiFixture.league.season === 'number' ? apiFixture.league.season : parseInt(String(apiFixture.league.season).split('-')[0]),
     sportSlug: sportSlug,
+    type: apiFixture.league.type // Assuming type is present; adjust if not
   };
 
   return {
@@ -222,38 +220,6 @@ export async function getFootballMatchesForTeam(
     console.error(`Error fetching football fixtures for team ${teamId} from API-Sports:`, error);
     return [];
   }
-}
-
-
-export async function getFootballLeagues(footballApiBaseUrl: string, leagueIds: number[] = [39, 140, 135, 78, 61, 2]): Promise<LeagueApp[]> {
-  const leagues: LeagueApp[] = [];
-  const apiKey = getApiKeyForSport('football');
-  for (const id of leagueIds) {
-    try {
-      const data = await fetchDataForSport<ApiSportsLeaguesApiResponse>(
-          footballApiBaseUrl,
-          '/leagues',
-          apiKey,
-          'x-apisports-key',
-          { id: id, season: FOOTBALL_CURRENT_SEASON }
-      );
-      if (data.response && data.response.length > 0) {
-        const leagueData = data.response[0];
-        const currentSeason = leagueData.seasons.find(s => s.current)?.year || leagueData.seasons[leagueData.seasons.length-1]?.year || FOOTBALL_CURRENT_SEASON;
-        leagues.push({
-          id: leagueData.league.id,
-          name: leagueData.league.name,
-          logoUrl: leagueData.league.logo,
-          country: leagueData.country.name,
-          season: currentSeason,
-          sportSlug: 'football',
-        });
-      }
-    } catch (error) {
-      console.error(`Error fetching football league details for ID ${id} from API-Sports:`, error);
-    }
-  }
-  return leagues;
 }
 
 function mapApiCoachToCoachApp(apiCoachData: ApiSportsCoachResponseItem, sportSlug: string): CoachApp | null {
@@ -345,7 +311,7 @@ export async function getF1ConstructorDetails(constructorId: number, f1ApiBaseUr
     const apiKey = getApiKeyForSport('formula-1');
     const data = await fetchDataForSport<ApiSportsF1ConstructorApiResponse>(
         f1ApiBaseUrl,
-        '/teams',
+        '/teams', // Endpoint for F1 constructor details
         apiKey,
         'x-apisports-key',
         { id: constructorId }
@@ -361,38 +327,32 @@ export async function getF1ConstructorDetails(constructorId: number, f1ApiBaseUr
 }
 
 function mapApiF1RankingDriverToF1DriverApp(apiRankingDriver: ApiSportsF1RankingDriverResponseItem): F1DriverApp {
-  // The /rankings/drivers endpoint provides less detail than /drivers endpoint.
-  // We map what's available. Nationality, full bio details would require a separate /drivers call if needed.
   return {
     id: apiRankingDriver.driver.id,
     name: apiRankingDriver.driver.name,
-    photoUrl: apiRankingDriver.driver.image, // image is the photoUrl here
+    photoUrl: apiRankingDriver.driver.image, // Corrected: use 'image' from ApiSportsF1DriverInfo
     number: apiRankingDriver.driver.number,
     abbr: apiRankingDriver.driver.abbr,
-    // Fields like nationality, age, worldChampionships, etc., are not directly in this specific response item.
-    // They would typically come from a more detailed /drivers/{driverId} endpoint or be part of a richer driver object.
-    // For now, we fill what we have. Age could be calculated if birthdate was available.
-    nationality: undefined, // Not in ApiSportsF1RankingDriverResponseItem.driver
-    age: undefined, // Not directly available, would need birthdate
-    worldChampionships: undefined, // Not in ApiSportsF1RankingDriverResponseItem.driver
+    nationality: undefined, // Nationality is not in ApiSportsF1RankingDriverResponseItem.driver
+    age: undefined,
+    worldChampionships: undefined, // Not in this specific response item
     sportSlug: 'formula-1',
-    position: 'Driver',
+    position: 'Driver', // Generic position for F1
+    teamName: apiRankingDriver.team.name, // Team name from the ranking context
   };
 }
 
 export async function getF1DriversForSeason(constructorId: number, season: number = F1_CURRENT_SEASON, f1ApiBaseUrl: string): Promise<F1DriverApp[]> {
   try {
     const apiKey = getApiKeyForSport('formula-1');
-    // Using /rankings/drivers as it allows filtering by team and season
     const data = await fetchDataForSport<ApiSportsF1RankingDriversApiResponse>(
         f1ApiBaseUrl,
-        '/rankings/drivers',
+        '/rankings/drivers', // This endpoint allows filtering by team and season
         apiKey,
         'x-apisports-key',
         { team: constructorId, season: season }
     );
     if (data.response && data.response.length > 0) {
-      // Ensure we are mapping the driver object from the ranking item
       return data.response.map(mapApiF1RankingDriverToF1DriverApp);
     }
     return [];
@@ -402,33 +362,45 @@ export async function getF1DriversForSeason(constructorId: number, season: numbe
   }
 }
 
-function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, constructorIdFocus: number): F1RaceResultApp {
+function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, constructorIdFocus: number): F1RaceResultApp | null {
   const driverResultsForTeam: F1RaceResultApp['driverResults'] = [];
 
-  const processDriverResult = (driverResult: any, driverInfo: ApiSportsF1DriverInfo, teamId?: number) => {
-    if (teamId === constructorIdFocus) {
-      driverResultsForTeam.push({
-        driverName: driverInfo.name,
-        driverImage: driverInfo.image,
-        driverNumber: driverInfo.number,
-        position: driverResult.position,
-        grid: driverResult.grid,
-        laps: driverResult.laps,
-        time: driverResult.time,
-        points: driverResult.points,
-      });
-    }
-  };
-  
-  if (apiRace.teams) {
-    const targetTeam = apiRace.teams.find(t => t.team.id === constructorIdFocus);
-    if (targetTeam) {
-      targetTeam.drivers.forEach(dr => processDriverResult(dr, dr.driver, targetTeam.team.id));
-    }
-  } else if (apiRace.results) {
-    apiRace.results.forEach(res => processDriverResult(res, res.driver, res.team.id));
-  }
+  // The /races endpoint itself might not nest detailed per-driver results for a team directly.
+  // Typically, you'd get a list of races, then for each race ID, query /rankings/races?race={id}
+  // However, if apiRace.results or apiRace.teams[...].drivers is populated from /races, we use that.
+  // Based on documentation, /races endpoint's "response" array items themselves might not have deep results.
+  // We assume for this mapping that detailed results for the specific race are already part of `apiRace` (e.g., if fetched from /rankings/races)
+  // Or, if apiRace.teams is present from a direct /races call that has that structure.
 
+  const resultsSource = apiRace.results || apiRace.teams?.find(t => t.team.id === constructorIdFocus)?.drivers;
+
+  if (resultsSource) {
+    resultsSource.forEach(res => {
+      // Need to adapt based on whether res is from apiRace.results or apiRace.teams[...].drivers
+      const driverInfo: ApiSportsF1DriverInfo = (res as any).driver; // Cast needed if structure varies
+      const teamInfo = (res as any).team; // If from apiRace.results
+
+      if (driverInfo && (teamInfo?.id === constructorIdFocus || !(res as any).team) ) { // Check if team matches focus or if team context is implicit
+         driverResultsForTeam.push({
+          driverName: driverInfo.name,
+          driverImage: driverInfo.image,
+          driverNumber: driverInfo.number,
+          position: (res as any).position,
+          grid: (res as any).grid,
+          laps: (res as any).laps,
+          time: (res as any).time,
+          points: (res as any).points,
+        });
+      }
+    });
+  }
+  
+  // Only return a result if there are drivers from the focused constructor
+  if (driverResultsForTeam.length === 0 && apiRace.status === "Finished") {
+      // This race might not have included drivers from the constructor, or results weren't mapped.
+      // Depending on desired behavior, could return null or an empty driverResults array.
+      // For now, let's still return the race info but with empty results for that team.
+  }
 
   return {
     id: apiRace.id,
@@ -444,24 +416,56 @@ function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, con
   };
 }
 
+
 export async function getF1RaceResultsForSeason(constructorId: number, season: number = F1_CURRENT_SEASON, f1ApiBaseUrl: string, limit: number = 5): Promise<F1RaceResultApp[]> {
   try {
     const apiKey = getApiKeyForSport('formula-1');
-    const data = await fetchDataForSport<ApiSportsF1RacesApiResponse>(
+    // First, get all finished races for the season
+    const racesData = await fetchDataForSport<ApiSportsF1RacesApiResponse>(
         f1ApiBaseUrl,
         '/races',
         apiKey,
         'x-apisports-key',
-        { season: season, type: 'Race', status: 'Finished' }
+        { season: season, type: 'Race', status: 'Finished' } // Get all finished races
     );
-    if (data.response && data.response.length > 0) {
-      return data.response
-        .map(race => mapApiF1RaceToF1RaceResultApp(race, constructorId))
-        .filter(raceApp => raceApp.driverResults.length > 0)
-        .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-        .slice(0, limit);
+
+    const raceResults: F1RaceResultApp[] = [];
+
+    if (racesData.response && racesData.response.length > 0) {
+      // Sort races by date descending to process most recent first
+      const sortedRaces = racesData.response.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+      for (const race of sortedRaces) {
+        if (raceResults.length >= limit) break; // Stop if we have enough results
+
+        // For each race, get the detailed ranking which includes all drivers
+        const rankingData = await fetchDataForSport<ApiSportsF1RacesApiResponse>( // Re-using RacesApiResponse type for /rankings/races for simplicity
+            f1ApiBaseUrl,
+            '/rankings/races', // Endpoint to get results for a specific race
+            apiKey,
+            'x-apisports-key',
+            { race: race.id }
+        );
+        
+        if (rankingData.response && rankingData.response.length > 0) {
+            // The response from /rankings/races is an array of driver results for that race.
+            // We need to construct an F1RaceResultApp object from this.
+            const currentRaceDetailedResults = rankingData.response; // This IS the array of driver results.
+            
+            const mappedRace = mapApiF1RaceToF1RaceResultApp({
+                ...race, // Spread basic race info
+                results: currentRaceDetailedResults as any // Add the detailed results here to be processed by the mapper
+            }, constructorId);
+
+            if (mappedRace && mappedRace.driverResults.length > 0) {
+                raceResults.push(mappedRace);
+            } else if (mappedRace) { // Include race even if no team drivers, if that's intended
+                // raceResults.push(mappedRace); // Uncomment to include races where the team DNF or didn't participate
+            }
+        }
+      }
     }
-    return [];
+    return raceResults;
   } catch (error) {
     console.error(`Error fetching F1 race results for constructor ${constructorId}, season ${season}:`, error);
     return [];
@@ -507,22 +511,29 @@ export async function getBasketballTeamDetails(teamId: number, basketballApiBase
 function mapApiBasketballPlayerToPlayerApp(apiPlayer: ApiSportsBasketballPlayerResponseItem): BasketballPlayerApp {
   let age: number | undefined = undefined;
   if (apiPlayer.birth?.date) {
-    const birthDate = new Date(apiPlayer.birth.date);
-    const today = new Date();
-    age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+    try {
+        const birthDate = new Date(apiPlayer.birth.date);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+    } catch(e){
+        console.warn("Could not parse birth date for player", apiPlayer.id, apiPlayer.birth.date);
     }
   }
 
-  const leagueInfo = apiPlayer.leagues?.standard || apiPlayer.leagues?.vegas || Object.values(apiPlayer.leagues || {})[0];
+  // Try to get data from 'standard' league, then the first available league, or fallback
+  const leagueInfo = apiPlayer.leagues?.standard || Object.values(apiPlayer.leagues || {})[0];
 
   return {
     id: apiPlayer.id,
-    name: `${apiPlayer.firstname || ''} ${apiPlayer.lastname || ''}`.trim(),
+    name: `${apiPlayer.firstname || ''} ${apiPlayer.lastname || ''}`.trim() || 'Unknown Player',
     firstName: apiPlayer.firstname,
     lastName: apiPlayer.lastname,
+    // The API for /players?team=X&season=Y does not seem to provide player images.
+    // We'll use placeholders as discussed.
     photoUrl: `https://placehold.co/80x80.png?text=${(apiPlayer.firstname?.charAt(0) || '')}${(apiPlayer.lastname?.charAt(0) || '')}`,
     number: leagueInfo?.jersey,
     position: leagueInfo?.pos,
@@ -541,6 +552,7 @@ function mapApiBasketballPlayerToPlayerApp(apiPlayer: ApiSportsBasketballPlayerR
 export async function getBasketballRoster(teamId: number, seasonString: string | number = BASKETBALL_CURRENT_SEASON_STRING, basketballApiBaseUrl: string): Promise<BasketballPlayerApp[]> {
   try {
     const apiKey = getApiKeyForSport('basketball');
+    // The API expects season as YYYY-YYYY for multi-year seasons like NBA
     const seasonParam = typeof seasonString === 'number' ? `${seasonString}-${seasonString + 1}` : seasonString;
 
     const data = await fetchDataForSport<ApiSportsBasketballPlayersApiResponse>(
@@ -564,13 +576,13 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
   const homeTeamApp: TeamApp = {
     id: apiGame.teams.home.id,
     name: apiGame.teams.home.name,
-    logoUrl: apiGame.teams.home.logo,
+    logoUrl: apiGame.teams.home.logo, // API provides logo here
     sportSlug: 'basketball',
   };
   const awayTeamApp: TeamApp = {
     id: apiGame.teams.away.id,
     name: apiGame.teams.away.name,
-    logoUrl: apiGame.teams.away.logo,
+    logoUrl: apiGame.teams.away.logo, // API provides logo here
     sportSlug: 'basketball',
   };
    const leagueApp: LeagueApp = {
@@ -578,7 +590,7 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
     name: apiGame.league.name,
     logoUrl: apiGame.league.logo,
     country: apiGame.country?.name,
-    season: typeof apiGame.league.season === 'number' ? apiGame.league.season : String(apiGame.league.season),
+    season: apiGame.league.season, // Season is string YYYY-YYYY or YYYY
     type: apiGame.league.type,
     sportSlug: 'basketball',
   };
@@ -588,7 +600,7 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
     league: leagueApp,
     homeTeam: homeTeamApp,
     awayTeam: awayTeamApp,
-    matchTime: apiGame.date,
+    matchTime: apiGame.date, // This is a full ISO string
     statusShort: apiGame.status.short,
     statusLong: apiGame.status.long,
     homeScore: apiGame.scores.home.total,
@@ -599,13 +611,13 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
       apiGame.scores.home.quarter_2,
       apiGame.scores.home.quarter_3,
       apiGame.scores.home.quarter_4,
-    ].filter(score => score !== undefined) as (number | null)[],
+    ].filter(score => score !== undefined), // Keep nulls if present
     awayQuarterScores: [
       apiGame.scores.away.quarter_1,
       apiGame.scores.away.quarter_2,
       apiGame.scores.away.quarter_3,
       apiGame.scores.away.quarter_4,
-    ].filter(score => score !== undefined) as (number | null)[],
+    ].filter(score => score !== undefined),
     homeOvertimeScore: apiGame.scores.home.over_time,
     awayOvertimeScore: apiGame.scores.away.over_time,
   };
@@ -620,12 +632,13 @@ export async function getBasketballGamesForTeam(teamId: number, seasonString: st
         '/games',
         apiKey,
         'x-apisports-key',
-        { team: teamId, season: seasonParam, status: 'Finished' }
+        { team: teamId, season: seasonParam } // Removed status: 'Finished' to get upcoming too, will sort/filter client-side or by date. For recent results, should add status 'Finished'.
     );
     if (data.response && data.response.length > 0) {
       return data.response
+        .filter(game => game.status.short === 'FT' || game.status.short === 'AOT') // Filter for finished games
         .map(mapApiBasketballGameToGameResultApp)
-        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime())
+        .sort((a,b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()) // Sort by most recent
         .slice(0, limit);
     }
     return [];
