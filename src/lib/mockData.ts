@@ -20,7 +20,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v3.football.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png',
+    iconUrl: 'https://placehold.co/600x400.png',
   },
   {
     name: 'Formule 1',
@@ -28,7 +28,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.formula-1.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png',
+    iconUrl: 'https://placehold.co/600x400.png',
   },
   {
     name: 'Basketball',
@@ -36,7 +36,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.basketball.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png',
+    iconUrl: 'https://placehold.co/600x400.png',
   },
 ];
 
