@@ -180,7 +180,7 @@ export async function settleBetsForManagedEvent(managedEventId: number, winnerTe
       }
       successCount++;
     } catch (e) {
-      console.error(\`Error settling bet ID \${bet.id} for managed event \${managedEventId}:\`, e);
+      console.error(`Error settling bet ID ${bet.id} for managed event ${managedEventId}:`, e);
       errorCount++;
     }
   }

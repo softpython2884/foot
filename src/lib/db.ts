@@ -29,7 +29,7 @@ export async function getDb(): Promise<Database> {
 }
 
 async function initializeDb(db: Database): Promise<void> {
-  await db.exec(\`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -39,9 +39,9 @@ async function initializeDb(db: Database): Promise<void> {
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-  \`);
+  `);
 
-  await db.exec(\`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS bets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
@@ -51,14 +51,14 @@ async function initializeDb(db: Database): Promise<void> {
       amountBet INTEGER NOT NULL,
       potentialWinnings INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'won', 'lost'
-      sportSlug TEXT, 
+      sportSlug TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME,
       FOREIGN KEY (userId) REFERENCES users(id)
     );
-  \`);
+  `);
 
-  await db.exec(\`
+  await db.exec(`
     CREATE TABLE IF NOT EXISTS managed_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sportSlug TEXT NOT NULL,
@@ -77,7 +77,7 @@ async function initializeDb(db: Database): Promise<void> {
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME
     );
-  \`);
+  `);
 }
 
 // --- User Functions ---
@@ -228,8 +228,8 @@ export async function getPendingBetsForManagedEventDb(managedEventId: number): P
 export async function createManagedEventInDb(event: Omit<ManagedEventDb, 'id' | 'createdAt' | 'updatedAt'>): Promise<number | undefined> {
   const db = await getDb();
   const result = await db.run(
-    \`INSERT INTO managed_events (sportSlug, homeTeamApiId, awayTeamApiId, homeTeamName, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl, eventTime, status, homeScore, awayScore, winnerTeamApiId, leagueName) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)\`,
+    `INSERT INTO managed_events (sportSlug, homeTeamApiId, awayTeamApiId, homeTeamName, awayTeamName, homeTeamLogoUrl, awayTeamLogoUrl, eventTime, status, homeScore, awayScore, winnerTeamApiId, leagueName) 
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     event.sportSlug, event.homeTeamApiId, event.awayTeamApiId, event.homeTeamName, event.awayTeamName, event.homeTeamLogoUrl, event.awayTeamLogoUrl, event.eventTime, event.status, event.homeScore, event.awayScore, event.winnerTeamApiId, event.leagueName
   );
   return result.lastID;
@@ -256,10 +256,11 @@ export async function updateManagedEventInDb(event: Partial<ManagedEventDb> & { 
   
   if (Object.keys(fieldsToUpdate).length === 0) return false;
 
-  const setClauses = Object.keys(fieldsToUpdate).map(key => \`\${key} = ?\`).join(', ');
+  const setClauses = Object.keys(fieldsToUpdate).map(key => `${key} = ?`).join(', ');
   const values = Object.values(fieldsToUpdate);
   values.push(id); // Add id for the WHERE clause
 
-  const result = await db.run(\`UPDATE managed_events SET \${setClauses}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?\`, ...values);
+  const result = await db.run(`UPDATE managed_events SET ${setClauses}, updatedAt = CURRENT_TIMESTAMP WHERE id = ?`, ...values);
   return (result.changes ?? 0) > 0;
 }
+
