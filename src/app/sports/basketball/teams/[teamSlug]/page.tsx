@@ -4,15 +4,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useParams, notFound } from 'next/navigation';
+import { useParams, notFound, useRouter } from 'next/navigation';
 import { basketballTeams, supportedSports, mockBasketballPlayers, mockBasketballGames } from '@/lib/mockData';
-import type { TeamApp, SportDefinition, BasketballPlayerApp, BasketballGameResultApp } from '@/lib/types';
+import type { TeamApp, SportDefinition, BasketballPlayerApp, BasketballGameResultApp, ManagedEventApp, MatchApp } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star, CalendarClock, BarChart3, Shirt, UserCircle, ExternalLink } from 'lucide-react';
+import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star, CalendarClock, BarChart3, Shirt, UserCircle, ExternalLink, X, Gamepad2, Tv } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -20,6 +20,9 @@ import { getBasketballTeamDetails, getBasketballRoster, getBasketballGamesForTea
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
+import { BettingModal } from '@/components/BettingModal';
+
 
 const CURRENT_BASKETBALL_SEASON_STRING = "2023-2024";
 const MAX_GAME_RESULTS_BASKETBALL = 10;
@@ -45,15 +48,21 @@ export default function BasketballTeamProfilePage() {
   const teamSlug = params.teamSlug as string;
   const sportSlug = 'basketball';
   const { toast } = useToast();
+  const router = useRouter();
+  const { currentUser } = useAuth();
 
   const [mockTeamData, setMockTeamData] = useState<TeamApp | null>(null);
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
   const [roster, setRoster] = useState<BasketballPlayerApp[]>([]);
   const [gameResults, setGameResults] = useState<BasketballGameResultApp[]>([]);
+  const [managedEvents, setManagedEvents] = useState<ManagedEventApp[]>([]);
+
 
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingRoster, setIsLoadingRoster] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
+  const [isLoadingManagedEvents, setIsLoadingManagedEvents] = useState(true);
+
 
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState<string>('');
@@ -65,6 +74,10 @@ export default function BasketballTeamProfilePage() {
   const [playerBioContent, setPlayerBioContent] = useState<string | null>(null);
   const [isPlayerBioLoading, setIsPlayerBioLoading] = useState<boolean>(false);
   const [playerBioError, setPlayerBioError] = useState<string | null>(null);
+  
+  const [isBettingModalOpen, setIsBettingModalOpen] = useState(false);
+  const [selectedEventForBetting, setSelectedEventForBetting] = useState<ManagedEventApp | MatchApp | null>(null);
+  const [selectedTeamForBetting, setSelectedTeamForBetting] = useState<TeamApp | null>(null);
 
 
   const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition;
@@ -74,13 +87,18 @@ export default function BasketballTeamProfilePage() {
     setIsLoadingRoster(true);
     setIsLoadingResults(true);
     setIsAiLoading(true);
+    setIsLoadingManagedEvents(true);
 
     try {
-      const [detailsResult, rosterResult, gamesResult, summaryResult] = await Promise.allSettled([
+      const [detailsResult, rosterResult, gamesResult, summaryResult, managedEventsResult] = await Promise.allSettled([
         getBasketballTeamDetails(teamId, currentSport.apiBaseUrl),
         getBasketballRoster(teamId, CURRENT_BASKETBALL_SEASON_STRING, currentSport.apiBaseUrl),
         getBasketballGamesForTeam(teamId, CURRENT_BASKETBALL_SEASON_STRING, currentSport.apiBaseUrl, MAX_GAME_RESULTS_BASKETBALL),
-        getTeamInfo({ entityName: teamName, entityType: 'team', contextName: 'Basketball' })
+        getTeamInfo({ entityName: teamName, entityType: 'team', contextName: 'Basketball' }),
+        fetch(`/api/sport-events/${sportSlug}?teamId=${teamId}&status=upcoming&status=live`).then(res => {
+            if (!res.ok) throw new Error('Failed to fetch managed events');
+            return res.json();
+        })
       ]);
 
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
@@ -119,6 +137,15 @@ export default function BasketballTeamProfilePage() {
         setAiError("Failed to load AI summary.");
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
+      
+      if (managedEventsResult.status === 'fulfilled' && managedEventsResult.value) {
+        setManagedEvents(managedEventsResult.value);
+      } else {
+        console.error("Error fetching managed events for basketball team:", managedEventsResult.status === 'rejected' ? managedEventsResult.reason : "Call succeeded but returned no data.");
+        setManagedEvents([]);
+      }
+      setIsLoadingManagedEvents(false);
+
 
     } catch (error) {
       console.error("Overall error fetching Basketball page data:", error);
@@ -127,10 +154,11 @@ export default function BasketballTeamProfilePage() {
        setRoster(mockRosterForTeam);
        const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
        setGameResults(mockGamesForTeam);
+       setManagedEvents([]);
     } finally {
       setIsAiLoading(false);
     }
-  }, [currentSport.apiBaseUrl, toast]);
+  }, [currentSport.apiBaseUrl, toast, sportSlug]);
 
 
   useEffect(() => {
@@ -144,6 +172,7 @@ export default function BasketballTeamProfilePage() {
          setIsLoadingRoster(false);
          setIsLoadingResults(false);
          setIsAiLoading(false);
+         setIsLoadingManagedEvents(false);
       }
     }
   }, [teamSlug, fetchBasketballData]);
@@ -190,6 +219,41 @@ export default function BasketballTeamProfilePage() {
     }
     setIsPlayerBioLoading(false);
   };
+  
+  const handleOpenBettingModal = (event: ManagedEventApp | MatchApp, team: TeamApp) => {
+    if (!currentUser) {
+      toast({
+        variant: 'destructive',
+        title: 'Not Logged In',
+        description: 'You need to be logged in to place a bet.',
+        action: <Button onClick={() => router.push('/login')}>Log In</Button>,
+      });
+      return;
+    }
+    setSelectedEventForBetting(event);
+    setSelectedTeamForBetting(team);
+    setIsBettingModalOpen(true);
+  };
+
+  const handleCloseBettingModal = () => {
+    setIsBettingModalOpen(false);
+    setSelectedEventForBetting(null);
+    setSelectedTeamForBetting(null);
+  };
+
+  const getStatusColor = (statusShort: string | undefined) => {
+    if (!statusShort) return 'text-muted-foreground';
+    if (statusShort === 'live') return 'text-red-500';
+    if (statusShort === 'finished') return 'text-gray-500';
+    if (statusShort === 'upcoming') return 'text-green-500';
+    if (['paused', 'cancelled'].includes(statusShort)) return 'text-yellow-600';
+    // For API specific statuses (basketball)
+    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT'].includes(statusShort)) return 'text-red-500'; // Live/Ongoing
+    if (statusShort === 'FT' || statusShort === 'AOT') return 'text-gray-500'; // Finished
+    if (statusShort === 'NS') return 'text-green-500'; // Not Started
+    return 'text-muted-foreground';
+  };
+
 
   if (isLoadingData && !mockTeamData) {
     return (
@@ -208,6 +272,10 @@ export default function BasketballTeamProfilePage() {
   const displayTeamName = teamDetails?.name || mockTeamData?.name || 'Basketball Team Profile';
   const displayTeamLogo = teamDetails?.logoUrl || mockTeamData?.logoUrl;
   const entityDetailsToDisplay = teamDetails || mockTeamData;
+
+  const teamSpecificManagedEvents = managedEvents.filter(
+    (event) => event.homeTeam.id === entityDetailsToDisplay?.id || event.awayTeam.id === entityDetailsToDisplay?.id
+  );
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -289,7 +357,7 @@ export default function BasketballTeamProfilePage() {
                   >
                      <div className="relative w-24 h-24 mx-auto mb-2">
                         {player.photoUrl && player.photoUrl.startsWith('https://placehold.co') ? (
-                             <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="contain" className="rounded-full shadow-md" data-ai-hint="player placeholder"/>
+                             <Image src={player.photoUrl} alt={player.name || 'Player'} fill objectFit="contain" className="rounded-full shadow-md" data-ai-hint="player placeholder"/>
                         ) : (
                             <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-3xl font-bold text-muted-foreground" data-ai-hint="player initials">
                                 {(player.firstName?.charAt(0) || '') + (player.lastName?.charAt(0) || '') || '?'}
@@ -315,7 +383,7 @@ export default function BasketballTeamProfilePage() {
               <DialogHeader className="flex flex-row items-start gap-4 pr-10">
                   <div className="relative w-20 h-20 shrink-0 mt-1">
                     {selectedPlayerForBio.photoUrl && selectedPlayerForBio.photoUrl.startsWith('https://placehold.co') ? (
-                        <Image src={selectedPlayerForBio.photoUrl} alt={selectedPlayerForBio.name || 'Player'} layout="fill" objectFit="contain" className="rounded-full shadow-md" data-ai-hint="selected player placeholder"/>
+                        <Image src={selectedPlayerForBio.photoUrl} alt={selectedPlayerForBio.name || 'Player'} fill objectFit="contain" className="rounded-full shadow-md" data-ai-hint="selected player placeholder"/>
                     ) : (
                         <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-3xl font-bold text-muted-foreground" data-ai-hint="selected player initials">
                             {(selectedPlayerForBio.firstName?.charAt(0) || '') + (selectedPlayerForBio.lastName?.charAt(0) || '') || '?'}
@@ -348,9 +416,64 @@ export default function BasketballTeamProfilePage() {
           </Dialog>
         )}
 
+        <Card className="mb-8 shadow-lg">
+          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Gamepad2 className="text-primary"/>Custom Events for {displayTeamName}</CardTitle></CardHeader>
+          <CardContent>
+            {isLoadingManagedEvents ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
+              teamSpecificManagedEvents.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {teamSpecificManagedEvents.map(event => {
+                    const {date, time} = formatMatchDateTime(event.eventTime);
+                    return (
+                      <Card key={event.id} className="shadow-md">
+                        <CardHeader>
+                            <CardTitle className="font-headline text-lg">{event.name}</CardTitle>
+                             <CardDescription className="flex items-center gap-1 text-xs">
+                                <Tv size={14} className={cn(getStatusColor(event.status))} />
+                                <span className={cn("font-medium", getStatusColor(event.status))}>
+                                    {event.status.charAt(0).toUpperCase() + event.status.slice(1)}
+                                </span>
+                                {event.elapsedTime != null && (event.status === 'live') && 
+                                  <span className="text-xs text-red-500">({event.elapsedTime}')</span>
+                                }
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-1 text-xs">
+                            <p><Users size={14} className="inline mr-1 text-primary"/>{event.homeTeam.name} vs {event.awayTeam.name}</p>
+                            <p><CalendarClock size={14} className="inline mr-1 text-primary"/>{date} at {time}</p>
+                             {event.status === 'live' && event.homeScore != null && event.awayScore != null && (
+                                <p className="font-bold text-md text-center text-primary py-1">
+                                    {event.homeScore} - {event.awayScore}
+                                </p>
+                            )}
+                        </CardContent>
+                        {event.status === 'upcoming' && currentUser && (
+                            <CardContent className="flex flex-col sm:flex-row gap-2 pt-0">
+                                <Button size="sm" className="flex-1" variant="outline" onClick={() => handleOpenBettingModal(event, event.homeTeam)}>
+                                    Bet on {event.homeTeam.name}
+                                </Button>
+                                <Button size="sm" className="flex-1" variant="outline" onClick={() => handleOpenBettingModal(event, event.awayTeam)}>
+                                    Bet on {event.awayTeam.name}
+                                </Button>
+                            </CardContent>
+                        )}
+                        {event.status === 'upcoming' && !currentUser && (
+                             <CardContent className="pt-0">
+                                <Button className="w-full" size="sm" variant="outline" onClick={() => router.push('/login')}>Log in to Bet</Button>
+                            </CardContent>
+                        )}
+                      </Card>
+                    )
+                  })}
+                </div>
+              ) : <p className="text-muted-foreground text-center py-4">No upcoming or live custom events involving {displayTeamName} at the moment.</p>
+            }
+          </CardContent>
+        </Card>
+
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Recent Game Results</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary"/>Recent Game Results (API)</CardTitle></CardHeader>
           <CardContent className="space-y-3">
             {isLoadingResults ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
              gameResults.length > 0 ? (
@@ -359,9 +482,7 @@ export default function BasketballTeamProfilePage() {
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-xs text-muted-foreground">{formatMatchDateTime(game.matchTime).date}</span>
                             <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
-                                game.statusShort === 'FT' || game.statusShort === 'AOT' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200' :
-                                ['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT'].includes(game.statusShort) ? 'bg-red-200 text-red-700 dark:bg-red-700 dark:text-red-200' :
-                                'bg-yellow-200 text-yellow-700 dark:bg-yellow-700 dark:text-yellow-200'
+                                getStatusColor(game.statusShort)
                             )}>{game.statusLong}</span>
                         </div>
                         <div className="flex items-center justify-between">
@@ -425,9 +546,18 @@ export default function BasketballTeamProfilePage() {
           <Link href="/"> <Button variant="outline">Back to Home</Button> </Link>
         </div>
       </main>
+       {selectedEventForBetting && selectedTeamForBetting && currentSport && (
+        <BettingModal
+          isOpen={isBettingModalOpen}
+          onClose={handleCloseBettingModal}
+          eventData={selectedEventForBetting}
+          eventSource="custom" // Assuming these are custom events from team page
+          teamToBetOn={selectedTeamForBetting}
+          currentUser={currentUser}
+          sportSlug={currentSport.slug}
+        />
+      )}
       <Footer />
     </div>
   );
 }
-
-    

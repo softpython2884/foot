@@ -131,11 +131,12 @@ export async function createBetDb(userId: number, eventId: number, eventSource: 
     teamIdBetOn,
     amountBet,
     potentialWinnings,
-    'pending',
+    'pending', // Default status
     sportSlug
   );
   return result.lastID;
 }
+
 
 export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithMatchDetails[]> {
   const db = await getDb();
@@ -274,8 +275,8 @@ export async function getAllManagedEventsFromDb(): Promise<ManagedEventApp[]> {
   const eventsDb = await db.all<ManagedEventDb[]>('SELECT * FROM managed_events ORDER BY event_time DESC');
   
   return eventsDb.map(eventDb => {
-    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: 'Unknown Home', sportSlug: eventDb.sport_slug};
-    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: 'Unknown Away', sportSlug: eventDb.sport_slug};
+    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: 'Unknown Home', sportSlug: eventDb.sport_slug, logoUrl: undefined};
+    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: 'Unknown Away', sportSlug: eventDb.sport_slug, logoUrl: undefined};
     return {
       id: eventDb.id,
       name: eventDb.name,
@@ -307,8 +308,8 @@ export async function getManagedEventsBySportFromDb(sportSlug: string, statusFil
   const eventsDb = await db.all<ManagedEventDb[]>(query, ...queryParams);
   
   return eventsDb.map(eventDb => {
-    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: `Home Team ID ${eventDb.home_team_id}`, sportSlug: eventDb.sport_slug};
-    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: `Away Team ID ${eventDb.away_team_id}`, sportSlug: eventDb.sport_slug};
+    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: `Home Team ID ${eventDb.home_team_id}`, sportSlug: eventDb.sport_slug, logoUrl: undefined};
+    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: `Away Team ID ${eventDb.away_team_id}`, sportSlug: eventDb.sport_slug, logoUrl: undefined};
     return {
       id: eventDb.id,
       name: eventDb.name,

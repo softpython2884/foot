@@ -623,7 +623,7 @@ export type ManagedEventStatus = 'upcoming' | 'live' | 'paused' | 'finished' | '
 export interface Bet {
   id: number;
   userId: number;
-  eventId: number; // Renamed from matchId
+  eventId: number; 
   eventSource: EventSource;
   teamIdBetOn: number;
   amountBet: number;
@@ -638,8 +638,8 @@ export interface BetWithMatchDetails extends Bet {
   homeTeamName: string;
   awayTeamName: string;
   teamBetOnName: string;
-  matchTime: string; // Keep for display, might be eventTime for custom events
-  leagueName: string; // Keep for display, might be eventName for custom events
+  matchTime: string; 
+  leagueName: string; 
 }
 
 export interface ManagedEventDb {
@@ -678,14 +678,6 @@ export interface ManagedEventApp {
 // --- Mock Data specific types ---
 export interface Team extends TeamApp { // Team for mockData, extends TeamApp
   shortName?: string;
-  // base?: string | null; // Already in TeamApp for F1
-  // championships?: number | null; // Already in TeamApp for F1
-  // director?: string | null; // Already in TeamApp for F1
-  // technicalManager?: string | null; // Already in TeamApp for F1
-  // chassis?: string | null; // Already in TeamApp for F1
-  // engine?: string | null; // Already in TeamApp for F1
-  // conference?: string | null; // Already in TeamApp for Basketball
-  // division?: string | null; // Already in TeamApp for Basketball
 }
 
 export interface League extends LeagueApp {

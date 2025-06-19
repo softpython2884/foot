@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { createManagedEventInDb, updateManagedEventInDb, getManagedEventFromDb } from '@/lib/db';
-import { settleBetsForManagedEvent } from './bets'; // Assuming this function exists and is correctly implemented
+import { settleBetsForManagedEvent } from './bets'; // Corrected import path
 import type { ManagedEventStatus } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -65,6 +65,12 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
     }
     revalidatePath('/admin');
     revalidatePath(`/sports/${sportSlug}/teams`);
+    // Revalidate individual team pages if they are affected
+    const homeTeamSlug = (await getManagedEventFromDb(eventId))?.homeTeam.slug;
+    const awayTeamSlug = (await getManagedEventFromDb(eventId))?.awayTeam.slug;
+    if(homeTeamSlug) revalidatePath(`/sports/${sportSlug}/teams/${homeTeamSlug}`);
+    if(awayTeamSlug) revalidatePath(`/sports/${sportSlug}/teams/${awayTeamSlug}`);
+
     return { success: 'Event created successfully!', eventId };
   } catch (error) {
     console.error('Create event error:', error);
@@ -79,7 +85,7 @@ const UpdateEventSchema = z.object({
   }),
   homeScore: z.coerce.number().int().min(0).optional().nullable(),
   awayScore: z.coerce.number().int().min(0).optional().nullable(),
-  winningTeamId: z.coerce.number().int().positive().optional().nullable(),
+  winningTeamId: z.coerce.number().int().positive().optional().nullable(), // This will be determined if status is 'finished'
   elapsedTime: z.coerce.number().int().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
 });
@@ -91,7 +97,7 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
     status: formData.get('status'),
     homeScore: formData.get('homeScore') ? parseInt(formData.get('homeScore') as string, 10) : null,
     awayScore: formData.get('awayScore') ? parseInt(formData.get('awayScore') as string, 10) : null,
-    winningTeamId: formData.get('winningTeamId') ? parseInt(formData.get('winningTeamId') as string, 10) : null,
+    // winningTeamId will be determined based on scores if status is 'finished'
     elapsedTime: formData.get('elapsedTime') ? parseInt(formData.get('elapsedTime') as string, 10) : null,
     notes: formData.get('notes') || null,
   });
@@ -101,50 +107,53 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
   }
 
   const { eventId, status, homeScore, awayScore, elapsedTime, notes } = validatedFields.data;
-  let { winningTeamId } = validatedFields.data;
+  let determinedWinningTeamId: number | null | undefined = undefined;
 
 
   const existingEvent = await getManagedEventFromDb(eventId);
   if (!existingEvent) {
     return { error: 'Event not found.' };
   }
-  
+
   if (status === 'finished') {
     if (homeScore == null || awayScore == null) {
       return { error: 'Home and Away scores are required to finish an event.' };
     }
     if (homeScore > awayScore) {
-      winningTeamId = existingEvent.homeTeam.id;
+      determinedWinningTeamId = existingEvent.homeTeam.id;
     } else if (awayScore > homeScore) {
-      winningTeamId = existingEvent.awayTeam.id;
+      determinedWinningTeamId = existingEvent.awayTeam.id;
     } else { // Draw
-      winningTeamId = null; // Or a special ID for draw if your system uses one
+      determinedWinningTeamId = null;
     }
   } else {
-    // If not finished, winningTeamId should be null unless explicitly set (which is unlikely for non-finished)
-     if (status !== 'finished' && winningTeamId !== undefined) {
-        winningTeamId = null;
-     }
+     // For 'live', 'paused', 'upcoming', 'cancelled' keep winningTeamId as null or undefined
+     // unless explicitly set (though the schema doesn't allow explicit setting here if not finished)
+     determinedWinningTeamId = null;
   }
 
   try {
-    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, winningTeamId, elapsedTime, notes);
+    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, determinedWinningTeamId, elapsedTime, notes);
 
     if (!success) {
       return { error: 'Failed to update event in database.' };
     }
 
+    let settlementMessage = '';
     if (status === 'finished') {
-      // Settle bets for this event
       const settlementResult = await settleBetsForManagedEvent(eventId);
       if (settlementResult.error) {
-        return { success: 'Event updated, but with errors settling bets.', error: settlementResult.error };
+        settlementMessage = ` Event updated, but with errors settling bets: ${settlementResult.error}`;
+      } else if (settlementResult.success) {
+        settlementMessage = ` ${settlementResult.success}`;
       }
     }
     revalidatePath('/admin');
     revalidatePath(`/sports/${existingEvent.sportSlug}/teams`);
-    revalidatePath('/profile'); // Revalidate profile in case user score changes
-    return { success: `Event ${eventId} updated successfully. Status: ${status}.` };
+    if(existingEvent.homeTeam.slug) revalidatePath(`/sports/${existingEvent.sportSlug}/teams/${existingEvent.homeTeam.slug}`);
+    if(existingEvent.awayTeam.slug) revalidatePath(`/sports/${existingEvent.sportSlug}/teams/${existingEvent.awayTeam.slug}`);
+    revalidatePath('/profile');
+    return { success: `Event ${eventId} updated. Status: ${status}.${settlementMessage}` };
   } catch (error) {
     console.error('Update event error:', error);
     return { error: 'An unexpected error occurred while updating the event.' };

@@ -18,7 +18,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction } from '@/actions/user';
-import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; 
+import { getBetHistoryAction, settleApiBetAction } from '@/actions/bets'; 
 import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
 import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -139,14 +139,14 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSettleBet = async (betId: number, userWon: boolean) => {
+  const handleSettleApiBet = async (betId: number, userWon: boolean) => {
     if(!currentUser) return;
     setIsSettlingBet(betId);
     const formData = new FormData();
     formData.append('betId', betId.toString());
     formData.append('userWon', userWon.toString());
     
-    const settlementResult = await settleBetAction(formData);
+    const settlementResult = await settleApiBetAction(formData); // Changed to settleApiBetAction
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
       
@@ -336,7 +336,7 @@ export default function ProfilePage() {
                                             <CardTitle className="text-md">
                                                 {bet.homeTeamName} vs {bet.awayTeamName}
                                             </CardTitle>
-                                            <CardDescription>{bet.leagueName} - {date} at {time}</CardDescription>
+                                            <CardDescription>{bet.leagueName} - {date} at {time} ({bet.eventSource === 'custom' ? 'Custom Event' : 'API Event'})</CardDescription>
                                         </CardHeader>
                                         <CardContent className="text-sm space-y-1">
                                             <p>Bet on: <span className="font-semibold">{bet.teamBetOnName}</span></p>
@@ -356,12 +356,13 @@ export default function ProfilePage() {
                                                 </span>
                                             </p>
                                         </CardContent>
-                                        {bet.status === 'pending' && (
+                                        {/* Only show manual settlement buttons for 'api' bets that are 'pending' */}
+                                        {bet.eventSource === 'api' && bet.status === 'pending' && (
                                             <CardFooter className="flex gap-2 pt-2">
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
-                                                    onClick={() => handleSettleBet(bet.id, true)}
+                                                    onClick={() => handleSettleApiBet(bet.id, true)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-green-500 border-green-500 hover:bg-green-500/10 hover:text-green-600"
                                                 >
@@ -370,7 +371,7 @@ export default function ProfilePage() {
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
-                                                    onClick={() => handleSettleBet(bet.id, false)}
+                                                    onClick={() => handleSettleApiBet(bet.id, false)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-red-500 border-red-500 hover:bg-red-500/10 hover:text-red-600"
                                                 >
