@@ -19,22 +19,24 @@ export default function SportTeamsPage() {
 
   if (!sport) {
     notFound();
+    return null; // Stop rendering if sport not found
   }
 
-  let teamsToShow: Team[] = [];
-  let pageTitleSuffix = "Teams";
+  let teamsToShow: Team[] = []; // Initialize as an empty array
+  let pageTitleSuffix = "Entities"; // Default suffix
 
+  // Assign teamsToShow based on sportSlug, with a fallback to [] if the source array is undefined
   if (sport.slug === 'football') {
-    teamsToShow = footballTeams;
+    teamsToShow = footballTeams || [];
     pageTitleSuffix = "Teams";
   } else if (sport.slug === 'formula-1') {
-    teamsToShow = formula1Entities; // Using Team type, F1 specific fields are optional
-    pageTitleSuffix = "Écuries"; // Or "Entités"
+    teamsToShow = formula1Entities || [];
+    pageTitleSuffix = "Écuries";
   } else if (sport.slug === 'basketball') {
-    teamsToShow = basketballTeams;
+    teamsToShow = basketballTeams || [];
     pageTitleSuffix = "Teams";
   }
-  // Add more sports here with 'else if' conditions
+  // If a sport is in supportedSports but not handled above, teamsToShow remains []
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -56,7 +58,7 @@ export default function SportTeamsPage() {
 
           {teamsToShow.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {teamsToShow.map((item: Team) => ( // item can be a team or other entity
+              {teamsToShow.map((item: Team) => (
                 <TeamBannerCard key={item.id} team={item} sportSlug={sport.slug} />
               ))}
             </div>
@@ -71,5 +73,3 @@ export default function SportTeamsPage() {
     </div>
   );
 }
-
-    
