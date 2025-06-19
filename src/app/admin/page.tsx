@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react'; // Ajout de React et useRef
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,7 +49,7 @@ export default function AdminPage() {
   });
 
   // Store forms in a ref to avoid re-creating them on every render, which resets their state
-  const updateFormsRef = React.useRef<Map<number, ReturnType<typeof useForm<UpdateEventStatusFormValues>>>>(new Map());
+  const updateFormsRef = useRef<Map<number, ReturnType<typeof useForm<UpdateEventStatusFormValues>>>>(new Map());
 
 
   const loadEvents = async () => {
@@ -261,11 +261,7 @@ export default function AdminPage() {
                         {events.map(event => {
                              let updateFormInstance = updateFormsRef.current.get(event.id);
                              if (!updateFormInstance) {
-                                // This case should ideally not happen if forms are initialized in loadEvents
-                                // But as a fallback, create it here (though it might cause hook order issues if not careful)
-                                // For robustness, we ensure it's always available from the ref.
-                                // Consider moving form creation strictly to useEffect/loadEvents.
-                                 updateFormInstance = createFormHook(event); // Temporary fix
+                                 updateFormInstance = createFormHook(event);
                                  updateFormsRef.current.set(event.id, updateFormInstance);
                              }
                             
@@ -311,7 +307,6 @@ export default function AdminPage() {
                                             </FormItem>
                                         )}
                                         />
-                                    {/* Show score inputs if selected status is live, paused, or finished OR current status is live/paused */}
                                     {(updateFormInstance.watch('status') === 'live' || updateFormInstance.watch('status') === 'paused' || updateFormInstance.watch('status') === 'finished' || event.status === 'live' || event.status === 'paused' ) && updateFormInstance.watch('status') !== 'upcoming' && updateFormInstance.watch('status') !== 'cancelled' && (
                                         <>
                                         <FormField
