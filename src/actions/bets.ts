@@ -2,18 +2,19 @@
 'use server';
 
 import { z } from 'zod';
-import { createBetDb, getBetByIdDb, updateBetStatusDb, updateUserScoreDb, getUserBetsWithDetailsDb } from '@/lib/db';
-import type { BetWithMatchDetails } from '@/lib/types';
+import { createBetDb, getBetByIdDb, updateBetStatusDb, updateUserScoreDb, getUserBetsWithDetailsDb, getManagedEventFromDb, getPendingBetsForManagedEventDb } from '@/lib/db';
+import type { BetWithMatchDetails, EventSource } from '@/lib/types';
 import { footballTeams, supportedSports } from '@/lib/mockData';
 import { getFootballFixtureById } from '@/services/apiSportsService';
 
-const FIXED_ODDS = 2.0;
+const FIXED_ODDS = 2.0; // Example fixed odds
 
 const PlaceBetSchema = z.object({
-  userId: z.number().int().positive(),
-  matchId: z.coerce.number().int().positive(),
+  userId: z.coerce.number().int().positive(),
+  eventId: z.coerce.number().int().positive(),
+  eventSource: z.enum(['api', 'custom']),
   teamIdBetOn: z.coerce.number().int().positive(),
-  amountBet: z.number().int().positive({ message: "Bet amount must be positive." }),
+  amountBet: z.coerce.number().int().positive({ message: "Bet amount must be positive." }),
   sportSlug: z.string().min(1, {message: "Sport slug is required."}),
 });
 
@@ -21,7 +22,8 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
   try {
     const validatedFields = PlaceBetSchema.safeParse({
       userId: parseInt(formData.get('userId') as string, 10),
-      matchId: parseInt(formData.get('matchId') as string, 10),
+      eventId: parseInt(formData.get('eventId') as string, 10),
+      eventSource: formData.get('eventSource') as EventSource,
       teamIdBetOn: parseInt(formData.get('teamIdBetOn') as string, 10),
       amountBet: parseInt(formData.get('amountBet') as string, 10),
       sportSlug: formData.get('sportSlug') as string,
@@ -31,37 +33,48 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
       return { error: 'Invalid bet data.', details: validatedFields.error.flatten().fieldErrors };
     }
 
-    const { userId, matchId, teamIdBetOn, amountBet, sportSlug } = validatedFields.data;
+    const { userId, eventId, eventSource, teamIdBetOn, amountBet, sportSlug } = validatedFields.data;
 
     const sport = supportedSports.find(s => s.slug === sportSlug);
     if (!sport) {
         return { error: 'Invalid sport specified for the bet.'};
     }
 
-    // For now, betting is only implemented for football
-    if (sportSlug !== 'football') {
-        return { error: 'Betting is currently only supported for Football.'};
+    let teamBetOnName = 'Selected Team';
+    let eventIsUpcoming = false;
+
+    if (eventSource === 'api') {
+        // For now, betting is only implemented for football API events
+        if (sportSlug !== 'football') {
+            return { error: 'Betting on API events is currently only supported for Football.'};
+        }
+        const match = await getFootballFixtureById(eventId, sport.apiBaseUrl);
+        if (!match) return { error: 'API Match not found.' };
+        if (match.statusShort !== 'NS') return { error: 'Betting is only allowed on upcoming API matches.' };
+        eventIsUpcoming = true;
+        
+        if (match.homeTeam.id === teamIdBetOn) teamBetOnName = match.homeTeam.name;
+        else if (match.awayTeam.id === teamIdBetOn) teamBetOnName = match.awayTeam.name;
+        else return { error: `Team ID ${teamIdBetOn} is not participating in this API match.` };
+
+    } else if (eventSource === 'custom') {
+        const managedEvent = await getManagedEventFromDb(eventId);
+        if (!managedEvent) return { error: 'Custom event not found.' };
+        if (managedEvent.status !== 'upcoming') return { error: 'Betting is only allowed on upcoming custom events.' };
+        eventIsUpcoming = true;
+
+        if (managedEvent.homeTeamApiId === teamIdBetOn) teamBetOnName = managedEvent.homeTeamName;
+        else if (managedEvent.awayTeamApiId === teamIdBetOn) teamBetOnName = managedEvent.awayTeamName;
+        else return { error: `Team ID ${teamIdBetOn} is not participating in this custom event.` };
     }
 
-    const match = await getFootballFixtureById(matchId, sport.apiBaseUrl);
-    if (!match) {
-      return { error: 'Match not found.' };
-    }
-    if (match.statusShort !== 'NS') {
-      return { error: 'Betting is only allowed on upcoming matches.' };
-    }
-
-    // Use footballTeams for team name lookup as it's a football bet
-    const teamBetOnDetails = footballTeams.find(t => t.id === teamIdBetOn);
-    const teamBetOnName = teamBetOnDetails ? teamBetOnDetails.name : 'Selected Team';
-
-    if (match.homeTeam.id !== teamIdBetOn && match.awayTeam.id !== teamIdBetOn) {
-        return { error: `Team ${teamBetOnName} is not participating in this match.` };
+    if (!eventIsUpcoming) {
+        return { error: 'Betting is not allowed on this event at this time.'};
     }
 
     const potentialWinnings = amountBet * FIXED_ODDS;
 
-    const betId = await createBetDb(userId, matchId, teamIdBetOn, amountBet, potentialWinnings, sportSlug);
+    const betId = await createBetDb(userId, eventId, eventSource, teamIdBetOn, amountBet, potentialWinnings, sportSlug);
 
     if (!betId) {
       return { error: 'Failed to place bet.' };
@@ -80,7 +93,6 @@ export async function getBetHistoryAction(userId: number): Promise<{ error?: str
     return { error: 'User ID is required.' };
   }
   try {
-    // Assuming getUserBetsWithDetailsDb will handle fetching details based on sportSlug if needed in future
     const bets = await getUserBetsWithDetailsDb(userId);
     return { bets };
   } catch (error) {
@@ -89,14 +101,18 @@ export async function getBetHistoryAction(userId: number): Promise<{ error?: str
   }
 }
 
-const SettleBetSchema = z.object({
-  betId: z.number().int().positive(),
+// This schema is now primarily for manual settlement of API bets,
+// as custom bets are settled automatically.
+const SettleApiBetSchema = z.object({
+  betId: z.coerce.number().int().positive(),
   userWon: z.boolean(),
 });
 
-export async function settleBetAction(formData: FormData): Promise<{ error?: string; success?: string }> {
+// This action is now for settling API bets from the profile page, if needed.
+// Custom bets are settled via admin action.
+export async function settleApiBetAction(formData: FormData): Promise<{ error?: string; success?: string }> {
   try {
-    const validatedFields = SettleBetSchema.safeParse({
+    const validatedFields = SettleApiBetSchema.safeParse({
       betId: parseInt(formData.get('betId') as string, 10),
       userWon: formData.get('userWon') === 'true',
     });
@@ -108,12 +124,9 @@ export async function settleBetAction(formData: FormData): Promise<{ error?: str
     const { betId, userWon } = validatedFields.data;
 
     const bet = await getBetByIdDb(betId);
-    if (!bet) {
-      return { error: 'Bet not found.' };
-    }
-    if (bet.status !== 'pending') {
-      return { error: 'This bet has already been settled.' };
-    }
+    if (!bet) return { error: 'Bet not found.' };
+    if (bet.eventSource !== 'api') return { error: 'This action is only for API-sourced bets.' };
+    if (bet.status !== 'pending') return { error: 'This bet has already been settled.' };
 
     let scoreChange = 0;
     let newStatus: 'won' | 'lost';
@@ -125,22 +138,52 @@ export async function settleBetAction(formData: FormData): Promise<{ error?: str
       newStatus = 'lost';
     }
 
-    const statusUpdated = await updateBetStatusDb(betId, newStatus);
-    if (!statusUpdated) {
-      return { error: 'Failed to update bet status.' };
-    }
+    const statusUpdated = await updateBetStatusDb(bet.id, newStatus);
+    if (!statusUpdated) return { error: 'Failed to update bet status.' };
 
     if (scoreChange !== 0) {
       const scoreUpdated = await updateUserScoreDb(bet.userId, scoreChange);
       if (!scoreUpdated && newStatus === 'won') {
+        // Rollback status update or log inconsistency if score update fails.
+        // For simplicity, we'll just return an error message.
         return { error: 'Bet status updated, but failed to update user score.' };
       }
     }
-
-    return { success: `Bet ID ${betId} settled as ${newStatus}. Score updated accordingly.` };
+    return { success: `API Bet ID ${betId} settled as ${newStatus}. Score updated.` };
 
   } catch (error) {
-    console.error('Settle bet error:', error);
-    return { error: 'An unexpected error occurred while settling the bet.' };
+    console.error('Settle API bet error:', error);
+    return { error: 'An unexpected error occurred while settling the API bet.' };
   }
 }
+
+// Function to be called by admin actions when a custom event is finished
+export async function settleBetsForManagedEvent(managedEventId: number, winnerTeamApiId: number | null): Promise<{ successCount: number, errorCount: number }> {
+  const pendingBets = await getPendingBetsForManagedEventDb(managedEventId);
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (const bet of pendingBets) {
+    try {
+      let userWon = false;
+      if (winnerTeamApiId === null) { // Draw
+        userWon = false; // Or handle draw bets specifically if that's a bet type
+      } else if (bet.teamIdBetOn === winnerTeamApiId) {
+        userWon = true;
+      }
+
+      const newStatus = userWon ? 'won' : 'lost';
+      await updateBetStatusDb(bet.id, newStatus);
+
+      if (userWon) {
+        await updateUserScoreDb(bet.userId, bet.potentialWinnings);
+      }
+      successCount++;
+    } catch (e) {
+      console.error(\`Error settling bet ID \${bet.id} for managed event \${managedEventId}:\`, e);
+      errorCount++;
+    }
+  }
+  return { successCount, errorCount };
+}
+

@@ -7,19 +7,20 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+// import { Label } from '@/components/ui/label'; // Not used
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { placeBetAction } from '@/actions/bets';
-import type { MatchApp, TeamApp, AuthenticatedUser } from '@/lib/types'; // Use MatchApp, TeamApp
+import type { MatchApp, TeamApp, AuthenticatedUser, ManagedEventApp, EventSource } from '@/lib/types';
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface BettingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  match: MatchApp; // Use MatchApp
-  teamToBetOn: TeamApp; // Use TeamApp (which includes id as number)
+  eventData: MatchApp | ManagedEventApp; // Can be an API match or a custom managed event
+  eventSource: EventSource; // 'api' or 'custom'
+  teamToBetOn: TeamApp; 
   currentUser: AuthenticatedUser | null;
   sportSlug: string;
 }
@@ -30,7 +31,7 @@ const betSchema = z.object({
 
 type BetFormValues = z.infer<typeof betSchema>;
 
-export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser, sportSlug }: BettingModalProps) {
+export function BettingModal({ isOpen, onClose, eventData, eventSource, teamToBetOn, currentUser, sportSlug }: BettingModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,26 +48,25 @@ export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser,
       onClose();
       return;
     }
-    if (!teamToBetOn || teamToBetOn.id == null) { // Check for null or undefined id
+    if (!teamToBetOn || teamToBetOn.id == null) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not determine team to bet on or team ID is missing.' });
         onClose();
         return;
     }
-    if (match.id == null) { // Check for null or undefined match id
-        toast({ variant: 'destructive', title: 'Error', description: 'Match ID is missing.' });
+    if (eventData.id == null) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Event ID is missing.' });
         onClose();
         return;
     }
 
-
     setIsSubmitting(true);
     const formData = new FormData();
     formData.append('userId', currentUser.id.toString());
-    formData.append('matchId', match.id.toString()); // match.id is now a number
-    formData.append('teamIdBetOn', teamToBetOn.id.toString()); // teamToBetOn.id is now a number
+    formData.append('eventId', eventData.id.toString());
+    formData.append('eventSource', eventSource);
+    formData.append('teamIdBetOn', teamToBetOn.id.toString());
     formData.append('amountBet', data.amount.toString());
     formData.append('sportSlug', sportSlug);
-
 
     const result = await placeBetAction(formData);
 
@@ -82,15 +82,20 @@ export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser,
 
   if (!isOpen) return null;
 
+  const homeTeamName = 'homeTeam' in eventData ? eventData.homeTeam.name : eventData.homeTeamName;
+  const awayTeamName = 'awayTeam' in eventData ? eventData.awayTeam.name : eventData.awayTeamName;
+  const eventTitle = eventSource === 'api' ? 'API Match' : 'Custom Event';
+
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Place Bet on {match.sportSlug === 'football' ? 'Football Match' : match.sportSlug}</DialogTitle>
+          <DialogTitle>Place Bet on {sportSlug} {eventTitle}</DialogTitle>
           <DialogDescription>
-            You are betting on <span className="font-semibold text-primary">{teamToBetOn.name}</span> to win the match:
+            You are betting on <span className="font-semibold text-primary">{teamToBetOn.name}</span> to win the event:
             <br />
-            {match.homeTeam.name} vs {match.awayTeam.name}
+            {homeTeamName} vs {awayTeamName}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

@@ -18,7 +18,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction } from '@/actions/user';
-import { getBetHistoryAction, settleBetAction } from '@/actions/bets'; 
+import { getBetHistoryAction, settleApiBetAction } from '@/actions/bets'; // Changed to settleApiBetAction
 import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
 import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import Link from 'next/link';
@@ -139,14 +139,20 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSettleBet = async (betId: number, userWon: boolean) => {
+  const handleSettleApiBet = async (betId: number, userWon: boolean) => {
     if(!currentUser) return;
+    const betToSettle = betHistory.find(b => b.id === betId);
+    if (betToSettle?.eventSource !== 'api') {
+        toast({variant: 'default', title: 'Info', description: 'Custom event bets are settled automatically.'});
+        return;
+    }
+
     setIsSettlingBet(betId);
     const formData = new FormData();
     formData.append('betId', betId.toString());
     formData.append('userWon', userWon.toString());
     
-    const settlementResult = await settleBetAction(formData);
+    const settlementResult = await settleApiBetAction(formData); // Use new action name
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
       
@@ -330,11 +336,13 @@ export default function ProfilePage() {
                         <div className="space-y-4 max-h-96 overflow-y-auto">
                             {betHistory.map((bet) => {
                                 const { date, time } = formatMatchDateTime(bet.matchTime);
+                                const isCustomEvent = bet.eventSource === 'custom';
                                 return (
                                     <Card key={bet.id} className="bg-muted/30">
                                         <CardHeader className="pb-2">
                                             <CardTitle className="text-md">
                                                 {bet.homeTeamName} vs {bet.awayTeamName}
+                                                {isCustomEvent && <span className="text-xs text-accent font-normal ml-2">(Custom Event)</span>}
                                             </CardTitle>
                                             <CardDescription>{bet.leagueName} - {date} at {time}</CardDescription>
                                         </CardHeader>
@@ -356,25 +364,26 @@ export default function ProfilePage() {
                                                 </span>
                                             </p>
                                         </CardContent>
-                                        {bet.status === 'pending' && (
+                                        {/* Allow manual settlement only for 'api' events that are 'pending' */}
+                                        {bet.status === 'pending' && bet.eventSource === 'api' && (
                                             <CardFooter className="flex gap-2 pt-2">
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
-                                                    onClick={() => handleSettleBet(bet.id, true)}
+                                                    onClick={() => handleSettleApiBet(bet.id, true)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-green-500 border-green-500 hover:bg-green-500/10 hover:text-green-600"
                                                 >
-                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Win"}
+                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Win (API Event)"}
                                                 </Button>
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
-                                                    onClick={() => handleSettleBet(bet.id, false)}
+                                                    onClick={() => handleSettleApiBet(bet.id, false)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-red-500 border-red-500 hover:bg-red-500/10 hover:text-red-600"
                                                 >
-                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Loss"}
+                                                    {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Loss (API Event)"}
                                                 </Button>
                                             </CardFooter>
                                         )}
@@ -432,3 +441,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
