@@ -1,5 +1,5 @@
 
-import type { League, Team, SportDefinition } from './types';
+import type { League, Team, SportDefinition, MatchApp } from './types';
 
 function slugify(text: string): string {
   return text
@@ -101,5 +101,65 @@ export const footballLeagues: League[] = [
 // but they should be phased out or refactored. For now, they'll just point to the football data.
 export const teams = footballTeams;
 export const leagues = footballLeagues;
+
+
+// --- Mock Football Matches ---
+const psgTeamMock = footballTeams.find(t => t.id === 85);
+const interTeamMock = footballTeams.find(t => t.id === 505);
+const uclLeagueMock = footballLeagues.find(l => l.id === 2);
+
+const mockMatchPsgVsInter: MatchApp = {
+  id: 999901, // Arbitrary unique ID for mock match
+  league: uclLeagueMock ? {
+    id: uclLeagueMock.id,
+    name: uclLeagueMock.name,
+    logoUrl: uclLeagueMock.logoUrl,
+    country: uclLeagueMock.country,
+    season: 2025, // As requested
+    sportSlug: 'football',
+  } : {
+    id: 2,
+    name: 'Champions League',
+    logoUrl: 'https://media.api-sports.io/football/leagues/2.png', // Fallback
+    country: 'Europe',
+    season: 2025,
+    sportSlug: 'football',
+  },
+  homeTeam: psgTeamMock ? {
+    id: psgTeamMock.id,
+    name: psgTeamMock.name,
+    logoUrl: psgTeamMock.logoUrl,
+    sportSlug: 'football',
+  } : { // Fallback
+    id: 85,
+    name: 'Paris Saint-Germain',
+    logoUrl: 'https://media.api-sports.io/football/teams/85.png',
+    sportSlug: 'football',
+  },
+  awayTeam: interTeamMock ? {
+    id: interTeamMock.id,
+    name: interTeamMock.name,
+    logoUrl: interTeamMock.logoUrl,
+    sportSlug: 'football',
+  } : { // Fallback
+    id: 505,
+    name: 'Inter Milan',
+    logoUrl: 'https://media.api-sports.io/football/teams/505.png',
+    sportSlug: 'football',
+  },
+  matchTime: '2025-03-15T20:00:00Z', // Example UTC date for a 2025 UCL match
+  statusShort: 'FT',
+  statusLong: 'Match Finished',
+  homeScore: 5,
+  awayScore: 0,
+  sportSlug: 'football',
+  elapsedTime: 90,
+  venueName: 'Parc des Princes',
+  venueCity: 'Paris',
+};
+
+export const mockFootballMatches: MatchApp[] = [
+  mockMatchPsgVsInter,
+];
 
     
