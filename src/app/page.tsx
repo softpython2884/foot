@@ -29,14 +29,19 @@ export default function HomePage() {
             {supportedSports.map((sport: SportDefinition) => (
               <Link key={sport.slug} href={`/sports/${sport.slug}/teams`} passHref className="group">
                 <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out h-full flex flex-col bg-card hover:-translate-y-1">
-                  <CardHeader className="p-0 relative h-48">
+                  <CardHeader className="p-0 relative h-56">
                     <Image
                       src={sport.iconUrl || `https://placehold.co/600x400.png`}
-                      alt={`${sport.name} icon`}
+                      alt={`${sport.name} banner`}
                       layout="fill"
                       objectFit="cover"
                       className="transition-transform duration-300 group-hover:scale-105"
-                      data-ai-hint={`${sport.slug === 'football' ? 'soccer ball stadium' : sport.slug === 'formula-1' ? 'race car track' : sport.slug === 'basketball' ? 'basketball hoop action' : 'sport generic'}`}
+                      data-ai-hint={`${
+                        sport.slug === 'football' ? 'soccer stadium action' : 
+                        sport.slug === 'formula-1' ? 'formula 1 race car track' : 
+                        sport.slug === 'basketball' ? 'basketball game action' : 
+                        'sport generic'
+                      }`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   </CardHeader>
@@ -68,5 +73,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

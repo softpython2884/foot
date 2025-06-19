@@ -15,7 +15,6 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { createManagedEventAction, updateManagedEventAction } from '@/actions/adminEvents';
-import { getAllManagedEventsFromDb } from '@/lib/db'; // We need a client-callable action for this or fetch via API route
 import type { ManagedEventDb, TeamApp } from '@/lib/types';
 import { footballTeams, supportedSports } from '@/lib/mockData';
 import { AlertCircle, CheckCircle, Edit3, ListChecks, PlusCircle, Trash2, Play, Pause, Flag, Settings } from 'lucide-react';
@@ -32,69 +31,43 @@ type CreateEventFormValues = z.infer<typeof createEventSchema>;
 
 const updateEventStatusSchema = z.object({
     status: z.enum(['upcoming', 'live', 'paused', 'finished', 'cancelled']),
-    homeScore: z.string().optional(),
-    awayScore: z.string().optional(),
-    // winnerTeamApiId is determined by scores if finished, unless it's a draw or manual override needed
+    homeScore: z.string().optional().refine(val => val === '' || val === undefined || !isNaN(parseInt(val)), { message: "Score must be a number or empty"}),
+    awayScore: z.string().optional().refine(val => val === '' || val === undefined || !isNaN(parseInt(val)), { message: "Score must be a number or empty"}),
 });
 type UpdateEventStatusFormValues = z.infer<typeof updateEventStatusSchema>;
-
-
-// Client-side action to fetch events (alternative to API route for simplicity here)
-// In a real app, this might be an API route or a Server Action if it doesn't expose sensitive info.
-async function fetchAdminEvents(): Promise<ManagedEventDb[]> {
-    // This is a placeholder. Direct DB access from client is not good.
-    // This should be replaced by an API call or a server action.
-    // For now, we'll make it return empty to avoid breaking client component rules.
-    // To actually get data, you'd need to:
-    // 1. Create an API route (e.g., /api/admin/events) that calls getAllManagedEventsFromDb()
-    // 2. Fetch from that API route here.
-    // OR a Server Action.
-    // For this prototype iteration, we will call the DB directly in a server component wrapper or a server action later.
-    // For now, the list will be empty on initial load and re-fetched after creation.
-    console.warn("fetchAdminEvents is a placeholder and needs proper API/Server Action implementation.");
-    return [];
-}
 
 
 export default function AdminPage() {
   const { toast } = useToast();
   const [events, setEvents] = useState<ManagedEventDb[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
-  const [selectedSportTeams, setSelectedSportTeams] = useState<TeamApp[]>(footballTeams); // Default to football
+  const [selectedSportTeams, setSelectedSportTeams] = useState<TeamApp[]>(footballTeams); 
 
   const createForm = useForm<CreateEventFormValues>({
     resolver: zodResolver(createEventSchema),
     defaultValues: { sportSlug: 'football', leagueName: 'Custom League', eventTime: new Date().toISOString().substring(0, 16) },
   });
 
-  const updateForms = new Map<number, ReturnType<typeof useForm<UpdateEventStatusFormValues>>>();
-  events.forEach(event => {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const form = useForm<UpdateEventStatusFormValues>({
-        resolver: zodResolver(updateEventStatusSchema),
-        defaultValues: { 
-            status: event.status,
-            homeScore: event.homeScore?.toString() || '',
-            awayScore: event.awayScore?.toString() || '',
-        },
-    });
-    updateForms.set(event.id, form);
-  });
+  // Store forms in a ref to avoid re-creating them on every render, which resets their state
+  const updateFormsRef = React.useRef<Map<number, ReturnType<typeof useForm<UpdateEventStatusFormValues>>>>(new Map());
 
 
   const loadEvents = async () => {
     setIsLoadingEvents(true);
     try {
-      // const fetchedEvents = await fetchAdminEvents(); // Placeholder
-      // For now, we can't directly call getAllManagedEventsFromDb here.
-      // This part needs a server action or API endpoint.
-      // Let's simulate an empty list and revalidate after creation.
-      const response = await fetch('/api/admin/events'); // Assuming an API route exists
+      const response = await fetch('/api/admin/events'); 
         if (!response.ok) {
             throw new Error('Failed to fetch events');
         }
-        const fetchedEvents = await response.json();
+        const fetchedEvents: ManagedEventDb[] = await response.json();
       setEvents(fetchedEvents);
+      // Initialize forms for fetched events if not already present
+      fetchedEvents.forEach(event => {
+        if (!updateFormsRef.current.has(event.id)) {
+            const form = createFormHook(event); // Helper to create form instance
+            updateFormsRef.current.set(event.id, form);
+        }
+      });
     } catch (error) {
       console.error("Error loading events:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load events.' });
@@ -102,6 +75,19 @@ export default function AdminPage() {
     setIsLoadingEvents(false);
   };
   
+  // Helper to create form instances, as useForm cannot be called conditionally/in loops directly in render
+  const createFormHook = (event: ManagedEventDb) => {
+    return useForm<UpdateEventStatusFormValues>({
+        resolver: zodResolver(updateEventStatusSchema),
+        defaultValues: { 
+            status: event.status,
+            homeScore: event.homeScore?.toString() || '',
+            awayScore: event.awayScore?.toString() || '',
+        },
+    });
+  };
+
+
   useEffect(() => {
     loadEvents();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,8 +98,6 @@ export default function AdminPage() {
     if (sportSlug === 'football') {
       setSelectedSportTeams(footballTeams);
     } 
-    // Add more sports here if needed
-    // else if (sportSlug === 'formula-1') { setSelectedSportTeams(formula1Entities); }
     else {
       setSelectedSportTeams([]);
     }
@@ -133,7 +117,7 @@ export default function AdminPage() {
     if (result.success) {
       toast({ title: 'Success', description: result.success });
       createForm.reset();
-      loadEvents(); // Refresh the list
+      loadEvents(); 
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to create event.' });
     }
@@ -145,12 +129,11 @@ export default function AdminPage() {
     formData.append('status', data.status);
     if (data.homeScore !== undefined && data.homeScore !== '') formData.append('homeScore', data.homeScore);
     if (data.awayScore !== undefined && data.awayScore !== '') formData.append('awayScore', data.awayScore);
-    // winnerTeamApiId is handled by the action based on scores for 'finished' status
-
+    
     const result = await updateManagedEventAction(formData);
      if (result.success) {
       toast({ title: 'Success', description: result.success });
-      loadEvents(); // Refresh the list
+      loadEvents(); 
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update event.' });
     }
@@ -276,8 +259,15 @@ export default function AdminPage() {
                 {!isLoadingEvents && events.length > 0 && (
                     <div className="space-y-6">
                         {events.map(event => {
-                            const updateFormInstance = updateForms.get(event.id) || useForm<UpdateEventStatusFormValues>({ resolver: zodResolver(updateEventStatusSchema), defaultValues: { status: event.status, homeScore: event.homeScore?.toString() || '', awayScore: event.awayScore?.toString() || '' }});
-                            if(!updateForms.has(event.id) && updateFormInstance) updateForms.set(event.id, updateFormInstance);
+                             let updateFormInstance = updateFormsRef.current.get(event.id);
+                             if (!updateFormInstance) {
+                                // This case should ideally not happen if forms are initialized in loadEvents
+                                // But as a fallback, create it here (though it might cause hook order issues if not careful)
+                                // For robustness, we ensure it's always available from the ref.
+                                // Consider moving form creation strictly to useEffect/loadEvents.
+                                 updateFormInstance = createFormHook(event); // Temporary fix
+                                 updateFormsRef.current.set(event.id, updateFormInstance);
+                             }
                             
                             return (
                             <Card key={event.id} className="bg-muted/30 p-4">
@@ -287,15 +277,17 @@ export default function AdminPage() {
                                 </div>
                                 <p className="text-sm">League: {event.leagueName || 'N/A'}</p>
                                 <p className="text-sm">Sport: {event.sportSlug}</p>
-                                <p className="text-sm">Status: <span className="font-medium">{event.status}</span></p>
-                                {event.status === 'finished' && (
-                                    <p className="text-sm">Score: {event.homeScore} - {event.awayScore}
-                                    {event.winnerTeamApiId && (
-                                        <span> (Winner: {event.winnerTeamApiId === event.homeTeamApiId ? event.homeTeamName : event.awayTeamName})</span>
-                                    )}
-                                    </p>
+                                <p className="text-sm">Current Status: <span className="font-medium">{event.status}</span></p>
+                                <p className="text-sm">Current Score: {event.homeScore ?? '-'} : {event.awayScore ?? '-'}</p>
+                                
+                                {event.status === 'finished' && event.winnerTeamApiId !== null && (
+                                    <p className="text-sm font-semibold">Winner: {event.winnerTeamApiId === event.homeTeamApiId ? event.homeTeamName : event.winnerTeamApiId === event.awayTeamApiId ? event.awayTeamName : 'N/A'}</p>
                                 )}
-                                {event.status !== 'finished' && event.status !== 'cancelled' && (
+                                {event.status === 'finished' && event.winnerTeamApiId === null && (
+                                    <p className="text-sm font-semibold">Result: Draw</p>
+                                )}
+
+                                {event.status !== 'cancelled' && (
                                 <Form {...updateFormInstance}>
                                 <form onSubmit={updateFormInstance.handleSubmit(data => onUpdateStatusSubmit(event.id, data))} className="mt-4 space-y-3 sm:space-y-0 sm:flex sm:items-end sm:gap-3">
                                     <FormField
@@ -319,7 +311,8 @@ export default function AdminPage() {
                                             </FormItem>
                                         )}
                                         />
-                                    {updateFormInstance.watch('status') === 'finished' && (
+                                    {/* Show score inputs if selected status is live, paused, or finished OR current status is live/paused */}
+                                    {(updateFormInstance.watch('status') === 'live' || updateFormInstance.watch('status') === 'paused' || updateFormInstance.watch('status') === 'finished' || event.status === 'live' || event.status === 'paused' ) && updateFormInstance.watch('status') !== 'upcoming' && updateFormInstance.watch('status') !== 'cancelled' && (
                                         <>
                                         <FormField
                                             control={updateFormInstance.control}
@@ -328,6 +321,7 @@ export default function AdminPage() {
                                                 <FormItem>
                                                 <FormLabel className="text-xs">Home Score</FormLabel>
                                                 <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                                                 <FormMessage />
                                                 </FormItem>
                                             )}
                                             />
@@ -338,13 +332,14 @@ export default function AdminPage() {
                                                 <FormItem>
                                                 <FormLabel className="text-xs">Away Score</FormLabel>
                                                 <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                                                 <FormMessage />
                                                 </FormItem>
                                             )}
                                             />
                                         </>
                                     )}
                                     <Button type="submit" size="sm" disabled={updateFormInstance.formState.isSubmitting}>
-                                        {updateFormInstance.formState.isSubmitting ? <LoadingSpinner size="sm"/> : <><Edit3 size={16} className="mr-1"/>Update</>}
+                                        {updateFormInstance.formState.isSubmitting ? <LoadingSpinner size="sm"/> : <><Edit3 size={16} className="mr-1"/>Update Event</>}
                                     </Button>
                                 </form>
                                 </Form>

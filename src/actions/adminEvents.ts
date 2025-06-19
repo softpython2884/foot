@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createManagedEventInDb, updateManagedEventInDb, getManagedEventFromDb, getPendingBetsForManagedEventDb, updateBetStatusDb, updateUserScoreDb } from '@/lib/db';
+import { createManagedEventInDb, updateManagedEventInDb, getManagedEventFromDb, getPendingBetsForManagedEventDb, updateUserScoreDb } from '@/lib/db';
 import type { ManagedEventDb } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 import { footballTeams } from '@/lib/mockData'; // Assuming we use mockData for team selection for now
@@ -20,7 +20,7 @@ const UpdateManagedEventSchema = z.object({
   status: z.enum(['upcoming', 'live', 'paused', 'finished', 'cancelled']),
   homeScore: z.coerce.number().int().min(0).optional().nullable(),
   awayScore: z.coerce.number().int().min(0).optional().nullable(),
-  winnerTeamApiId: z.coerce.number().int().positive().optional().nullable(),
+  winnerTeamApiId: z.coerce.number().int().positive().optional().nullable(), // only used when status becomes 'finished' AND scores are equal (manual override)
 });
 
 
@@ -44,8 +44,6 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
       return { error: 'Home team and away team cannot be the same.' };
     }
     
-    // For now, lookup names and logos from footballTeams mock data
-    // This should be expanded or made more generic if other sports are added for custom events
     let homeTeam, awayTeam;
     if (sportSlug === 'football') {
         homeTeam = footballTeams.find(t => t.id === homeTeamApiId);
@@ -79,7 +77,7 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
     }
     
     revalidatePath('/admin');
-    revalidatePath(`/sports/${sportSlug}/teams`); // Revalidate the sport's team page
+    revalidatePath(`/sports/${sportSlug}/teams`); 
     return { success: 'Event created successfully!', eventId };
 
   } catch (error) {
@@ -93,17 +91,17 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
     const validatedFields = UpdateManagedEventSchema.safeParse({
       eventId: formData.get('eventId'),
       status: formData.get('status'),
-      homeScore: formData.get('homeScore') ? parseInt(formData.get('homeScore') as string) : null,
-      awayScore: formData.get('awayScore') ? parseInt(formData.get('awayScore') as string) : null,
-      winnerTeamApiId: formData.get('winnerTeamApiId') ? parseInt(formData.get('winnerTeamApiId') as string) : null,
+      homeScore: formData.get('homeScore') ? parseInt(formData.get('homeScore') as string, 10) : null,
+      awayScore: formData.get('awayScore') ? parseInt(formData.get('awayScore') as string, 10) : null,
+      winnerTeamApiId: formData.get('winnerTeamApiId') ? parseInt(formData.get('winnerTeamApiId') as string, 10) : null,
     });
 
     if (!validatedFields.success) {
       return { error: 'Invalid update data.', details: validatedFields.error.flatten().fieldErrors };
     }
     
-    const { eventId, status, homeScore, awayScore } = validatedFields.data;
-    let { winnerTeamApiId } = validatedFields.data;
+    const { eventId, status } = validatedFields.data;
+    let { homeScore, awayScore, winnerTeamApiId } = validatedFields.data;
 
 
     const existingEvent = await getManagedEventFromDb(eventId);
@@ -111,38 +109,41 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
       return { error: 'Event not found.' };
     }
 
-    if (status === 'finished') {
-      if (homeScore == null || awayScore == null) {
-        return { error: 'Scores must be provided to finish an event.' };
-      }
-      if (homeScore === awayScore && winnerTeamApiId == null) {
-        // For sports where draws are possible and not handled by winnerTeamApiId (e.g. no penalty shootout simulated)
-        // This part might need adjustment based on specific sport rules if draws are not allowed / need a tie-breaker.
-        // For now, if scores are equal, winnerTeamApiId remains null unless explicitly set.
-      } else if (homeScore > awayScore) {
-        winnerTeamApiId = existingEvent.homeTeamApiId;
-      } else if (awayScore > homeScore) {
-        winnerTeamApiId = existingEvent.awayTeamApiId;
-      }
-      // If scores are equal and winnerTeamApiId was provided (e.g. from a penalty shootout selector), it will be used.
-    }
-
-
+    // Prepare the update object. Scores are updated regardless of status for live/paused.
     const eventToUpdate: Partial<ManagedEventDb> & { id: number } = {
       id: eventId,
       status,
-      homeScore,
-      awayScore,
-      winnerTeamApiId,
+      homeScore: homeScore, // Will be null if not provided or empty string
+      awayScore: awayScore, // Will be null if not provided or empty string
     };
+
+    if (status === 'finished') {
+      if (homeScore == null || awayScore == null) { // Ensure scores are set when finishing
+        return { error: 'Scores must be provided to finish an event.' };
+      }
+      if (homeScore > awayScore) {
+        winnerTeamApiId = existingEvent.homeTeamApiId;
+      } else if (awayScore > homeScore) {
+        winnerTeamApiId = existingEvent.awayTeamApiId;
+      } else { // Draw
+        winnerTeamApiId = null; // Explicitly set to null for a draw
+      }
+      eventToUpdate.winnerTeamApiId = winnerTeamApiId; // Add winnerTeamApiId to update for 'finished' status
+    } else {
+      // If not finishing, ensure winnerTeamApiId is not accidentally set (it should remain as is or null)
+      // We don't explicitly set winnerTeamApiId in eventToUpdate here unless status is 'finished'.
+      // If scores are updated while 'live' or 'paused', winnerTeamApiId in DB remains unchanged.
+    }
     
     const updated = await updateManagedEventInDb(eventToUpdate);
     if (!updated) {
-      return { error: 'Failed to update event status.' };
+      return { error: 'Failed to update event.' };
     }
 
-    if (status === 'finished' && winnerTeamApiId !== undefined) { // winnerTeamApiId can be null for a draw
-      await settleBetsForManagedEvent(eventId, winnerTeamApiId);
+    // Settle bets only if the event is newly finished AND a winner (or draw) has been determined.
+    // winnerTeamApiId will be set (or null for draw) inside the 'finished' block above.
+    if (status === 'finished' && existingEvent.status !== 'finished') { 
+      await settleBetsForManagedEvent(eventId, eventToUpdate.winnerTeamApiId); // Use the determined winnerTeamApiId
     }
 
     revalidatePath('/admin');
@@ -162,8 +163,7 @@ async function settleBetsForManagedEvent(managedEventId: number, winnerTeamApiId
   for (const bet of pendingBets) {
     let userWon = false;
     if (winnerTeamApiId === null) { // Draw scenario
-      // Depending on rules, bets might be voided or lost. Here, let's assume lost unless specific "draw" bet type.
-      userWon = false; 
+      userWon = false; // For now, all bets lose on a draw unless specific "draw" bet types are introduced
     } else if (bet.teamIdBetOn === winnerTeamApiId) {
       userWon = true;
     }
@@ -174,7 +174,5 @@ async function settleBetsForManagedEvent(managedEventId: number, winnerTeamApiId
     if (userWon) {
       await updateUserScoreDb(bet.userId, bet.potentialWinnings);
     }
-    // No score change for lost bets in this model, but could deduct amountBet if desired.
   }
 }
-
