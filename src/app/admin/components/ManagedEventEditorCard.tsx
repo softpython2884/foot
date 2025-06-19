@@ -25,20 +25,21 @@ interface ManagedEventEditorCardProps {
 }
 
 // Schema to handle potential number or string input and validate as a numeric string or empty
-const safeNumericStringSchema = () => z.union([z.string(), z.number()])
-  .preprocess(
+const safeNumericStringSchema = () =>
+  z.preprocess(
     (val) => {
       // console.log(`[ManagedEventEditorCard] Preprocessing score/time. Input: '${val}', type: ${typeof val}`);
-      if (val === null || val === undefined || val === '') return ''; // Normalize empty/null/undefined to empty string for consistent validation
+      if (val === null || val === undefined || val === '') return ''; // Normalize empty/null/undefined to empty string
       return String(val); // Convert numbers or other types to string
     },
     z.string() // Now we are sure it's a string (or empty string)
-  )
-  .refine(
-    (val) => val === '' || /^\d+$/.test(val), // Allow empty string or string of digits
-    { message: "Must be a non-negative integer or empty." }
-  )
-  .optional(); // Field itself is optional
+      .refine(
+        (val) => val === '' || /^\d+$/.test(val), // Allow empty string or string of digits
+        { message: "Must be a non-negative integer or empty." }
+      )
+      .optional() // The field itself is optional (can be omitted or be an empty string after preprocess)
+  );
+
 
 const updateEventStatusFormSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string)),
@@ -76,11 +77,14 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
     
     // FormData handles undefined values by not appending them, which is fine for optional fields.
     // The server-side Zod schema will coerce these strings.
+    // Only append if defined and not an empty string (empty string from form means user cleared it)
     if (data.homeScore !== undefined && data.homeScore !== '') formData.append('homeScore', data.homeScore);
     if (data.awayScore !== undefined && data.awayScore !== '') formData.append('awayScore', data.awayScore);
     if (data.winningTeamId !== undefined && data.winningTeamId !== '') formData.append('winningTeamId', data.winningTeamId); // Empty string means "Draw/No Winner"
     if (data.elapsedTime !== undefined && data.elapsedTime !== '') formData.append('elapsedTime', data.elapsedTime);
+    // Notes can be an empty string, or null/undefined.
     if (data.notes !== undefined && data.notes !== null) formData.append('notes', data.notes);
+
 
     console.log('[ManagedEventEditorCard] Client: FormData to be sent:');
     for (const pair of formData.entries()) {
@@ -234,3 +238,4 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
     </Card>
   );
 }
+
