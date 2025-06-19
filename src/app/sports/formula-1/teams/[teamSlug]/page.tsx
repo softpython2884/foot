@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink } from 'lucide-react';
+import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, UserCog, Clock } from 'lucide-react'; // Added UserCog and Clock
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -86,7 +86,8 @@ export default function Formula1TeamProfilePage() {
         setConstructorDetails(detailsResult.value);
       } else {
         console.error("Failed to fetch F1 constructor details:", detailsResult.status === 'rejected' ? detailsResult.reason : 'Constructor details API call succeeded but returned no data.');
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load constructor details.' });
+        setConstructorDetails(formula1Entities.find(e => e.id === entityId) || null);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not load live constructor details. Displaying basic info.' });
       }
       setIsLoadingData(false);
 
@@ -95,12 +96,14 @@ export default function Formula1TeamProfilePage() {
             setDrivers(driversResult.value);
          } else {
             console.info(`No live F1 drivers found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data if available.`);
-            setDrivers(mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()))); // Simple filter
-            toast({ variant: 'default', title: 'Info', description: 'No live driver data found, showing mock data.' });
+            const mockDriversForTeam = mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())); // Simple filter
+            setDrivers(mockDriversForTeam);
+            toast({ variant: 'default', title: 'Info', description: (mockDriversForTeam.length > 0 ? 'No live driver data found, showing mock data.' : 'No live or mock driver data found for this team.')});
          }
       } else { 
         console.error("Failed to fetch F1 drivers due to API error:", driversResult.reason);
-        setDrivers(mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())));
+        const mockDriversForTeam = mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()));
+        setDrivers(mockDriversForTeam);
         toast({ variant: 'destructive', title: 'API Error', description: 'Could not load live F1 drivers due to an API error, showing mock data.' });
       }
       setIsLoadingDrivers(false);
@@ -110,12 +113,18 @@ export default function Formula1TeamProfilePage() {
             setRaceResults(racesResult.value);
         } else {
             console.info(`No live F1 race results found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data.`);
-            setRaceResults(mockF1RaceResults); // Show all mock results as a fallback
-            toast({ variant: 'default', title: 'Info', description: 'No live race results found, showing mock data.' });
+            const mockResultsForTeam = mockF1RaceResults.filter(r => 
+                r.driverResults.some(dr => 
+                    drivers.some(d => d.name === dr.driverName) || // Check against fetched/mock drivers
+                    mockF1Drivers.find(md => md.name === dr.driverName && md.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())) // Fallback to check against general mock drivers for this team
+                )
+            );
+            setRaceResults(mockResultsForTeam); 
+            toast({ variant: 'default', title: 'Info', description: (mockResultsForTeam.length > 0 ? 'No live race results found, showing mock data.' : 'No live or mock race results found.') });
         }
       } else { 
         console.error("Failed to fetch F1 race results:", racesResult.status === 'rejected' ? racesResult.reason : 'No race data');
-        setRaceResults(mockF1RaceResults);
+        setRaceResults(mockF1RaceResults.filter(r => r.driverResults.some(dr => dr.driverName?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()))));
         toast({ variant: 'destructive', title: 'API Error', description: 'Could not load live F1 race results due to an API error, showing mock data.' });
       }
       setIsLoadingResults(false);
@@ -131,12 +140,14 @@ export default function Formula1TeamProfilePage() {
     } catch (error) {
       console.error("Overall error fetching F1 page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all F1 page data.' });
-       setDrivers(mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())));
-       setRaceResults(mockF1RaceResults);
+       const mockDriversForTeam = mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()));
+       setDrivers(mockDriversForTeam);
+       const mockResultsForTeam = mockF1RaceResults.filter(r => r.driverResults.some(dr => dr.driverName?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())));
+       setRaceResults(mockResultsForTeam);
     } finally {
       setIsAiLoading(false); 
     }
-  }, [currentSport.apiBaseUrl, toast]);
+  }, [currentSport.apiBaseUrl, toast, drivers]);
 
 
   useEffect(() => {
@@ -183,7 +194,7 @@ export default function Formula1TeamProfilePage() {
       const teamNameContext = constructorDetails?.name || mockEntityData?.name || 'leur écurie actuelle';
       const input: TeamInfoInput = {
         entityName: driver.name,
-        entityType: 'player', // Using 'player' for individual bio
+        entityType: 'player', 
         contextName: teamNameContext,
         question: `Fournis une biographie concise pour le pilote de Formule 1 ${driver.name}, en mentionnant son écurie actuelle ${teamNameContext}, ses faits marquants et son style de pilotage si possible.`,
       };
@@ -275,7 +286,7 @@ export default function Formula1TeamProfilePage() {
         
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Settings className="text-primary"/>Constructor Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Info className="text-primary"/>Constructor Details</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-sm">
             {isLoadingData && !constructorDetails ? <div className="md:col-span-2 flex justify-center py-5"><LoadingSpinner/></div> :
             <>
@@ -287,7 +298,7 @@ export default function Formula1TeamProfilePage() {
               {entityDetailsToDisplay?.firstTeamEntry != null && <div className="flex items-center gap-2"><CalendarClock size={16} className="text-muted-foreground"/><strong>First Entry:</strong> {entityDetailsToDisplay.firstTeamEntry}</div>}
               {entityDetailsToDisplay?.polePositions != null && <div className="flex items-center gap-2"><BarChartHorizontalBig size={16} className="text-muted-foreground"/><strong>Pole Positions:</strong> {entityDetailsToDisplay.polePositions}</div>}
               {entityDetailsToDisplay?.fastestLaps != null && <div className="flex items-center gap-2"><Clock size={16} className="text-muted-foreground"/><strong>Fastest Laps:</strong> {entityDetailsToDisplay.fastestLaps}</div>}
-              {!isLoadingData && !entityDetailsToDisplay?.director && !entityDetailsToDisplay?.base && <p className="text-muted-foreground md:col-span-2">Detailed constructor information not available.</p>}
+              {!isLoadingData && (!entityDetailsToDisplay?.director && !entityDetailsToDisplay?.base && !constructorDetails) && <p className="text-muted-foreground md:col-span-2 text-center py-2">Detailed constructor information not available.</p>}
             </>
             }
           </CardContent>
@@ -362,7 +373,7 @@ export default function Formula1TeamProfilePage() {
               </div>
               <DialogClose asChild>
                 <Button type="button" variant="outline" className="absolute right-4 top-4 p-1.5 h-auto">
-                  <ExternalLink className="sr-only" /> {/* Using X from lucide for close */}
+                   <X size={18}/> {/* Using X from lucide for close */}
                   <span className="sr-only">Close</span>
                 </Button>
               </DialogClose>
@@ -401,7 +412,7 @@ export default function Formula1TeamProfilePage() {
                         {race.weather && <p className="text-xs text-muted-foreground mt-2">Weather: {race.weather}</p>}
                     </Card>
                 ))
-             ) : <p className="text-muted-foreground text-center">Recent race results for {CURRENT_F1_SEASON} not available.</p>
+             ) : <p className="text-muted-foreground text-center py-4">Recent race results for {CURRENT_F1_SEASON} not available.</p>
             }
           </CardContent>
         </Card>
