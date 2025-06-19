@@ -20,9 +20,7 @@ import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
 import { getFootballTeamDetails, getFootballMatchesForTeam, getFootballCoachForTeam, getFootballSquadForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
-const INITIAL_PAST_MATCHES_COUNT = 10;
-const LOAD_MORE_INCREMENT = 10;
-const SEASON_FOR_FOOTBALL_MATCHES = 2023;
+const SEASONS_TO_FETCH_FOOTBALL = [2023, 2022, 2021]; // Fetch for these recent seasons
 
 function simpleMarkdownToHtml(markdown: string): string {
   if (!markdown) return '';
@@ -48,7 +46,7 @@ function simpleMarkdownToHtml(markdown: string): string {
 export default function FootballTeamProfilePage() {
   const params = useParams();
   const teamSlug = params.teamSlug as string;
-  const sportSlug = 'football'; // This page is specific to football
+  const sportSlug = 'football';
   const router = useRouter();
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -56,16 +54,16 @@ export default function FootballTeamProfilePage() {
   const [teamDetails, setTeamDetails] = useState<TeamApp | null>(null);
   const [mockTeamData, setMockTeamData] = useState<TeamApp | null>(null);
 
-  const [allPastMatches, setAllPastMatches] = useState<MatchApp[]>([]);
-  const [visiblePastMatchesCount, setVisiblePastMatchesCount] = useState(INITIAL_PAST_MATCHES_COUNT);
+  const [matchesBySeason, setMatchesBySeason] = useState<Record<number, MatchApp[]>>({});
+  const [isLoadingMatches, setIsLoadingMatches] = useState(true);
 
   const [coach, setCoach] = useState<CoachApp | null>(null);
   const [players, setPlayers] = useState<PlayerApp[]>([]);
 
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isLoadingMatches, setIsLoadingMatches] = useState(false);
-  const [isLoadingCoach, setIsLoadingCoach] = useState(false);
-  const [isLoadingPlayers, setIsLoadingPlayers] = useState(false);
+  // isLoadingCoach and isLoadingPlayers remain for their specific sections
+  const [isLoadingCoach, setIsLoadingCoach] = useState(true);
+  const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
 
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState<string>('');
@@ -73,7 +71,7 @@ export default function FootballTeamProfilePage() {
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition; // Should always be found
+  const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition;
 
   const fetchTeamPageData = useCallback(async (apiTeamId: number, teamNameFromMock: string) => {
     setIsLoadingData(true);
@@ -82,33 +80,49 @@ export default function FootballTeamProfilePage() {
     setIsLoadingPlayers(true);
 
     setTeamDetails(null);
-    setAllPastMatches([]);
-    setVisiblePastMatchesCount(INITIAL_PAST_MATCHES_COUNT);
+    setMatchesBySeason({});
     setCoach(null);
     setPlayers([]);
 
     try {
       const detailsPromise = getFootballTeamDetails(apiTeamId, currentSport.apiBaseUrl);
-      // Fetch all finished matches for the season, then sort and slice client-side
-      const pastMatchesPromise = getFootballMatchesForTeam(apiTeamId, SEASON_FOR_FOOTBALL_MATCHES, { status: 'FT' }, currentSport.apiBaseUrl);
       const coachPromise = getFootballCoachForTeam(apiTeamId, currentSport.apiBaseUrl);
       const squadPromise = getFootballSquadForTeam(apiTeamId, currentSport.apiBaseUrl);
 
-      const [details, fetchedPastMatches, fetchedCoach, fetchedPlayers] = await Promise.all([
+      // Fetch matches for multiple seasons
+      const matchPromises = SEASONS_TO_FETCH_FOOTBALL.map(season =>
+        getFootballMatchesForTeam(apiTeamId, season, { status: 'FT' }, currentSport.apiBaseUrl)
+          .then(matches => ({ 
+            season, 
+            matches: matches.sort((a, b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime()) 
+          }))
+          .catch(error => {
+            console.error(`Error fetching matches for team ${apiTeamId}, season ${season}:`, error);
+            return { season, matches: [] as MatchApp[], error: true };
+          })
+      );
+
+      const [details, fetchedCoach, fetchedPlayers, ...matchResultsCombined] = await Promise.all([
         detailsPromise,
-        pastMatchesPromise,
         coachPromise,
-        squadPromise
+        squadPromise,
+        Promise.all(matchPromises) // This ensures matchPromises itself is resolved
       ]);
+      
+      const seasonMatchResults = matchResultsCombined[0]; // Extract the array of season results
+
 
       setTeamDetails(details);
-      if (fetchedPastMatches.length > 0) {
-        const sortedFinishedMatches = fetchedPastMatches
-          .sort((a, b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime());
-        setAllPastMatches(sortedFinishedMatches);
-      } else {
-        setAllPastMatches([]);
+      
+      const newMatchesBySeason: Record<number, MatchApp[]> = {};
+      if (Array.isArray(seasonMatchResults)) {
+        seasonMatchResults.forEach(result => {
+          if (result && result.matches.length > 0) {
+            newMatchesBySeason[result.season] = result.matches;
+          }
+        });
       }
+      setMatchesBySeason(newMatchesBySeason);
       setIsLoadingMatches(false);
 
       setCoach(fetchedCoach);
@@ -154,16 +168,14 @@ export default function FootballTeamProfilePage() {
       if (foundMockTeam) {
         fetchTeamPageData(foundMockTeam.id, foundMockTeam.name);
       } else {
-        setIsLoadingData(false);
+        setIsLoadingData(false); // Mock team not found, stop overall loading
+        setIsLoadingMatches(false);
+        setIsLoadingCoach(false);
+        setIsLoadingPlayers(false);
       }
     }
   }, [teamSlug, fetchTeamPageData]);
 
-  const handleLoadMorePastMatches = () => {
-    setVisiblePastMatchesCount(prevCount => prevCount + LOAD_MORE_INCREMENT);
-  };
-
-  const displayedPastMatches = allPastMatches.slice(0, visiblePastMatchesCount);
 
   const handleAskAi = async () => {
     const teamNameToUse = teamDetails?.name || mockTeamData?.name;
@@ -201,6 +213,11 @@ export default function FootballTeamProfilePage() {
   if (!mockTeamData && !isLoadingData) {
     notFound();
   }
+
+  const sortedSeasonYears = Object.keys(matchesBySeason)
+    .map(Number)
+    .sort((a, b) => b - a); // Sort seasons descending (e.g., 2023, 2022, 2021)
+
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -343,36 +360,42 @@ export default function FootballTeamProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 gap-8">
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary" />Past Matches (Season {SEASON_FOR_FOOTBALL_MATCHES})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingMatches && displayedPastMatches.length === 0 && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-              {!isLoadingMatches && allPastMatches.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">
-                  No past matches found for {displayTeamName || 'this team'} (Season {SEASON_FOR_FOOTBALL_MATCHES}).
-                  This may be due to API plan limitations or no available data for this period.
-                </p>
-              )}
-              {displayedPastMatches.length > 0 && (
-                <ul className="space-y-4">
-                  {displayedPastMatches.map((match) => (
-                    <MatchCard key={match.id} match={match} isWatchlisted={false} onToggleWatchlist={() => { /* TODO */ }} />
-                  ))}
-                </ul>
-              )}
-              {!isLoadingMatches && allPastMatches.length > visiblePastMatchesCount && (
-                <div className="mt-6 text-center">
-                  <Button onClick={handleLoadMorePastMatches} variant="outline">
-                    Load More Past Matches
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="mb-8 shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2"><Trophy className="text-primary" />Match History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoadingMatches && Object.keys(matchesBySeason).length === 0 && (
+              <div className="flex justify-center py-4"><LoadingSpinner /></div>
+            )}
+            {!isLoadingMatches && sortedSeasonYears.length === 0 && (
+              <p className="text-muted-foreground text-center py-4">
+                No past matches found for {displayTeamName || 'this team'} for the seasons checked.
+                This may be due to API plan limitations or no available data.
+              </p>
+            )}
+            {sortedSeasonYears.length > 0 && (
+              <div className="space-y-6">
+                {sortedSeasonYears.map((season) => (
+                  <div key={season}>
+                    <h3 className="text-2xl font-semibold my-4 text-secondary-foreground bg-muted/50 p-3 rounded-md shadow-sm">
+                      Saison {season} - {Number(season) + 1}
+                    </h3>
+                    {matchesBySeason[season] && matchesBySeason[season].length > 0 ? (
+                      <ul className="space-y-4">
+                        {matchesBySeason[season].map((match) => (
+                          <MatchCard key={match.id} match={match} isWatchlisted={false} onToggleWatchlist={() => { /* TODO: Implement watchlist logic if needed */ }} />
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-muted-foreground pl-3">Aucun match terminé trouvé pour cette saison pour cette équipe.</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="mt-12 text-center">
           <Link href={`/sports/${sportSlug}/teams`}>
@@ -384,5 +407,4 @@ export default function FootballTeamProfilePage() {
     </div>
   );
 }
-
     
