@@ -35,7 +35,7 @@ async function initializeDb(db: Database): Promise<void> {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       hashedPassword TEXT NOT NULL,
-      score INTEGER DEFAULT 0 NOT NULL,
+      score INTEGER DEFAULT 10 NOT NULL, -- Changed default score from 0 to 10
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -91,6 +91,7 @@ export async function getUserById(id: number): Promise<User | undefined> {
 
 export async function createUser(name: string, email: string, hashedPassword: string):Promise<number | undefined> {
   const db = await getDb();
+  // The score will default to 10 due to the table schema change.
   const result = await db.run(
     'INSERT INTO users (name, email, hashedPassword) VALUES (?, ?, ?)',
     name,
@@ -251,7 +252,21 @@ export async function getManagedEventFromDb(id: number): Promise<ManagedEventApp
 
   if (!homeTeam || !awayTeam) {
     console.error(`Could not find team details for managed event ${id}`);
-    return undefined; // Or handle as a partial object if preferred
+    // Return with placeholder team data to avoid crashing if teams were deleted from mockData
+     return {
+      id: eventDb.id,
+      name: eventDb.name,
+      sportSlug: eventDb.sport_slug,
+      homeTeam: homeTeam || { id: eventDb.home_team_id, name: 'Unknown Home Team', sportSlug: eventDb.sport_slug },
+      awayTeam: awayTeam || { id: eventDb.away_team_id, name: 'Unknown Away Team', sportSlug: eventDb.sport_slug },
+      eventTime: eventDb.event_time,
+      status: eventDb.status,
+      homeScore: eventDb.home_score,
+      awayScore: eventDb.away_score,
+      winningTeamId: eventDb.winning_team_id,
+      elapsedTime: eventDb.elapsed_time,
+      notes: eventDb.notes,
+    };
   }
 
   return {
@@ -344,3 +359,5 @@ export async function updateManagedEventInDb(
   );
   return (result.changes ?? 0) > 0;
 }
+
+    
