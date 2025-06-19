@@ -30,7 +30,7 @@ export async function getTeamInfo(input: TeamInfoInput): Promise<TeamInfoOutput>
 
 const teamInfoPrompt = ai.definePrompt({
   name: 'teamInfoPrompt',
-  input: {schema: TeamInfoInputSchema},
+  input: {schema: TeamInfoInputSchema}, // This schema is for the core input to the prompt definition
   output: {schema: TeamInfoOutputSchema},
   prompt: `Réponds toujours en français. Tu es un assistant expert en sport très compétent.
 Utilise le format Markdown pour la mise en forme de ta réponse (gras, italique, listes).
@@ -43,7 +43,7 @@ Contexte supplémentaire : {{{contextName}}}.
 Veuillez répondre spécifiquement à la question suivante :
 "{{{question}}}"
 Fournis une réponse concise et informative.
-{{else if (eq entityType "player")}}
+{{else if isPlayerType}}
 L'utilisateur souhaite une biographie pour le joueur : {{{entityName}}}.
 {{#if contextName}}
 Ce joueur est associé à l'équipe/contexte : {{{contextName}}}.
@@ -69,15 +69,23 @@ const teamInfoFlow = ai.defineFlow(
     outputSchema: TeamInfoOutputSchema,
   },
   async (input) => {
-    // Default entityType to 'team' if not provided, especially if a question is asked without specifying type.
-    const finalInput = {
-      ...input,
-      entityType: input.entityType || (input.question ? 'team' : 'team'),
+    // Default entityType if not provided.
+    const resolvedEntityType = input.entityType || 'team';
+    
+    const isPlayerTypeFlag = resolvedEntityType === 'player';
+
+    // Construct the payload for the prompt instance, including the new flag
+    const promptPayload = {
+      ...input, 
+      entityType: resolvedEntityType, // Pass the resolved entityType
+      isPlayerType: isPlayerTypeFlag, // Pass the boolean flag for Handlebars
     };
-    const {output} = await teamInfoPrompt(finalInput);
+
+    const {output} = await teamInfoPrompt(promptPayload);
     if (!output) {
       return { response: "Je suis désolé, je n'ai pas pu récupérer d'informations pour cette entité pour le moment. Veuillez réessayer plus tard." };
     }
     return output;
   }
 );
+
