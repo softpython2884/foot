@@ -17,7 +17,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
-import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop, Check } from 'lucide-react';
+import { UserCircle, LogOut, LayoutDashboard, Palette, Sun, Moon, Laptop, Check, ShieldQuestion } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 
 export function Header() {
@@ -47,14 +47,20 @@ export function Header() {
     <header className="bg-primary text-primary-foreground py-4 shadow-md">
       <div className="container mx-auto flex items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-3">
-          <svg width="36" height="36" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="FootySchedule Logo">
-            <title>FootySchedule Logo</title>
-            <rect x="10" y="10" width="80" height="80" rx="10" stroke="currentColor" strokeWidth="5"/>
-            <path d="M25 30H75M25 50H75M25 70H55" stroke="currentColor" strokeWidth="6" strokeLinecap="round"/>
-            <circle cx="70" cy="70" r="10" fill="currentColor" />
-            <path d="M70 65V70H75" stroke="hsl(var(--background))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          <svg width="40" height="40" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="SportSphere Logo">
+            <title>SportSphere Logo</title>
+            <circle cx="100" cy="100" r="90" stroke="currentColor" strokeWidth="12"/>
+            {/* Football */}
+            <circle cx="70" cy="70" r="15" fill="hsl(var(--accent))" />
+            {/* Basketball */}
+            <path d="M130 70 L145 85 L130 100 L115 85 Z" fill="hsl(var(--destructive))" />
+            {/* Generic Sport Icon (e.g. a simple star or a different shape) */}
+            <path d="M100 120 L112 155 L145 155 L118 175 L125 200 L100 180 L75 200 L82 175 L55 155 L88 155 Z" transform="translate(0, -45)" fill="hsl(var(--secondary-foreground))" opacity="0.7"/>
+             {/* F1 like element - a simple tyre shape */}
+            <circle cx="130" cy="130" r="20" stroke="currentColor" strokeWidth="6" fill="none" />
+            <circle cx="130" cy="130" r="8" fill="currentColor" />
           </svg>
-          <h1 className="text-3xl font-bold font-headline">FootySchedule</h1>
+          <h1 className="text-3xl font-bold font-headline">SportSphere</h1>
         </Link>
         <nav className="flex items-center gap-2">
           {authLoading ? (

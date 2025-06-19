@@ -1,5 +1,6 @@
 
-// --- API-Sports Specific Response Types --- (Based on footapidocs.md and common structure)
+
+// --- API-Sports Specific Response Types ---
 
 export interface ApiSportsTeamMinimal {
   id: number;
@@ -128,7 +129,6 @@ export interface ApiSportsLeaguesApiResponse {
   response: ApiSportsLeagueResponseItem[];
 }
 
-// For /coachs endpoint
 export interface ApiSportsCoachInfo {
   id: number | null;
   name: string | null;
@@ -158,8 +158,8 @@ export interface ApiSportsCoachCareerItem {
   end: string | null;
 }
 
-export interface ApiSportsCoachResponseItem { // This is what's in the `response` array
-  id: number | null; // Sometimes coach info is directly here
+export interface ApiSportsCoachResponseItem { 
+  id: number | null; 
   name: string | null;
   firstname: string | null;
   lastname: string | null;
@@ -173,7 +173,7 @@ export interface ApiSportsCoachResponseItem { // This is what's in the `response
   height: string | null;
   weight: string | null;
   photo: string | null;
-  team: ApiSportsTeamMinimalForCoach | null; // Current team
+  team: ApiSportsTeamMinimalForCoach | null; 
   career?: ApiSportsCoachCareerItem[];
 }
 
@@ -187,23 +187,22 @@ export interface ApiSportsCoachApiResponse {
   response: ApiSportsCoachResponseItem[];
 }
 
-// For /players/squads endpoint
 export interface ApiSportsPlayerInfoInSquad {
   id: number | null;
   name: string | null;
   age: number | null;
   number: number | null;
-  position: string | null; // e.g., "Attacker", "Midfielder"
+  position: string | null; 
   photo: string | null;
 }
 
-export interface ApiSportsSquadTeamInfo { // The team object inside the squad response
+export interface ApiSportsSquadTeamInfo { 
   id: number;
   name: string;
   logo: string | null;
 }
 
-export interface ApiSportsSquadPlayerResponseItem { // Item in the `response` array
+export interface ApiSportsSquadPlayerResponseItem { 
   team: ApiSportsSquadTeamInfo;
   players: ApiSportsPlayerInfoInSquad[];
 }
@@ -219,32 +218,44 @@ export interface ApiSportsSquadApiResponse {
 
 
 // --- Application specific, simplified types ---
+export interface SportDefinition {
+  name: string;
+  slug: string;
+  apiBaseUrl: string;
+  apiKeyHeaderName: string; // e.g., 'x-apisports-key' or 'x-rapidapi-key'
+  apiKeyEnvVar: string; // Name of the environment variable storing the key
+  iconUrl?: string; // URL for a representative icon/image of the sport
+  // Potentially add more sport-specific config here later
+}
+
 export interface TeamApp {
-  id: number;
+  id: number; // This will be the API-specific ID for the team
   name: string;
   logoUrl?: string | null;
-  slug?: string;
+  slug?: string; // Generated for URL routing
   country?: string | null;
   founded?: number | null;
   venueName?: string | null;
   venueCity?: string | null;
   venueCapacity?: number | null;
+  sportSlug?: string; // To know which sport this team belongs to
 }
 
 export interface LeagueApp {
-  id: number;
+  id: number; // API-specific ID
   name: string;
   logoUrl?: string | null;
   country?: string;
   season?: number;
+  sportSlug?: string;
 }
 
 export interface MatchApp {
-  id: number;
+  id: number; // API-specific ID
   league: LeagueApp;
   homeTeam: TeamApp;
   awayTeam: TeamApp;
-  matchTime: string;
+  matchTime: string; // ISO8601 string
   statusShort: string;
   statusLong: string;
   elapsedTime?: number | null;
@@ -253,6 +264,7 @@ export interface MatchApp {
   homeScore?: number | null;
   awayScore?: number | null;
   isWatchlisted?: boolean;
+  sportSlug?: string;
 }
 
 export interface CoachApp {
@@ -261,6 +273,7 @@ export interface CoachApp {
   photoUrl?: string | null;
   nationality?: string | null;
   age?: number | null;
+  sportSlug?: string;
 }
 
 export interface PlayerApp {
@@ -270,10 +283,11 @@ export interface PlayerApp {
   number?: number | null;
   position?: string | null;
   age?: number | null;
+  sportSlug?: string;
 }
 
 
-// --- User and Betting types ---
+// --- User and Betting types (remain largely the same for now) ---
 export interface User {
   id: number;
   name: string;
@@ -290,13 +304,14 @@ export type LeaderboardUser = Omit<User, 'hashedPassword'>;
 export interface Bet {
   id: number;
   userId: number;
-  matchId: number;
-  teamIdBetOn: number;
+  matchId: number; // This will be the API-specific fixture ID
+  teamIdBetOn: number; // API-specific team ID
   amountBet: number;
   potentialWinnings: number;
   status: 'pending' | 'won' | 'lost';
   createdAt: string;
   updatedAt?: string;
+  sportSlug?: string; // To associate bet with a sport
 }
 
 export interface BetWithMatchDetails extends Bet {
@@ -308,12 +323,12 @@ export interface BetWithMatchDetails extends Bet {
 }
 
 // --- Mock Data specific types ---
+// Team interface for mock data can extend TeamApp
 export interface Team extends TeamApp {
   shortName?: string;
-  crestUrl?: string; // Deprecated
 }
 
+// League interface for mock data can extend LeagueApp
 export interface League extends LeagueApp {
   code?: string;
-  emblemUrl?: string; // Deprecated
 }

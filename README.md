@@ -1,6 +1,7 @@
-# FootySchedule - Application de Suivi de Matchs de Football
 
-Bienvenue sur FootySchedule ! Cette application Next.js vous permet de consulter les informations des équipes de football, leurs matchs passés, et d'obtenir des résumés et réponses à vos questions grâce à l'IA.
+# SportSphere - Votre Guide Ultime du Monde du Sport
+
+Bienvenue sur SportSphere ! Cette application Next.js vous permet de consulter les informations des équipes de football, leurs matchs passés, et d'obtenir des résumés et réponses à vos questions grâce à l'IA. (Avec l'ambition de s'étendre à d'autres sports !)
 
 ## Table des Matières
 
@@ -25,15 +26,17 @@ Bienvenue sur FootySchedule ! Cette application Next.js vous permet de consulter
 7.  [Clés API](#clés-api)
 8.  [Qualité du Code](#qualité-du-code)
 9.  [Dépannage](#dépannage)
+10. [Contribuer et Étendre à d'Autres Sports](#contribuer-et-étendre-à-dautres-sports)
 
 ## Aperçu du Projet
 
-FootySchedule a pour objectif principal de permettre aux utilisateurs de :
-*   Parcourir une liste d'équipes de football.
-*   Consulter la page de profil détaillée de chaque équipe.
-*   Voir les matchs passés d'une équipe.
-*   Interagir avec un assistant IA pour obtenir des résumés et des réponses à des questions spécifiques sur les équipes.
-*   (Fonctionnalités futures potentielles : paris, watchlist plus avancée, etc.)
+SportSphere a pour objectif principal de permettre aux utilisateurs de :
+*   Sélectionner un sport parmi une liste (Football, F1, Basketball, etc. - initialement Football est le plus développé).
+*   Parcourir une liste d'équipes (ou entités sportives pertinentes) pour le sport sélectionné.
+*   Consulter la page de profil détaillée de chaque équipe/entité.
+*   Voir les matchs passés d'une équipe (pour le football initialement).
+*   Interagir avec un assistant IA pour obtenir des résumés et des réponses à des questions spécifiques sur les équipes/entités.
+*   (Fonctionnalités futures potentielles : paris, watchlist plus avancée, informations spécifiques à d'autres sports).
 
 ## Stack Technique
 
@@ -42,7 +45,7 @@ FootySchedule a pour objectif principal de permettre aux utilisateurs de :
 *   **Composants UI:** [ShadCN UI](https://ui.shadcn.com/)
 *   **Styling:** [Tailwind CSS](https://tailwindcss.com/)
 *   **Fonctionnalités IA:** [Genkit (Google AI)](https://firebase.google.com/docs/genkit)
-*   **API de Données Football:** [API-Football (api-sports.io)](https://www.api-football.com/)
+*   **API de Données Sportives:** [API-Football (api-sports.io)](https://www.api-football.com/) et potentiellement d'autres API du même fournisseur pour d'autres sports.
 *   **Base de Données:** SQLite (via `sqlite` et `sqlite3`)
 *   **Langage:** TypeScript
 
@@ -67,11 +70,12 @@ FootySchedule a pour objectif principal de permettre aux utilisateurs de :
     ```
 
 3.  **Variables d'Environnement :**
-    Créez un fichier `.env` à la racine du projet et ajoutez-y votre clé API pour API-Sports :
+    Créez un fichier `.env` à la racine du projet et ajoutez-y votre clé API pour API-Sports (utilisée pour le football et potentiellement d'autres sports du même fournisseur) :
     ```env
-    API_SPORTS_KEY=VOTRE_CLE_API_SPORTS_ICI
+    # Clé API unique pour tous les services api-sports.io que vous utilisez
+    API_SPORTS_KEY=VOTRE_CLE_API_SPORTS_ICI 
     ```
-    Vous pouvez obtenir une clé API gratuite sur [api-football.com](https://dashboard.api-football.com/register). Le plan gratuit a des limitations (ex: 100 requêtes/jour, accès limité aux saisons récentes).
+    Vous pouvez obtenir une clé API gratuite sur [api-football.com](https://dashboard.api-football.com/register) (ou le dashboard équivalent pour les autres sports). Le plan gratuit a des limitations (ex: 100 requêtes/jour par API, accès limité aux saisons récentes).
 
 4.  **Initialiser la base de données :**
     La base de données SQLite (`db/app.db`) sera créée automatiquement au premier lancement si elle n'existe pas, grâce au script d'initialisation dans `src/lib/db.ts`.
@@ -103,17 +107,22 @@ Voici un aperçu des dossiers importants :
 ├── src/
 │   ├── app/                  # Pages et layouts (Next.js App Router)
 │   │   ├── (auth)/           # Routes liées à l'authentification (ex: login, register)
-│   │   ├── team/
-│   │   │   └── [teamSlug]/   # Page de profil dynamique d'une équipe
+│   │   ├── sports/
+│   │   │   └── [sportSlug]/
+│   │   │       ├── teams/
+│   │   │       │   ├── page.tsx          # Page listant les équipes d'un sport
+│   │   │       │   └── [teamSlug]/
+│   │   │       │       └── page.tsx      # Page de profil dynamique d'une équipe (ex: football)
+│   │   │       └── ...                   # Autres pages spécifiques au sport (ex: drivers, circuits pour F1)
 │   │   ├── globals.css       # Styles globaux et variables de thèmes ShadCN
 │   │   ├── layout.tsx        # Layout principal de l'application
-│   │   └── page.tsx          # Page d'accueil
+│   │   └── page.tsx          # Page d'accueil (sélection du sport)
 │   ├── actions/              # Server Actions (logique backend pour formulaires, etc.)
 │   │   ├── auth.ts           # Actions pour l'authentification
-│   │   └── bets.ts           # Actions pour la gestion des paris (si implémenté)
+│   │   └── bets.ts           # Actions pour la gestion des paris
 │   ├── ai/                   # Logique liée à l'IA (Genkit)
 │   │   ├── flows/            # Définitions des flows Genkit
-│   │   │   └── team-info-flow.ts # Flow pour obtenir des infos sur les équipes
+│   │   │   └── team-info-flow.ts # Flow pour obtenir des infos sur les équipes (générique)
 │   │   ├── dev.ts            # Configuration pour le dev server Genkit
 │   │   └── genkit.ts         # Initialisation et configuration de Genkit
 │   ├── components/           # Composants React réutilisables
@@ -121,8 +130,8 @@ Voici un aperçu des dossiers importants :
 │   │   ├── BettingModal.tsx
 │   │   ├── Footer.tsx
 │   │   ├── Header.tsx
-│   │   ├── MatchCard.tsx
-│   │   └── TeamBannerCard.tsx
+│   │   ├── MatchCard.tsx     # Spécifique au football pour l'instant
+│   │   └── TeamBannerCard.tsx # Pourrait être généralisé
 │   ├── context/              # Contextes React pour la gestion d'état global
 │   │   ├── AuthContext.tsx
 │   │   └── ThemeContext.tsx
@@ -132,11 +141,11 @@ Voici un aperçu des dossiers importants :
 │   ├── lib/                  # Utilitaires, types, et logique partagée
 │   │   ├── db.ts             # Interaction avec la base de données SQLite
 │   │   ├── dateUtils.ts      # Fonctions utilitaires pour les dates
-│   │   ├── mockData.ts       # Données fictives (utilisées pour la liste d'équipes initiale)
+│   │   ├── mockData.ts       # Données fictives (sports supportés, équipes initiales pour le foot)
 │   │   ├── types.ts          # Définitions TypeScript des types et interfaces
 │   │   └── utils.ts          # Fonctions utilitaires générales (ex: cn pour classnames)
 │   └── services/             # Services pour interagir avec des API externes
-│       └── apiSportsService.ts # Logique pour appeler l'API-Football (api-sports.io)
+│       └── apiSportsService.ts # Logique pour appeler les API api-sports.io (football, F1, etc.)
 ├── public/                 # Fichiers statiques (images, etc.)
 ├── .env                    # Fichier pour les variables d'environnement (NON VERSIONNÉ)
 ├── components.json         # Configuration ShadCN UI
@@ -149,14 +158,11 @@ Voici un aperçu des dossiers importants :
 
 ### Pages et Routage (Next.js App Router)
 
-*   Les pages sont situées dans `src/app/`. Chaque dossier représente un segment de route.
-*   Un fichier `page.tsx` dans un dossier définit l'interface utilisateur pour cette route.
-*   Les routes dynamiques utilisent des crochets, ex: `src/app/team/[teamSlug]/page.tsx` pour `monsite.com/team/nom-de-lequipe`.
-*   Le fichier `src/app/layout.tsx` définit la structure HTML de base pour toutes les pages.
-
-**Pour ajouter une nouvelle page :**
-1.  Créez un nouveau dossier dans `src/app/` (ex: `src/app/nouvelle-page/`).
-2.  Ajoutez un fichier `page.tsx` dans ce dossier avec votre composant React.
+*   La page d'accueil (`src/app/page.tsx`) permet de sélectionner un sport.
+*   Les pages relatives à un sport sont dans `src/app/sports/[sportSlug]/`.
+    *   Par exemple, `src/app/sports/football/teams/page.tsx` liste les équipes de football.
+    *   `src/app/sports/football/teams/[teamSlug]/page.tsx` affiche le profil d'une équipe de football.
+*   Pour ajouter une nouvelle page (ex: classement d'un sport), créez un nouveau dossier/fichier `page.tsx` dans la structure `sports/[sportSlug]/`.
 
 ### Composants React (ShadCN UI)
 
@@ -164,93 +170,103 @@ Voici un aperçu des dossiers importants :
 *   Les composants d'interface utilisateur de base proviennent de **ShadCN UI**. Ils sont installés dans `src/components/ui/`. **Il est généralement déconseillé de modifier directement ces fichiers `ui/`**. Préférez créer vos propres composants qui utilisent ceux de ShadCN.
 *   Utilisez des props pour rendre les composants configurables et réutilisables.
 
-**Pour créer un nouveau composant :**
-1.  Créez un fichier `.tsx` dans `src/components/` (ex: `MonNouveauComposant.tsx`).
-2.  Définissez votre composant fonctionnel React.
-3.  Importez et utilisez-le dans vos pages ou d'autres composants.
-
 ### Styling (Tailwind CSS & Thèmes)
 
-*   **Tailwind CSS** est utilisé pour le styling utilitaire. Appliquez les classes directement dans votre JSX.
-*   **ShadCN UI** est configuré pour utiliser des variables CSS pour les thèmes. Ces variables sont définies dans `src/app/globals.css`.
-*   Pour changer les couleurs primaires, d'accent, de fond, etc., modifiez les variables HSL dans `:root` (thème clair par défaut) et `.dark` (thème sombre par défaut) dans `globals.css`.
-*   Des thèmes supplémentaires (ex: `.theme-blue`) sont également définis dans `globals.css` et gérés par `ThemeContext`.
+*   **Tailwind CSS** est utilisé pour le styling utilitaire.
+*   **ShadCN UI** est configuré avec des variables CSS pour les thèmes dans `src/app/globals.css`.
+*   Modifiez les variables HSL dans `:root` (thème clair) et `.dark` (thème sombre) pour changer les couleurs principales. D'autres thèmes (`.theme-blue`, etc.) sont aussi définis.
 
 ### Logique Côté Serveur (Server Actions)
 
-*   Les Server Actions permettent d'exécuter du code côté serveur directement depuis des composants client, sans avoir à créer des routes API manuelles pour les mutations de données (ex: soumission de formulaires).
-*   Elles sont définies dans des fichiers avec la directive `'use server';` au début (ex: `src/actions/auth.ts`).
-*   Les fonctions exportées de ces fichiers doivent être `async`.
-*   Elles peuvent être appelées depuis des formulaires (`<form action={serverAction}>`) ou directement en JavaScript.
+*   Situées dans `src/actions/`, elles gèrent les mutations de données (ex: login, paris).
+*   Elles sont marquées avec `'use server';` et doivent être `async`.
 
 ### Base de Données (SQLite)
 
-*   Le projet utilise SQLite pour la persistance des données (utilisateurs, paris, etc.).
-*   Le fichier de base de données est `db/app.db`.
-*   Toutes les interactions avec la base de données sont gérées dans `src/lib/db.ts`. Ce fichier contient :
-    *   La connexion à la base de données.
-    *   L'initialisation du schéma (création des tables si elles n'existent pas).
-    *   Des fonctions pour lire et écrire des données (ex: `findUserByEmail`, `createUser`, `createBetDb`).
-*   Pour modifier le schéma, ajoutez de nouvelles instructions `CREATE TABLE` ou `ALTER TABLE` dans la fonction `initializeDb`.
+*   Stocke les utilisateurs, paris, etc. dans `db/app.db`.
+*   Les interactions sont gérées dans `src/lib/db.ts`. Pour modifier le schéma, ajustez `initializeDb`.
 
 ### Intégration API Externe (API-Sports)
 
-*   Toutes les requêtes vers l'API-Football (api-sports.io) sont gérées dans `src/services/apiSportsService.ts`.
+*   Toutes les requêtes vers les API `api-sports.io` (pour le football, F1, etc.) sont gérées dans `src/services/apiSportsService.ts`.
 *   Ce fichier contient :
-    *   Une fonction `fetchFromApiSports` pour gérer l'authentification et les appels de base.
-    *   Des fonctions spécifiques pour chaque endpoint de l'API utilisé (ex: `getApiSportsTeamDetails`, `getApiSportsMatchesForTeam`).
-    *   Des fonctions de mapping pour transformer les réponses brutes de l'API en types de données utilisés par l'application (`TeamApp`, `MatchApp`).
-*   **Attention aux quotas API !** Le plan gratuit est limité (ex: 100 requêtes/jour). Optimisez les appels et utilisez le cache de Next.js (via l'option `revalidate` dans `fetch`).
+    *   Une fonction `fetchDataForSport` pour gérer l'authentification et les appels de base à n'importe quelle API `api-sports.io` (en passant l'URL de base du sport).
+    *   Des fonctions spécifiques pour chaque sport et endpoint (ex: `getFootballTeamDetails`, `getFootballMatchesForTeam`).
+    *   Des fonctions de mapping pour transformer les réponses brutes de l'API en types de données utilisés par l'application (`TeamApp`, `MatchApp`, etc.).
+*   **Attention aux quotas API !** Le plan gratuit est limité (ex: 100 requêtes/jour par API). Optimisez les appels et utilisez le cache de Next.js.
 
 ### Fonctionnalités IA (Genkit)
 
-*   Genkit est utilisé pour les fonctionnalités d'intelligence artificielle, comme la génération de résumés d'équipes.
-*   **Configuration :** L'initialisation de Genkit et la configuration du modèle (ex: Gemini) se trouvent dans `src/ai/genkit.ts`.
-*   **Flows :** La logique principale de l'IA est définie dans des "Flows". Un flow est une fonction qui peut appeler des modèles d'IA, des prompts, etc. Voir `src/ai/flows/team-info-flow.ts` pour un exemple.
-    *   Un flow définit généralement des schémas d'entrée et de sortie avec Zod (`inputSchema`, `outputSchema`).
-*   **Prompts :** Les prompts pour les modèles LLM sont définis avec `ai.definePrompt`. Ils peuvent utiliser la syntaxe Handlebars (`{{{ }}}`) pour injecter des données d'entrée.
-    *   Il est important d'instruire l'IA sur le format de sortie désiré (ex: utiliser Markdown).
-*   **Utilisation dans l'application :** Les flows exportés peuvent être appelés directement depuis des Server Actions ou des composants serveur.
+*   Utilisé pour les résumés d'équipes (principalement football pour l'instant).
+*   Configuration dans `src/ai/genkit.ts`. Flows dans `src/ai/flows/`.
+*   Le flow `team-info-flow.ts` est conçu pour être adaptable à différentes entités sportives, pas seulement les équipes de foot.
 
 ### Gestion de l'État (Context API)
 
-*   Pour l'état global partagé entre plusieurs composants :
-    *   `src/context/AuthContext.tsx` : Gère l'état de l'utilisateur authentifié (informations de l'utilisateur, chargement, fonctions `login`/`logout`). Les données utilisateur sont persistées dans `localStorage`.
-    *   `src/context/ThemeContext.tsx` : Gère le thème visuel (ex: "default", "blue") et le mode (clair/sombre/système) de l'application. Les préférences sont persistées dans `localStorage`.
+*   `src/context/AuthContext.tsx` : Utilisateur authentifié.
+*   `src/context/ThemeContext.tsx` : Thème visuel (clair/sombre, couleurs).
 
 ### Données Fictives (Mock Data)
 
-*   `src/lib/mockData.ts` contient des données statiques pour les équipes et les ligues.
-*   Ces données sont principalement utilisées pour :
-    *   Peupler la liste des équipes sur la page d'accueil.
-    *   Fournir les **ID réels de l'API-Sports** pour chaque équipe, ce qui permet de faire le lien entre la sélection d'une équipe et la récupération de ses données réelles via l'API.
-    *   Fournir des URLs de logo par défaut ou de secours.
-*   Si vous ajoutez une nouvelle équipe à afficher sur la page d'accueil, vous devez l'ajouter à ce fichier avec son ID API-Sports correct et une URL de logo.
+*   `src/lib/mockData.ts` contient :
+    *   `supportedSports`: Une liste des sports que l'application vise à supporter, avec leur nom, slug, URL de base API, et une icône.
+    *   `footballTeams`: Données statiques pour les équipes de football, **incluant leur ID réel de l'API-Sports**, crucial pour faire le lien avec les données dynamiques.
+    *   `footballLeagues`: Données statiques pour quelques ligues de football.
+*   Pour ajouter une nouvelle équipe de football à afficher sur la page `/sports/football/teams`, ajoutez-la à `footballTeams` avec son ID API-Sports correct et une URL de logo.
+*   Pour supporter un nouveau sport, ajoutez-le à `supportedSports` et créez les pages et services nécessaires.
 
 ## Clés API
 
-*   La clé API pour **API-Sports** doit être configurée dans le fichier `.env` à la racine du projet :
+*   Une clé API unique pour **API-Sports** (valable pour le football, F1, basketball, etc. du même fournisseur) doit être configurée dans `.env` :
     ```env
     API_SPORTS_KEY=VOTRE_CLE_API_SPORTS_ICI
     ```
-*   Le plan gratuit d'API-Sports a des limitations (actuellement 100 requêtes/jour et accès limité aux données historiques/futures pour certaines saisons). Soyez conscient de ces limites pendant le développement.
+*   Le plan gratuit d'API-Sports a des limitations (actuellement 100 requêtes/jour par API et accès limité aux données historiques/futures).
 
 ## Qualité du Code
 
-*   **TypeScript:** Utilisez TypeScript pour améliorer la robustesse et la maintenabilité du code.
-*   **Linting & Formatage:** (Configurer Prettier et ESLint si ce n'est pas déjà fait)
-    *   `npm run lint` (si script configuré)
-    *   `npm run typecheck` (pour vérifier les erreurs TypeScript)
-*   **Organisation:** Essayez de garder les fichiers bien organisés et les composants petits et ciblés.
-*   **Commentaires:** Ajoutez des commentaires lorsque la logique n'est pas évidente.
+*   **TypeScript:** Pour la robustesse.
+*   **Organisation:** Gardez les fichiers organisés et les composants ciblés.
+*   **Commentaires:** Expliquez la logique complexe.
 
 ## Dépannage
 
-*   **Erreurs API (429 Too Many Requests) :** Vous avez probablement dépassé votre quota de requêtes API. Attendez la période de réinitialisation ou vérifiez votre tableau de bord API-Sports.
-*   **Problèmes de Build Next.js :** Lisez attentivement les messages d'erreur. Souvent, ils indiquent des problèmes de type, d'importation, ou de configuration de Server Actions/Components.
-*   **Hydration Mismatches (React) :** Si vous voyez des erreurs d'hydratation, cela signifie que le rendu initial côté serveur diffère du premier rendu côté client. Cela arrive souvent avec du contenu dynamique qui dépend d'API navigateur (ex: `window`, `localStorage`, `Math.random()`, `new Date()`). Utilisez `useEffect` pour exécuter ce code uniquement côté client.
-*   **Données non affichées pour une saison :** L'API-Sports (plan gratuit) a des restrictions sur les saisons accessibles. Assurez-vous que la constante `CURRENT_SEASON` dans `src/services/apiSportsService.ts` est réglée sur une saison supportée (ex: 2023 pour la saison 2023-2024).
+*   **Erreurs API (429 Too Many Requests) :** Dépassement du quota. Attendez ou vérifiez votre dashboard API-Sports.
+*   **Problèmes de Build Next.js :** Lisez les erreurs (types, imports, Server Actions/Components).
+*   **Hydration Mismatches (React) :** Différence entre rendu serveur et client. Utilisez `useEffect` pour le code dépendant du navigateur.
+*   **Données non affichées pour une saison :** L'API-Sports (plan gratuit) a des restrictions sur les saisons. Pour le football, la constante `FOOTBALL_CURRENT_SEASON` dans `src/services/apiSportsService.ts` est réglée sur une saison supportée (ex: 2023 pour la saison 2023-2024).
 
+## Contribuer et Étendre à d'Autres Sports
+
+L'application est conçue pour être extensible à d'autres sports. Voici les étapes générales pour ajouter un nouveau sport (ex: Formule 1) :
+
+1.  **Ajouter le Sport à `mockData.ts` :**
+    *   Modifiez le tableau `supportedSports` dans `src/lib/mockData.ts` pour inclure le nouveau sport, son `slug`, l'URL de base de son API `api-sports.io` (ex: `https://v1.formula-1.api-sports.io`), et une URL d'icône.
+
+2.  **Définir les Types (`src/lib/types.ts`) :**
+    *   Créez des interfaces pour les entités principales du nouveau sport (ex: `DriverF1App`, `ConstructorF1App`, `RaceF1App`).
+    *   Créez des interfaces pour les réponses API spécifiques à ce sport si elles diffèrent grandement de celles du football.
+
+3.  **Étendre le Service API (`src/services/apiSportsService.ts`) :**
+    *   Ajoutez de nouvelles fonctions pour récupérer les données du nouveau sport (ex: `getF1Drivers()`, `getF1Races()`). Ces fonctions utiliseront `fetchDataForSport` en passant l'URL de base de l'API du sport concerné.
+    *   Créez des fonctions de mapping pour transformer les données brutes de l'API en vos types `...App`.
+
+4.  **Créer les Pages de Routage :**
+    *   Créez un dossier pour le nouveau sport dans `src/app/sports/`, par exemple `src/app/sports/formula-1/`.
+    *   Ajoutez une page pour lister les entités principales (ex: `src/app/sports/formula-1/drivers/page.tsx`). Cette page utilisera les nouvelles fonctions du service API.
+    *   Ajoutez des pages de détail si nécessaire (ex: `src/app/sports/formula-1/drivers/[driverSlug]/page.tsx`).
+
+5.  **Créer des Composants UI :**
+    *   Développez de nouveaux composants React pour afficher les données spécifiques au nouveau sport (ex: `DriverCardF1.tsx`, `RaceScheduleF1.tsx`).
+    *   Utilisez les composants ShadCN UI pour une apparence cohérente.
+
+6.  **Mettre à Jour `mockData.ts` (optionnel) :**
+    *   Si vous souhaitez afficher des données initiales statiques pour le nouveau sport (comme les équipes de football), ajoutez-les à `mockData.ts` avec leurs ID API réels.
+
+7.  **Adapter l'IA (optionnel) :**
+    *   Si vous souhaitez que l'IA fournisse des informations sur le nouveau sport, vous devrez peut-être ajuster les prompts dans `src/ai/flows/` ou créer de nouveaux flows. Le flow `team-info-flow.ts` est assez générique et pourrait être utilisé en passant le nom d'un pilote de F1, par exemple.
+
+N'hésitez pas à poser des questions si vous êtes bloqué !
 ---
 
 Ce README devrait fournir une bonne base pour les nouveaux contributeurs. N'hésitez pas à le mettre à jour au fur et à mesure de l'évolution du projet !

@@ -3,11 +3,11 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
-import { ThemeProvider } from '@/context/ThemeContext'; // Import ThemeProvider
+import { ThemeProvider } from '@/context/ThemeContext';
 
 export const metadata: Metadata = {
-  title: 'FootySchedule',
-  description: 'Your ultimate guide to soccer match schedules.',
+  title: 'SportSphere',
+  description: 'Your ultimate guide to the world of sports.',
 };
 
 export default function RootLayout({
@@ -23,7 +23,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
       </head>
       <body className="font-body antialiased">
-        <ThemeProvider> {/* Wrap with ThemeProvider */}
+        <ThemeProvider>
           <AuthProvider>
             {children}
             <Toaster />

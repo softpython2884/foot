@@ -12,15 +12,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { placeBetAction } from '@/actions/bets';
-import type { Match, Team, AuthenticatedUser } from '@/lib/types';
+import type { MatchApp, TeamApp, AuthenticatedUser } from '@/lib/types'; // Use MatchApp, TeamApp
 import { LoadingSpinner } from './LoadingSpinner';
 
 interface BettingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  match: Match;
-  teamToBetOn: Team; 
+  match: MatchApp; // Use MatchApp
+  teamToBetOn: TeamApp; // Use TeamApp (which includes id as number)
   currentUser: AuthenticatedUser | null;
+  sportSlug: string;
 }
 
 const betSchema = z.object({
@@ -29,14 +30,14 @@ const betSchema = z.object({
 
 type BetFormValues = z.infer<typeof betSchema>;
 
-export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser }: BettingModalProps) {
+export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser, sportSlug }: BettingModalProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<BetFormValues>({
     resolver: zodResolver(betSchema),
     defaultValues: {
-      amount: 10, // Default bet amount
+      amount: 10,
     },
   });
 
@@ -46,18 +47,26 @@ export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser 
       onClose();
       return;
     }
-    if (!teamToBetOn) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not determine team to bet on.' });
+    if (!teamToBetOn || teamToBetOn.id == null) { // Check for null or undefined id
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not determine team to bet on or team ID is missing.' });
+        onClose();
+        return;
+    }
+    if (match.id == null) { // Check for null or undefined match id
+        toast({ variant: 'destructive', title: 'Error', description: 'Match ID is missing.' });
         onClose();
         return;
     }
 
+
     setIsSubmitting(true);
     const formData = new FormData();
     formData.append('userId', currentUser.id.toString());
-    formData.append('matchId', match.id);
-    formData.append('teamIdBetOn', teamToBetOn.id); 
+    formData.append('matchId', match.id.toString()); // match.id is now a number
+    formData.append('teamIdBetOn', teamToBetOn.id.toString()); // teamToBetOn.id is now a number
     formData.append('amountBet', data.amount.toString());
+    formData.append('sportSlug', sportSlug);
+
 
     const result = await placeBetAction(formData);
 
@@ -77,7 +86,7 @@ export function BettingModal({ isOpen, onClose, match, teamToBetOn, currentUser 
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Place Bet</DialogTitle>
+          <DialogTitle>Place Bet on {match.sportSlug === 'football' ? 'Football Match' : match.sportSlug}</DialogTitle>
           <DialogDescription>
             You are betting on <span className="font-semibold text-primary">{teamToBetOn.name}</span> to win the match:
             <br />

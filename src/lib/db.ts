@@ -4,8 +4,8 @@ import { open, type Database } from 'sqlite';
 import path from 'path';
 import fs from 'fs';
 import type { User, Bet, BetWithMatchDetails, MatchApp } from './types';
-import { teams } from './mockData';
-import { getApiSportsFixtureById } from '@/services/apiSportsService';
+import { footballTeams, supportedSports } from './mockData'; // Import supportedSports
+import { getFootballFixtureById } from '@/services/apiSportsService'; // Specific to football
 
 const DB_DIR = path.join(process.cwd(), 'db');
 const DB_PATH = path.join(DB_DIR, 'app.db');
@@ -45,11 +45,12 @@ async function initializeDb(db: Database): Promise<void> {
     CREATE TABLE IF NOT EXISTS bets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL,
-      matchId INTEGER NOT NULL,
-      teamIdBetOn INTEGER NOT NULL,
+      matchId INTEGER NOT NULL,      -- This will be the API fixture ID
+      teamIdBetOn INTEGER NOT NULL,  -- This will be the API team ID
       amountBet INTEGER NOT NULL,
       potentialWinnings INTEGER NOT NULL,
       status TEXT NOT NULL DEFAULT 'pending', -- 'pending', 'won', 'lost'
+      sportSlug TEXT, -- To identify the sport this bet belongs to
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
       updatedAt DATETIME,
       FOREIGN KEY (userId) REFERENCES users(id)
@@ -98,17 +99,17 @@ export async function getTopUsersDb(limit: number = 10): Promise<Omit<User, 'has
   );
 }
 
-// Bet related functions
-export async function createBetDb(userId: number, matchId: number, teamIdBetOn: number, amountBet: number, potentialWinnings: number): Promise<number | undefined> {
+export async function createBetDb(userId: number, matchId: number, teamIdBetOn: number, amountBet: number, potentialWinnings: number, sportSlug: string): Promise<number | undefined> {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO bets (userId, matchId, teamIdBetOn, amountBet, potentialWinnings, status) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO bets (userId, matchId, teamIdBetOn, amountBet, potentialWinnings, status, sportSlug) VALUES (?, ?, ?, ?, ?, ?, ?)',
     userId,
     matchId,
     teamIdBetOn,
     amountBet,
     potentialWinnings,
-    'pending'
+    'pending',
+    sportSlug
   );
   return result.lastID;
 }
@@ -120,22 +121,31 @@ export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithM
   const detailedBets: BetWithMatchDetails[] = [];
 
   for (const bet of betsFromDb) {
-    const match: MatchApp | null = await getApiSportsFixtureById(bet.matchId);
-    // Find teamBetOn from the actual match details if possible, fallback to mockData if needed
+    let match: MatchApp | null = null;
     let teamBetOnName = 'Unknown Team';
-    if (match) {
-        if (match.homeTeam.id === bet.teamIdBetOn) {
-            teamBetOnName = match.homeTeam.name;
-        } else if (match.awayTeam.id === bet.teamIdBetOn) {
-            teamBetOnName = match.awayTeam.name;
-        } else {
-            // Fallback to mockData if teamIdBetOn is not in the fetched match (should not happen ideally)
-            const teamFromMock = teams.find(t => t.id === bet.teamIdBetOn);
+
+    if (bet.sportSlug === 'football') {
+      const footballSport = supportedSports.find(s => s.slug === 'football');
+      if (footballSport) {
+        match = await getFootballFixtureById(bet.matchId, footballSport.apiBaseUrl);
+        if (match) {
+            if (match.homeTeam.id === bet.teamIdBetOn) {
+                teamBetOnName = match.homeTeam.name;
+            } else if (match.awayTeam.id === bet.teamIdBetOn) {
+                teamBetOnName = match.awayTeam.name;
+            }
+        } else { // Fallback to mockData if API fails or match not found
+            const teamFromMock = footballTeams.find(t => t.id === bet.teamIdBetOn);
             if (teamFromMock) teamBetOnName = teamFromMock.name;
         }
+      }
     } else {
-        const teamFromMock = teams.find(t => t.id === bet.teamIdBetOn);
-        if (teamFromMock) teamBetOnName = teamFromMock.name;
+      // TODO: Implement logic for other sports if betting is enabled for them
+      // For now, if sportSlug is not football, we might not have a way to get match details
+      // or team names unless they are stored or fetched differently.
+      console.warn(`Betting details for sport ${bet.sportSlug} not fully implemented yet.`);
+      const teamFromMock = footballTeams.find(t => t.id === bet.teamIdBetOn); // Temporary fallback
+      if (teamFromMock) teamBetOnName = teamFromMock.name;
     }
     
     detailedBets.push({
@@ -145,6 +155,7 @@ export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithM
       teamBetOnName: teamBetOnName,
       matchTime: match?.matchTime || 'Unknown Date',
       leagueName: match?.league?.name || 'Unknown League',
+      sportSlug: bet.sportSlug || 'unknown',
     });
   }
   return detailedBets;
