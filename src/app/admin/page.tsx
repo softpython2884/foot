@@ -32,9 +32,9 @@ const createEventFormSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string), {
     message: "Invalid event status",
   }).optional().default('upcoming'),
-  homeScore: z.string().optional(),
-  awayScore: z.string().optional(),
-  elapsedTime: z.string().optional(),
+  homeScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a positive number or empty." }),
+  awayScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a positive number or empty." }),
+  elapsedTime: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Elapsed time must be a positive number or empty." }),
   notes: z.string().optional(),
 });
 
@@ -67,11 +67,15 @@ export default function AdminPage() {
     setIsLoading(true);
     try {
       const response = await fetch('/api/admin/events');
-      if (!response.ok) throw new Error('Failed to fetch events');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to fetch events and parse error response' }));
+        throw new Error(errorData.error || `Failed to fetch events. Status: ${response.status}`);
+      }
       const data: ManagedEventApp[] = await response.json();
       setEvents(data);
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+      toast({ variant: 'destructive', title: 'Error Loading Events', description: (error as Error).message });
+      setEvents([]); // Clear events on error to avoid displaying stale data
     }
     setIsLoading(false);
   };
@@ -113,8 +117,8 @@ export default function AdminPage() {
     if (result.success) {
       toast({ title: 'Success', description: result.success });
       createEventForm.reset();
-      setSelectedSportForCreation(''); // Reset sport selection to clear team dropdowns
-      loadEvents(); // Refresh the list
+      setSelectedSportForCreation(''); 
+      loadEvents(); 
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to create event.' });
       if (result.details) {
@@ -234,7 +238,7 @@ export default function AdminPage() {
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Elapsed Time (minutes)</FormLabel>
-                                <FormControl><Input type="number" placeholder="e.g., 45" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                                <FormControl><Input type="number" placeholder="e.g., 45" {...field} /></FormControl>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -247,7 +251,7 @@ export default function AdminPage() {
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Home Score</FormLabel>
-                                <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                                <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
                                 <FormMessage />
                                 </FormItem>
                             )}
@@ -258,7 +262,7 @@ export default function AdminPage() {
                             render={({ field }) => (
                                 <FormItem>
                                 <FormLabel>Away Score</FormLabel>
-                                <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                                <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
                                 <FormMessage />
                                 </FormItem>
                             )}

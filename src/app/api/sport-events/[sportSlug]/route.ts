@@ -24,15 +24,22 @@ export async function GET(
   const statusFilters: ManagedEventStatus[] = statusParams.filter(s => validStatuses.includes(s as ManagedEventStatus)) as ManagedEventStatus[];
 
   try {
-    let events: ManagedEventApp[] = await getManagedEventsBySportFromDb(sportSlug, statusFilters.length > 0 ? statusFilters : undefined);
+    let eventsDb: ManagedEventApp[] = await getManagedEventsBySportFromDb(sportSlug, statusFilters.length > 0 ? statusFilters : undefined);
 
     if (teamId !== undefined) {
-      events = events.filter(event => event.homeTeam.id === teamId || event.awayTeam.id === teamId);
+      eventsDb = eventsDb.filter(event => event.homeTeam.id === teamId || event.awayTeam.id === teamId);
     }
+    
+    // Ensure all team data is at least minimally present before sending response
+    const eventsApp = eventsDb.map(event => ({
+        ...event,
+        homeTeam: event.homeTeam || { id: -1, name: 'Unknown Home Team', sportSlug: event.sportSlug },
+        awayTeam: event.awayTeam || { id: -1, name: 'Unknown Away Team', sportSlug: event.sportSlug },
+    }));
 
-    return NextResponse.json(events);
+
+    return NextResponse.json(eventsApp);
   } catch (error) {
-    // Corrected line: No backslash before the first backtick
     console.error(`Error fetching managed events for sport ${sportSlug}:`, error);
     return NextResponse.json({ error: 'Failed to fetch events for sport' }, { status: 500 });
   }
