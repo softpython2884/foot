@@ -17,10 +17,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction } from '@/actions/user';
+import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction, addPointsAction } from '@/actions/user';
 import { getBetHistoryAction, settleApiBetAction } from '@/actions/bets'; 
 import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
-import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
+import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle, Coins } from 'lucide-react';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,8 @@ const passwordFormSchema = z.object({
 });
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
+const POINTS_TO_ADD = 100; // Amount of points to give when user "buys" more
+
 export default function ProfilePage() {
   const { currentUser, login: updateAuthContextUser, isLoading: authLoading } = useAuth();
   const router = useRouter();
@@ -50,6 +52,7 @@ export default function ProfilePage() {
   const [betHistory, setBetHistory] = useState<BetWithMatchDetails[]>([]);
   const [betHistoryLoading, setBetHistoryLoading] = useState(true);
   const [isSettlingBet, setIsSettlingBet] = useState<number | null>(null);
+  const [isAddingPoints, setIsAddingPoints] = useState(false);
 
 
   const nameForm = useForm<NameFormValues>({
@@ -111,6 +114,13 @@ export default function ProfilePage() {
       nameForm.reset({ newName: result.user.name });
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update name.' });
+       if (result.details) {
+        Object.entries(result.details).forEach(([field, errors]) => {
+          if (Array.isArray(errors) && errors.length > 0) {
+             nameForm.setError(field as keyof NameFormValues, { type: 'manual', message: errors[0] });
+          }
+        });
+      }
     }
   };
 
@@ -146,7 +156,7 @@ export default function ProfilePage() {
     formData.append('betId', betId.toString());
     formData.append('userWon', userWon.toString());
     
-    const settlementResult = await settleApiBetAction(formData); // Changed to settleApiBetAction
+    const settlementResult = await settleApiBetAction(formData);
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
       
@@ -167,6 +177,28 @@ export default function ProfilePage() {
       toast({ variant: 'destructive', title: 'Error settling bet', description: settlementResult.error });
     }
     setIsSettlingBet(null);
+  };
+
+  const handleGetMorePoints = async () => {
+    if (!currentUser) return;
+    setIsAddingPoints(true);
+    const formData = new FormData();
+    formData.append('userId', currentUser.id.toString());
+    formData.append('amount', POINTS_TO_ADD.toString());
+
+    const result = await addPointsAction(formData);
+    if (result.success) {
+      toast({ title: 'Points Added!', description: result.success });
+      const userDetailsResult = await getUserDetailsAction(currentUser.id);
+      if (userDetailsResult.user) {
+        updateAuthContextUser(userDetailsResult.user);
+      } else if (userDetailsResult.error) {
+         toast({variant: 'destructive', title: 'Failed to refresh user data after adding points', description: userDetailsResult.error});
+      }
+    } else {
+      toast({ variant: 'destructive', title: 'Error Adding Points', description: result.error || 'Could not add points.' });
+    }
+    setIsAddingPoints(false);
   };
 
 
@@ -227,6 +259,22 @@ export default function ProfilePage() {
               </div>
             </CardContent>
           </Card>
+
+        {currentUser.score <= 0 && (
+          <Card className="shadow-lg mb-8 bg-primary/5 border-primary">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-headline text-primary"><Coins /> Out of Points?</CardTitle>
+              <CardDescription>
+                It looks like your score is low. Get some free points to continue betting!
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={handleGetMorePoints} className="w-full" disabled={isAddingPoints}>
+                {isAddingPoints ? <LoadingSpinner size="sm"/> : `Get ${POINTS_TO_ADD} Free Points!`}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         <Accordion type="single" collapsible className="w-full space-y-6 mb-8" defaultValue="edit-name">
           <AccordionItem value="edit-name" className="border-none">
@@ -356,7 +404,6 @@ export default function ProfilePage() {
                                                 </span>
                                             </p>
                                         </CardContent>
-                                        {/* Only show manual settlement buttons for 'api' bets that are 'pending' */}
                                         {bet.eventSource === 'api' && bet.status === 'pending' && (
                                             <CardFooter className="flex gap-2 pt-2">
                                                 <Button 
@@ -433,3 +480,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+

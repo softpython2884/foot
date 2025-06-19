@@ -3,8 +3,9 @@
 
 import { z } from 'zod';
 import bcrypt from 'bcrypt';
-import { getUserById, updateUserNameDb, updateUserPasswordDb, getTopUsersDb } from '@/lib/db';
+import { getUserById, updateUserNameDb, updateUserPasswordDb, getTopUsersDb, updateUserScoreDb } from '@/lib/db';
 import type { AuthenticatedUser, LeaderboardUser, User } from '@/lib/types';
+import { revalidatePath } from 'next/cache';
 
 const saltRounds = 10;
 
@@ -23,8 +24,13 @@ const UpdatePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+const AddPointsSchema = z.object({
+  userId: z.coerce.number().int().positive(),
+  amount: z.coerce.number().int().positive(),
+});
 
-export async function updateNameAction(formData: FormData): Promise<{ error?: string; success?: string; user?: AuthenticatedUser }> {
+
+export async function updateNameAction(formData: FormData): Promise<{ error?: string; success?: string; user?: AuthenticatedUser, details?: any }> {
   try {
     const validatedFields = UpdateNameSchema.safeParse({
       userId: parseInt(formData.get('userId') as string, 10),
@@ -48,10 +54,9 @@ export async function updateNameAction(formData: FormData): Promise<{ error?: st
       return { error: 'Failed to update name.' };
     }
     
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { hashedPassword, ...updatedUser } = { ...user, name: newName };
-
-    return { success: 'Name updated successfully!', user: updatedUser };
+    revalidatePath('/profile');
+    return { success: 'Name updated successfully!', user: updatedUser as AuthenticatedUser };
 
   } catch (error) {
     console.error('Update name error:', error);
@@ -117,11 +122,35 @@ export async function getUserDetailsAction(userId: number): Promise<{ error?: st
     if (!userFromDb) {
       return { error: 'User not found.' };
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { hashedPassword, ...userToAuth } = userFromDb;
     return { user: userToAuth as AuthenticatedUser };
   } catch (error) {
     console.error('Get user details error:', error);
     return { error: 'Failed to fetch user details.' };
+  }
+}
+
+export async function addPointsAction(formData: FormData): Promise<{ error?: string; success?: string, details?: any }> {
+  const validatedFields = AddPointsSchema.safeParse({
+    userId: formData.get('userId'),
+    amount: formData.get('amount'),
+  });
+
+  if (!validatedFields.success) {
+    return { error: 'Invalid data for adding points.', details: validatedFields.error.flatten().fieldErrors };
+  }
+
+  const { userId, amount } = validatedFields.data;
+
+  try {
+    const scoreUpdated = await updateUserScoreDb(userId, amount);
+    if (!scoreUpdated) {
+      return { error: 'Failed to update score in database.' };
+    }
+    revalidatePath('/profile');
+    return { success: `${amount} points added successfully!` };
+  } catch (error) {
+    console.error('Add points error:', error);
+    return { error: 'An unexpected error occurred while adding points.' };
   }
 }
