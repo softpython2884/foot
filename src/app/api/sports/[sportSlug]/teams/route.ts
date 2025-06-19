@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
-import { footballTeams, supportedSports } from '@/lib/mockData';
-import type { TeamApp } from '@/lib/types';
+import { footballTeams, formula1Entities, basketballTeams, supportedSports } from '@/lib/mockData';
+import type { TeamApp } from '@/lib/types'; // Using TeamApp as the consistent return type
 
 export async function GET(
   request: Request,
@@ -18,11 +18,13 @@ export async function GET(
     let teams: TeamApp[] = [];
 
     if (sportSlug === 'football') {
-      // Ensure mock footballTeams match TeamApp structure if needed, or cast
-      teams = footballTeams as TeamApp[];
+      teams = footballTeams as TeamApp[]; // footballTeams are already compatible with TeamApp
+    } else if (sportSlug === 'formula-1') {
+      teams = formula1Entities as TeamApp[]; // formula1Entities are compatible
+    } else if (sportSlug === 'basketball') {
+      teams = basketballTeams as TeamApp[]; // basketballTeams are compatible
     } else {
       // Placeholder for other sports - return empty array or specific message
-      // teams = await getTeamsForOtherSport(sportSlug);
       return NextResponse.json({ message: `Team data for ${sport.name} is not yet available via API.` }, { status: 200 });
     }
 
@@ -32,3 +34,5 @@ export async function GET(
     return NextResponse.json({ error: `Failed to fetch teams for ${sportSlug}` }, { status: 500 });
   }
 }
+
+    

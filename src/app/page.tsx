@@ -31,12 +31,12 @@ export default function HomePage() {
                 <Card className="overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 ease-in-out h-full flex flex-col bg-card hover:-translate-y-1">
                   <CardHeader className="p-0 relative h-48">
                     <Image
-                      src={sport.iconUrl || `https://placehold.co/600x400.png?text=${sport.name}`}
+                      src={sport.iconUrl || `https://placehold.co/600x400.png`}
                       alt={`${sport.name} icon`}
                       layout="fill"
                       objectFit="cover"
                       className="transition-transform duration-300 group-hover:scale-105"
-                      data-ai-hint={`${sport.name} icon`}
+                      data-ai-hint={`${sport.name} icon`} // Added data-ai-hint
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   </CardHeader>
@@ -68,3 +68,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    

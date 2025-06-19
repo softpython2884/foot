@@ -1,5 +1,4 @@
 
-
 // --- API-Sports Specific Response Types ---
 
 export interface ApiSportsTeamMinimal {
@@ -158,8 +157,8 @@ export interface ApiSportsCoachCareerItem {
   end: string | null;
 }
 
-export interface ApiSportsCoachResponseItem { 
-  id: number | null; 
+export interface ApiSportsCoachResponseItem {
+  id: number | null;
   name: string | null;
   firstname: string | null;
   lastname: string | null;
@@ -173,7 +172,7 @@ export interface ApiSportsCoachResponseItem {
   height: string | null;
   weight: string | null;
   photo: string | null;
-  team: ApiSportsTeamMinimalForCoach | null; 
+  team: ApiSportsTeamMinimalForCoach | null;
   career?: ApiSportsCoachCareerItem[];
 }
 
@@ -192,17 +191,17 @@ export interface ApiSportsPlayerInfoInSquad {
   name: string | null;
   age: number | null;
   number: number | null;
-  position: string | null; 
+  position: string | null;
   photo: string | null;
 }
 
-export interface ApiSportsSquadTeamInfo { 
+export interface ApiSportsSquadTeamInfo {
   id: number;
   name: string;
   logo: string | null;
 }
 
-export interface ApiSportsSquadPlayerResponseItem { 
+export interface ApiSportsSquadPlayerResponseItem {
   team: ApiSportsSquadTeamInfo;
   players: ApiSportsPlayerInfoInSquad[];
 }
@@ -228,17 +227,26 @@ export interface SportDefinition {
   // Potentially add more sport-specific config here later
 }
 
+// TeamApp is the primary type for teams/entities used within the application logic
 export interface TeamApp {
-  id: number; // This will be the API-specific ID for the team
+  id: number; // This will be the API-specific ID for the team/entity
   name: string;
-  logoUrl?: string | null;
+  logoUrl?: string | null; // Standardized field name for logo/image
   slug?: string; // Generated for URL routing
-  country?: string | null;
-  founded?: number | null;
-  venueName?: string | null;
+  country?: string | null; // Applicable to many sports
+  founded?: number | null; // Applicable to many sports
+  venueName?: string | null; // Stadium/Venue name
   venueCity?: string | null;
   venueCapacity?: number | null;
-  sportSlug?: string; // To know which sport this team belongs to
+  sportSlug: string; // To know which sport this team/entity belongs to
+
+  // F1 specific (optional, for F1 entities)
+  base?: string; // e.g., "Brackley, UK" for Mercedes F1
+  championships?: number; // e.g., Total F1 championships
+
+  // Basketball specific (optional, for Basketball entities)
+  conference?: string; // e.g., "Western", "Eastern"
+  division?: string; // e.g., "Pacific", "Atlantic"
 }
 
 export interface LeagueApp {
@@ -247,14 +255,14 @@ export interface LeagueApp {
   logoUrl?: string | null;
   country?: string;
   season?: number;
-  sportSlug?: string;
+  sportSlug: string;
 }
 
 export interface MatchApp {
   id: number; // API-specific ID
   league: LeagueApp;
-  homeTeam: TeamApp;
-  awayTeam: TeamApp;
+  homeTeam: TeamApp; // Or a more generic SportEntityApp if needed
+  awayTeam: TeamApp; // Or a more generic SportEntityApp if needed
   matchTime: string; // ISO8601 string
   statusShort: string;
   statusLong: string;
@@ -264,7 +272,7 @@ export interface MatchApp {
   homeScore?: number | null;
   awayScore?: number | null;
   isWatchlisted?: boolean;
-  sportSlug?: string;
+  sportSlug: string;
 }
 
 export interface CoachApp {
@@ -273,7 +281,7 @@ export interface CoachApp {
   photoUrl?: string | null;
   nationality?: string | null;
   age?: number | null;
-  sportSlug?: string;
+  sportSlug: string;
 }
 
 export interface PlayerApp {
@@ -283,7 +291,7 @@ export interface PlayerApp {
   number?: number | null;
   position?: string | null;
   age?: number | null;
-  sportSlug?: string;
+  sportSlug: string;
 }
 
 
@@ -311,7 +319,7 @@ export interface Bet {
   status: 'pending' | 'won' | 'lost';
   createdAt: string;
   updatedAt?: string;
-  sportSlug?: string; // To associate bet with a sport
+  sportSlug: string; // To associate bet with a sport
 }
 
 export interface BetWithMatchDetails extends Bet {
@@ -323,12 +331,14 @@ export interface BetWithMatchDetails extends Bet {
 }
 
 // --- Mock Data specific types ---
-// Team interface for mock data can extend TeamApp
+// Team interface for mock data will use TeamApp to ensure consistency
 export interface Team extends TeamApp {
-  shortName?: string;
+  shortName?: string; // Kept for potential backward compatibility or specific display needs
 }
 
 // League interface for mock data can extend LeagueApp
 export interface League extends LeagueApp {
   code?: string;
 }
+
+    

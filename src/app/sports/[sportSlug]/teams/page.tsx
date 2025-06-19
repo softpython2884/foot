@@ -5,7 +5,7 @@ import { useParams, notFound } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TeamBannerCard } from '@/components/TeamBannerCard';
-import { footballTeams, supportedSports } from '@/lib/mockData'; // Using mockData for teams
+import { footballTeams, formula1Entities, basketballTeams, supportedSports } from '@/lib/mockData';
 import type { Team, SportDefinition } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,20 @@ export default function SportTeamsPage() {
     notFound();
   }
 
-  // For now, only football teams are implemented
-  const teamsToShow = sport.slug === 'football' ? footballTeams : [];
+  let teamsToShow: Team[] = [];
+  let pageTitleSuffix = "Teams";
+
+  if (sport.slug === 'football') {
+    teamsToShow = footballTeams;
+    pageTitleSuffix = "Teams";
+  } else if (sport.slug === 'formula-1') {
+    teamsToShow = formula1Entities; // Using Team type, F1 specific fields are optional
+    pageTitleSuffix = "Écuries"; // Or "Entités"
+  } else if (sport.slug === 'basketball') {
+    teamsToShow = basketballTeams;
+    pageTitleSuffix = "Teams";
+  }
+  // Add more sports here with 'else if' conditions
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -37,20 +49,20 @@ export default function SportTeamsPage() {
                 </Link>
             </Button>
             <h2 className="text-3xl font-bold font-headline text-center text-primary">
-              {sport.name} Teams
+              {sport.name} {pageTitleSuffix}
             </h2>
             <div className="w-auto"></div> {/* Spacer */}
           </div>
 
           {teamsToShow.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {teamsToShow.map((team: Team) => (
-                <TeamBannerCard key={team.id} team={team} sportSlug={sport.slug} />
+              {teamsToShow.map((item: Team) => ( // item can be a team or other entity
+                <TeamBannerCard key={item.id} team={item} sportSlug={sport.slug} />
               ))}
             </div>
           ) : (
             <p className="text-center text-muted-foreground">
-              No teams available to display for {sport.name} yet. Support for other sports is coming soon!
+              No {pageTitleSuffix.toLowerCase()} available to display for {sport.name} yet.
             </p>
           )}
         </section>
@@ -59,3 +71,5 @@ export default function SportTeamsPage() {
     </div>
   );
 }
+
+    
