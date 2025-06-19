@@ -61,12 +61,12 @@ export default function Formula1TeamProfilePage() {
         setIsAiLoading(true);
         setAiError(null);
         setAiSummary(null);
-        getTeamInfo({ teamName: foundEntity.name })
+        getTeamInfo({ entityName: foundEntity.name, entityType: 'team' })
           .then(result => setAiSummary(result.response))
           .catch(err => {
             console.error("Error fetching AI summary for F1 entity:", err);
             setAiError("Failed to load AI summary.");
-            setAiSummary(`Could not load summary for ${foundEntity.name}.`);
+            setAiSummary(\`Could not load summary for \${foundEntity.name}.\`);
           })
           .finally(() => setIsAiLoading(false));
       }
@@ -80,7 +80,7 @@ export default function Formula1TeamProfilePage() {
     setAiAnswer(null);
     setAiError(null);
     try {
-      const input: TeamInfoInput = { teamName: entityData.name, question: userQuestion };
+      const input: TeamInfoInput = { entityName: entityData.name, entityType: 'team', question: userQuestion };
       const result = await getTeamInfo(input);
       setAiAnswer(result.response);
     } catch (error) {

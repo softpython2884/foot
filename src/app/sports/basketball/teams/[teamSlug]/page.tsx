@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star } from 'lucide-react'; // Using ShieldHalf for conference/division
+import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star } from 'lucide-react'; 
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -62,12 +62,12 @@ export default function BasketballTeamProfilePage() {
         setIsAiLoading(true);
         setAiError(null);
         setAiSummary(null);
-        getTeamInfo({ teamName: foundTeam.name })
+        getTeamInfo({ entityName: foundTeam.name, entityType: 'team' })
           .then(result => setAiSummary(result.response))
           .catch(err => {
             console.error("Error fetching AI summary for Basketball team:", err);
             setAiError("Failed to load AI summary.");
-            setAiSummary(`Could not load summary for ${foundTeam.name}.`);
+            setAiSummary(\`Could not load summary for \${foundTeam.name}.\`);
           })
           .finally(() => setIsAiLoading(false));
       }
@@ -81,7 +81,7 @@ export default function BasketballTeamProfilePage() {
     setAiAnswer(null);
     setAiError(null);
     try {
-      const input: TeamInfoInput = { teamName: teamData.name, question: userQuestion };
+      const input: TeamInfoInput = { entityName: teamData.name, entityType: 'team', question: userQuestion };
       const result = await getTeamInfo(input);
       setAiAnswer(result.response);
     } catch (error) {

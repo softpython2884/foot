@@ -11,8 +11,9 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, UserSquare, Shirt, CalendarClock, BarChart3, ChevronLeft } from 'lucide-react';
+import { Brain, Users, Trophy, UserSquare, Shirt, CalendarClock, BarChart3, ChevronLeft, UserCircle, X } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -34,10 +35,8 @@ function simpleMarkdownToHtml(markdown: string): string {
   // Unordered lists
   html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
   html = html.replace(/^\* (.*$)/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); // Wrap LIs in UL
-  // Ensure paragraphs for line breaks (basic version)
+  html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); 
   html = html.split(/\n\s*\n/).map(p => p.trim() ? `<p>${p.replace(/\n/g, '<br>')}</p>` : '').join('');
-  // Correct UL wrapping if P tags are introduced within list structures
   html = html.replace(/<p><ul>/g, '<ul>').replace(/<\/ul><\/p>/g, '</ul>');
   return html;
 }
@@ -61,7 +60,6 @@ export default function FootballTeamProfilePage() {
   const [players, setPlayers] = useState<PlayerApp[]>([]);
 
   const [isLoadingData, setIsLoadingData] = useState(true);
-  // isLoadingCoach and isLoadingPlayers remain for their specific sections
   const [isLoadingCoach, setIsLoadingCoach] = useState(true);
   const [isLoadingPlayers, setIsLoadingPlayers] = useState(true);
 
@@ -70,6 +68,12 @@ export default function FootballTeamProfilePage() {
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  const [selectedPlayerForBio, setSelectedPlayerForBio] = useState<PlayerApp | null>(null);
+  const [playerBioContent, setPlayerBioContent] = useState<string | null>(null);
+  const [isPlayerBioLoading, setIsPlayerBioLoading] = useState<boolean>(false);
+  const [playerBioError, setPlayerBioError] = useState<string | null>(null);
+
 
   const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition;
 
@@ -89,7 +93,6 @@ export default function FootballTeamProfilePage() {
       const coachPromise = getFootballCoachForTeam(apiTeamId, currentSport.apiBaseUrl);
       const squadPromise = getFootballSquadForTeam(apiTeamId, currentSport.apiBaseUrl);
 
-      // Fetch matches for multiple seasons
       const matchPromises = SEASONS_TO_FETCH_FOOTBALL.map(season =>
         getFootballMatchesForTeam(apiTeamId, season, { status: 'FT' }, currentSport.apiBaseUrl)
           .then(matches => ({ 
@@ -106,10 +109,10 @@ export default function FootballTeamProfilePage() {
         detailsPromise,
         coachPromise,
         squadPromise,
-        Promise.all(matchPromises) // This ensures matchPromises itself is resolved
+        Promise.all(matchPromises) 
       ]);
       
-      const seasonMatchResults = matchResultsCombined[0]; // Extract the array of season results
+      const seasonMatchResults = matchResultsCombined[0]; 
 
 
       setTeamDetails(details);
@@ -137,13 +140,13 @@ export default function FootballTeamProfilePage() {
         setAiError(null);
         setAiSummary(null);
         try {
-          const input: TeamInfoInput = { teamName: nameForAISummary };
+          const input: TeamInfoInput = { entityName: nameForAISummary, entityType: 'team' };
           const result = await getTeamInfo(input);
           setAiSummary(result.response);
         } catch (err) {
           console.error("Error fetching AI summary:", err);
           setAiError("Failed to load AI summary.");
-          setAiSummary(`Could not load summary for ${nameForAISummary}.`);
+          setAiSummary(\`Could not load summary for \${nameForAISummary}.\`);
         } finally {
           setIsAiLoading(false);
         }
@@ -168,7 +171,7 @@ export default function FootballTeamProfilePage() {
       if (foundMockTeam) {
         fetchTeamPageData(foundMockTeam.id, foundMockTeam.name);
       } else {
-        setIsLoadingData(false); // Mock team not found, stop overall loading
+        setIsLoadingData(false); 
         setIsLoadingMatches(false);
         setIsLoadingCoach(false);
         setIsLoadingPlayers(false);
@@ -184,7 +187,7 @@ export default function FootballTeamProfilePage() {
     setAiAnswer(null);
     setAiError(null);
     try {
-      const input: TeamInfoInput = { teamName: teamNameToUse, question: userQuestion };
+      const input: TeamInfoInput = { entityName: teamNameToUse, entityType: 'team', question: userQuestion };
       const result = await getTeamInfo(input);
       setAiAnswer(result.response);
     } catch (error) {
@@ -193,6 +196,30 @@ export default function FootballTeamProfilePage() {
       setAiAnswer("Sorry, I couldn't answer that question right now.");
     }
     setIsAiLoading(false);
+  };
+
+  const handlePlayerCardClick = async (player: PlayerApp) => {
+    if (!player || !player.name) return;
+    setSelectedPlayerForBio(player);
+    setPlayerBioContent(null);
+    setPlayerBioError(null);
+    setIsPlayerBioLoading(true);
+
+    try {
+      const teamNameContext = teamDetails?.name || mockTeamData?.name || 'leur équipe actuelle';
+      const input: TeamInfoInput = {
+        entityName: player.name,
+        entityType: 'player',
+        contextName: teamNameContext,
+      };
+      const result = await getTeamInfo(input);
+      setPlayerBioContent(result.response);
+    } catch (error) {
+      console.error("Error fetching player biography:", error);
+      setPlayerBioError("Désolé, je n'ai pas pu récupérer la biographie de ce joueur pour le moment.");
+      setPlayerBioContent(null);
+    }
+    setIsPlayerBioLoading(false);
   };
 
   const displayTeamName = teamDetails?.name || mockTeamData?.name;
@@ -216,7 +243,7 @@ export default function FootballTeamProfilePage() {
 
   const sortedSeasonYears = Object.keys(matchesBySeason)
     .map(Number)
-    .sort((a, b) => b - a); // Sort seasons descending (e.g., 2023, 2022, 2021)
+    .sort((a, b) => b - a); 
 
 
   return (
@@ -309,7 +336,7 @@ export default function FootballTeamProfilePage() {
             ) : coach ? (
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Image
-                  src={coach.photoUrl || `https://placehold.co/100x100.png`}
+                  src={coach.photoUrl || \`https://placehold.co/100x100.png\`}
                   alt={coach.name || 'Coach Photo'}
                   width={100}
                   height={100}
@@ -331,6 +358,7 @@ export default function FootballTeamProfilePage() {
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2"><Users className="text-primary" />Current Squad</CardTitle>
+            <CardDescription>Cliquez sur un joueur pour voir sa biographie.</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoadingPlayers ? (
@@ -338,9 +366,16 @@ export default function FootballTeamProfilePage() {
             ) : players.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {players.map((player) => (
-                  <Card key={player.id || player.name} className="flex flex-col items-center p-4 text-center bg-muted/30">
+                  <Card 
+                    key={player.id || player.name} 
+                    className="flex flex-col items-center p-4 text-center bg-muted/30 hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => handlePlayerCardClick(player)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && handlePlayerCardClick(player)}
+                  >
                     <Image
-                      src={player.photoUrl || `https://placehold.co/80x80.png`}
+                      src={player.photoUrl || \`https://placehold.co/80x80.png\`}
                       alt={player.name || 'Player Photo'}
                       width={80}
                       height={80}
@@ -359,6 +394,44 @@ export default function FootballTeamProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        {selectedPlayerForBio && (
+          <Dialog open={!!selectedPlayerForBio} onOpenChange={(open) => !open && setSelectedPlayerForBio(null)}>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader className="flex flex-row items-center gap-4 pr-10"> {/* pr-10 to avoid overlap with close button */}
+                {selectedPlayerForBio.photoUrl ? (
+                  <Image
+                    src={selectedPlayerForBio.photoUrl}
+                    alt={selectedPlayerForBio.name || 'Player'}
+                    width={60}
+                    height={60}
+                    className="rounded-full shadow-md"
+                    data-ai-hint="selected player portrait"
+                  />
+                ) : (
+                  <UserCircle size={60} className="text-muted-foreground" />
+                )}
+                <DialogTitle className="text-2xl font-headline">{selectedPlayerForBio.name || "Player Biography"}</DialogTitle>
+              </DialogHeader>
+              <div className="py-4 max-h-[60vh] overflow-y-auto">
+                {isPlayerBioLoading && <div className="flex justify-center items-center py-10"><LoadingSpinner size="lg" /></div>}
+                {playerBioError && <p className="text-destructive text-center">{playerBioError}</p>}
+                {playerBioContent && !isPlayerBioLoading && !playerBioError && (
+                  <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(playerBioContent) }} />
+                )}
+                {!isPlayerBioLoading && !playerBioContent && !playerBioError && (
+                  <p className="text-muted-foreground text-center">Aucune biographie disponible pour ce joueur pour le moment.</p>
+                )}
+              </div>
+              <DialogClose asChild>
+                <Button type="button" variant="outline" className="absolute right-4 top-4 p-1.5 h-auto">
+                  <X size={18}/>
+                  <span className="sr-only">Close</span>
+                </Button>
+              </DialogClose>
+            </DialogContent>
+          </Dialog>
+        )}
 
         <Card className="mb-8 shadow-lg">
           <CardHeader>

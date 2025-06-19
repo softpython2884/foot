@@ -1,9 +1,9 @@
 
 'use server';
 /**
- * @fileOverview Provides information about a sports entity using AI.
+ * @fileOverview Provides information about a sports entity (team or player) using AI.
  *
- * - getTeamInfo - A function to get general info or answer specific questions about a sports entity.
+ * - getTeamInfo - A function to get general info or answer specific questions.
  * - TeamInfoInput - The input type for the getTeamInfo function.
  * - TeamInfoOutput - The return type for the getTeamInfo function.
  */
@@ -12,7 +12,9 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const TeamInfoInputSchema = z.object({
-  teamName: z.string().describe('The name of the sports entity (e.g., football team, F1 constructor, basketball team).'),
+  entityName: z.string().describe('The name of the sports entity (e.g., football team, F1 constructor, player name).'),
+  entityType: z.enum(['team', 'player']).optional().describe("The type of entity. Defaults to 'team' if not specified."),
+  contextName: z.string().optional().describe('Optional context, like the team name if entityType is "player", or league if entityType is "team".'),
   question: z.string().optional().describe('A specific question about the entity.'),
 });
 export type TeamInfoInput = z.infer<typeof TeamInfoInputSchema>;
@@ -31,15 +33,31 @@ const teamInfoPrompt = ai.definePrompt({
   input: {schema: TeamInfoInputSchema},
   output: {schema: TeamInfoOutputSchema},
   prompt: `Réponds toujours en français. Tu es un assistant expert en sport très compétent.
-L'utilisateur s'intéresse à l'entité sportive : {{{teamName}}}.
-Utilise le format Markdown pour la mise en forme de ta réponse. Par exemple, tu peux mettre des informations importantes en **gras** ou en *italique*. Pour les listes, utilise des tirets ou des numéros.
+Utilise le format Markdown pour la mise en forme de ta réponse (gras, italique, listes).
 
 {{#if question}}
-Veuillez répondre spécifiquement à la question suivante concernant {{{teamName}}} :
+L'utilisateur s'intéresse à : {{{entityName}}}.
+{{#if contextName}}
+Contexte supplémentaire : {{{contextName}}}.
+{{/if}}
+Veuillez répondre spécifiquement à la question suivante :
 "{{{question}}}"
-Fournis une réponse concise et informative, en utilisant Markdown pour la clarté.
+Fournis une réponse concise et informative.
+{{else if (eq entityType "player")}}
+L'utilisateur souhaite une biographie pour le joueur : {{{entityName}}}.
+{{#if contextName}}
+Ce joueur est associé à l'équipe/contexte : {{{contextName}}}.
+{{/if}}
+Fournis une biographie concise et intéressante du joueur, incluant des éléments clés comme sa carrière, ses clubs notables, ses réalisations majeures, son style de jeu si pertinent, et des anecdotes intéressantes si possible.
 {{else}}
-Fournis un résumé général et intéressant sur {{{teamName}}}. Selon le type d'entité (équipe de football, écurie de F1, équipe de basketball, etc.), inclus des faits clés pertinents tels que leur ligue/championnat, leurs réalisations notables, les athlètes/pilotes/joueurs célèbres (passés ou présents), leur lieu d'origine/base, ou leur forme actuelle si possible. Limite-toi à quelques phrases captivantes et bien formatées avec Markdown.
+L'utilisateur s'intéresse à l'entité sportive : {{{entityName}}}.
+{{#if contextName}}
+Contexte supplémentaire (par exemple, ligue) : {{{contextName}}}.
+{{/if}}
+Fournis un résumé général et intéressant sur {{{entityName}}}.
+Adapte le contenu au type d'entité (équipe de football, écurie de F1, équipe de basketball, etc.).
+Inclus des faits clés pertinents tels que leur ligue/championnat, réalisations notables, athlètes/pilotes/joueurs célèbres (passés ou présents), lieu d'origine/base, ou leur forme actuelle si possible.
+Limite-toi à quelques phrases captivantes et bien formatées.
 {{/if}}
 `,
 });
@@ -51,11 +69,15 @@ const teamInfoFlow = ai.defineFlow(
     outputSchema: TeamInfoOutputSchema,
   },
   async (input) => {
-    const {output} = await teamInfoPrompt(input);
+    // Default entityType to 'team' if not provided, especially if a question is asked without specifying type.
+    const finalInput = {
+      ...input,
+      entityType: input.entityType || (input.question ? 'team' : 'team'),
+    };
+    const {output} = await teamInfoPrompt(finalInput);
     if (!output) {
       return { response: "Je suis désolé, je n'ai pas pu récupérer d'informations pour cette entité pour le moment. Veuillez réessayer plus tard." };
     }
     return output;
   }
 );
-

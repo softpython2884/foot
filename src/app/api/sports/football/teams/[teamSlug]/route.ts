@@ -44,7 +44,7 @@ export async function GET(
       getFootballMatchesForTeam(teamId, SEASON_FOR_MATCHES, { status: 'FT' }, FOOTBALL_API_BASE_URL),
       getFootballCoachForTeam(teamId, FOOTBALL_API_BASE_URL),
       getFootballSquadForTeam(teamId, FOOTBALL_API_BASE_URL),
-      getTeamInfo({ teamName: mockTeam.name })
+      getTeamInfo({ entityName: mockTeam.name, entityType: 'team' }) // Explicitly set entityType
     ]);
 
     const teamDetails = teamDetailsData.status === 'fulfilled' ? teamDetailsData.value : null;
@@ -71,7 +71,7 @@ export async function GET(
     return NextResponse.json(responsePayload);
 
   } catch (error) {
-    console.error(`Error fetching details for football team ${teamSlug}:`, error);
-    return NextResponse.json({ error: `Failed to fetch details for football team ${teamSlug}` }, { status: 500 });
+    console.error(\`Error fetching details for football team \${teamSlug}:\`, error);
+    return NextResponse.json({ error: \`Failed to fetch details for football team \${teamSlug}\` }, { status: 500 });
   }
 }
