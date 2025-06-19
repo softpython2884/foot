@@ -146,7 +146,7 @@ export default function FootballTeamProfilePage() {
         } catch (err) {
           console.error("Error fetching AI summary:", err);
           setAiError("Failed to load AI summary.");
-          setAiSummary(\`Could not load summary for \${nameForAISummary}.\`);
+          setAiSummary(`Could not load summary for ${nameForAISummary}.`); // Corrected line
         } finally {
           setIsAiLoading(false);
         }
@@ -336,7 +336,7 @@ export default function FootballTeamProfilePage() {
             ) : coach ? (
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Image
-                  src={coach.photoUrl || \`https://placehold.co/100x100.png\`}
+                  src={coach.photoUrl || `https://placehold.co/100x100.png`}
                   alt={coach.name || 'Coach Photo'}
                   width={100}
                   height={100}
@@ -375,7 +375,7 @@ export default function FootballTeamProfilePage() {
                     onKeyDown={(e) => e.key === 'Enter' && handlePlayerCardClick(player)}
                   >
                     <Image
-                      src={player.photoUrl || \`https://placehold.co/80x80.png\`}
+                      src={player.photoUrl || `https://placehold.co/80x80.png`}
                       alt={player.name || 'Player Photo'}
                       width={80}
                       height={80}
@@ -480,4 +480,6 @@ export default function FootballTeamProfilePage() {
     </div>
   );
 }
+    
+
     

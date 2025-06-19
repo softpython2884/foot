@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star } from 'lucide-react'; 
+import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -67,7 +67,7 @@ export default function BasketballTeamProfilePage() {
           .catch(err => {
             console.error("Error fetching AI summary for Basketball team:", err);
             setAiError("Failed to load AI summary.");
-            setAiSummary(\`Could not load summary for \${foundTeam.name}.\`);
+            setAiSummary(`Could not load summary for ${foundTeam.name}.`);
           })
           .finally(() => setIsAiLoading(false));
       }
@@ -108,7 +108,7 @@ export default function BasketballTeamProfilePage() {
     notFound();
     return null;
   }
-  
+
   const displayTeamName = teamData?.name || 'Basketball Team Profile';
   const displayTeamLogo = teamData?.logoUrl;
 
@@ -212,7 +212,7 @@ export default function BasketballTeamProfilePage() {
             <p className="text-muted-foreground">Recent game results and schedule coming soon!</p>
           </CardContent>
         </Card>
-        
+
         <div className="mt-12 text-center">
           <Link href="/">
             <Button variant="outline">Back to Home</Button>

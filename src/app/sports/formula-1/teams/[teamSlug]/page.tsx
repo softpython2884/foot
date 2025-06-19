@@ -66,7 +66,7 @@ export default function Formula1TeamProfilePage() {
           .catch(err => {
             console.error("Error fetching AI summary for F1 entity:", err);
             setAiError("Failed to load AI summary.");
-            setAiSummary(\`Could not load summary for \${foundEntity.name}.\`);
+            setAiSummary(`Could not load summary for ${foundEntity.name}.`);
           })
           .finally(() => setIsAiLoading(false));
       }
