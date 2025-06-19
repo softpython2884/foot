@@ -23,6 +23,11 @@ const CreateEventSchema = z.object({
 });
 
 export async function createManagedEventAction(formData: FormData): Promise<{ error?: string; success?: string; eventId?: number; details?: any }> {
+  console.log('[adminEventsAction] Server: createManagedEventAction called. FormData entries:');
+  for (const pair of formData.entries()) {
+    console.log(`  ${pair[0]}: ${pair[1]}`);
+  }
+
   const rawHomeScore = formData.get('homeScore');
   const homeScoreForZod = (rawHomeScore === '' || rawHomeScore === null) ? null : rawHomeScore;
 
@@ -32,27 +37,32 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
   const rawElapsedTime = formData.get('elapsedTime');
   const elapsedTimeForZod = (rawElapsedTime === '' || rawElapsedTime === null) ? null : rawElapsedTime;
 
-  const validatedFields = CreateEventSchema.safeParse({
+  const dataToValidate = {
     name: formData.get('name'),
     sportSlug: formData.get('sportSlug'),
-    homeTeamId: formData.get('homeTeamId'), // z.coerce.number will handle string from FormData
-    awayTeamId: formData.get('awayTeamId'), // z.coerce.number will handle string from FormData
+    homeTeamId: formData.get('homeTeamId'),
+    awayTeamId: formData.get('awayTeamId'),
     eventTime: formData.get('eventTime'),
     status: formData.get('status') || 'upcoming',
     homeScore: homeScoreForZod,
     awayScore: awayScoreForZod,
     elapsedTime: elapsedTimeForZod,
     notes: formData.get('notes') || null,
-  });
+  };
+  console.log('[adminEventsAction] Server: Data prepared for Zod validation (create):', dataToValidate);
+
+  const validatedFields = CreateEventSchema.safeParse(dataToValidate);
 
   if (!validatedFields.success) {
-    console.log("Zod errors (create):", validatedFields.error.flatten());
+    console.error("[adminEventsAction] Server: Zod validation failed (create):", validatedFields.error.flatten());
     return { error: 'Invalid event data.', details: validatedFields.error.flatten().fieldErrors };
   }
+  console.log('[adminEventsAction] Server: Zod validation successful (create). Validated data:', validatedFields.data);
 
   const { name, sportSlug, homeTeamId, awayTeamId, eventTime, status, homeScore, awayScore, elapsedTime, notes } = validatedFields.data;
 
   if (homeTeamId === awayTeamId) {
+    console.warn('[adminEventsAction] Server: Home and Away teams are the same.');
     return { error: 'Home team and Away team cannot be the same.' };
   }
 
@@ -64,15 +74,17 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
       awayTeamId,
       new Date(eventTime).toISOString(),
       status,
-      homeScore, // Already number or null due to Zod coerce
-      awayScore, // Already number or null
-      elapsedTime, // Already number or null
+      homeScore,
+      awayScore,
+      elapsedTime,
       notes
     );
 
     if (!eventId) {
+      console.error('[adminEventsAction] Server: Failed to create event in database.');
       return { error: 'Failed to create event in database.' };
     }
+    console.log(`[adminEventsAction] Server: Event created successfully with ID: ${eventId}. Revalidating paths.`);
     revalidatePath('/admin');
     revalidatePath(`/sports/${sportSlug}/teams`);
     
@@ -82,10 +94,9 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
         if(createdEventDetails.awayTeam.slug) revalidatePath(`/sports/${sportSlug}/teams/${createdEventDetails.awayTeam.slug}`);
     }
 
-
     return { success: 'Event created successfully!', eventId };
   } catch (error) {
-    console.error('Create event error:', error);
+    console.error('[adminEventsAction] Server: Unexpected error during event creation:', error);
     return { error: 'An unexpected error occurred while creating the event.' };
   }
 }
@@ -97,16 +108,21 @@ const UpdateEventSchema = z.object({
   }),
   homeScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
   awayScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
-  winningTeamId: z.coerce.number().int().positive().optional().nullable(),
+  winningTeamId: z.coerce.number().int().positive().optional().nullable(), // Accepts number or null (after coercion)
   elapsedTime: z.coerce.number().int().min(0, "Elapsed time cannot be negative.").optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
 
 export async function updateManagedEventAction(formData: FormData): Promise<{ error?: string; success?: string; details?: any }> {
+  console.log('[adminEventsAction] Server: updateManagedEventAction called. FormData entries:');
+  for (const pair of formData.entries()) {
+    console.log(`  ${pair[0]}: ${pair[1]}`);
+  }
+
   const rawHomeScore = formData.get('homeScore');
   const homeScoreForZod = (rawHomeScore === '' || rawHomeScore === null) ? null : rawHomeScore;
-
+  
   const rawAwayScore = formData.get('awayScore');
   const awayScoreForZod = (rawAwayScore === '' || rawAwayScore === null) ? null : rawAwayScore;
   
@@ -114,35 +130,47 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
   const elapsedTimeForZod = (rawElapsedTime === '' || rawElapsedTime === null) ? null : rawElapsedTime;
 
   const rawWinningTeamId = formData.get('winningTeamId');
-  const winningTeamIdForZod = (rawWinningTeamId === '' || rawWinningTeamId === null || rawWinningTeamId === 'null' || rawWinningTeamId === undefined) ? null : rawWinningTeamId;
+  // If winningTeamId is an empty string (from "Draw/No Winner" select option), it should become null for Zod.
+  const winningTeamIdForZod = (rawWinningTeamId === '' || rawWinningTeamId === null || rawWinningTeamId === undefined || rawWinningTeamId === 'null') ? null : rawWinningTeamId;
 
-
-  const validatedFields = UpdateEventSchema.safeParse({
-    eventId: formData.get('eventId'), // z.coerce.number will handle
+  const dataToValidate = {
+    eventId: formData.get('eventId'),
     status: formData.get('status'),
     homeScore: homeScoreForZod,
     awayScore: awayScoreForZod,
-    winningTeamId: winningTeamIdForZod, // z.coerce.number for string id, or null
+    winningTeamId: winningTeamIdForZod,
     elapsedTime: elapsedTimeForZod,
     notes: formData.get('notes') || null,
-  });
+  };
+  console.log('[adminEventsAction] Server: Data prepared for Zod validation (update):', dataToValidate);
+
+  const validatedFields = UpdateEventSchema.safeParse(dataToValidate);
 
   if (!validatedFields.success) {
-    console.log("Zod errors (update):", validatedFields.error.flatten());
+    console.error("[adminEventsAction] Server: Zod validation failed (update):", validatedFields.error.flatten());
     return { error: 'Invalid update data.', details: validatedFields.error.flatten().fieldErrors };
   }
+  console.log('[adminEventsAction] Server: Zod validation successful (update). Validated data:', validatedFields.data);
 
-  const { eventId, status, homeScore, awayScore, elapsedTime, notes } = validatedFields.data;
-  let { winningTeamId } = validatedFields.data; // winningTeamId from Zod can be number or null
-
+  const { eventId, status } = validatedFields.data;
+  // Use validated values directly
+  const homeScore = validatedFields.data.homeScore;
+  const awayScore = validatedFields.data.awayScore;
+  let winningTeamId = validatedFields.data.winningTeamId; // This is now number | null | undefined
+  const elapsedTime = validatedFields.data.elapsedTime;
+  const notes = validatedFields.data.notes;
 
   const existingEvent = await getManagedEventFromDb(eventId);
   if (!existingEvent) {
+    console.warn(`[adminEventsAction] Server: Event with ID ${eventId} not found for update.`);
     return { error: 'Event not found.' };
   }
+  console.log('[adminEventsAction] Server: Existing event details:', existingEvent);
+
 
   if (status === 'finished') {
     if (homeScore == null || awayScore == null) {
+      console.warn('[adminEventsAction] Server: Scores are required to finish an event.');
       return { error: 'Home and Away scores are required to finish an event.' };
     }
     if (homeScore > awayScore) {
@@ -152,41 +180,46 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
     } else { 
       winningTeamId = null; // Draw explicitly
     }
+    console.log(`[adminEventsAction] Server: Event finished. Auto-determined winningTeamId: ${winningTeamId}`);
   } else {
-     // If not finished, winningTeamId should remain null unless explicitly set by admin (though UI might restrict this)
-     // If the form sends a specific winningTeamId (e.g. for a paused game where admin notes a clear leader),
-     // it will be used if it passes Zod validation (i.e., it's a number or null).
-     // However, bets are only settled on 'finished'.
-     // Let's ensure winningTeamId is explicitly null if not finished and not otherwise set by validated data.
-     if (validatedFields.data.winningTeamId === undefined && status !== 'finished') {
-        winningTeamId = null;
-     }
+     // If not 'finished', winningTeamId from form (if provided and valid) is used.
+     // If it wasn't provided or was invalid, validatedFields.data.winningTeamId would be null/undefined.
+     // No need to explicitly set to null here unless status is not 'finished' AND it wasn't in form.
+     // The Zod schema handles optionality.
+     console.log(`[adminEventsAction] Server: Event not finished. Using winningTeamId from form (if any): ${winningTeamId}`);
   }
 
   try {
+    console.log(`[adminEventsAction] Server: Updating event ${eventId} in DB with status: ${status}, homeScore: ${homeScore}, awayScore: ${awayScore}, winningTeamId: ${winningTeamId}, elapsedTime: ${elapsedTime}`);
     const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, winningTeamId, elapsedTime, notes);
 
     if (!success) {
+      console.error(`[adminEventsAction] Server: Failed to update event ${eventId} in database.`);
       return { error: 'Failed to update event in database.' };
     }
+    console.log(`[adminEventsAction] Server: Event ${eventId} updated in DB. Proceeding to settle bets if finished.`);
 
     let settlementMessage = '';
     if (status === 'finished') {
+      console.log(`[adminEventsAction] Server: Event ${eventId} is finished. Attempting to settle bets.`);
       const settlementResult = await settleBetsForManagedEvent(eventId);
       if (settlementResult.error) {
         settlementMessage = ` Event updated, but with errors settling bets: ${settlementResult.error}`;
+        console.warn(`[adminEventsAction] Server: Bet settlement for event ${eventId} had errors: ${settlementResult.error}`);
       } else if (settlementResult.success) {
         settlementMessage = ` ${settlementResult.success}`;
+        console.log(`[adminEventsAction] Server: Bet settlement for event ${eventId} successful: ${settlementResult.success}`);
       }
     }
+    console.log(`[adminEventsAction] Server: Update for event ${eventId} successful. Revalidating paths.`);
     revalidatePath('/admin');
     revalidatePath(`/sports/${existingEvent.sportSlug}/teams`);
     if(existingEvent.homeTeam.slug) revalidatePath(`/sports/${existingEvent.sportSlug}/teams/${existingEvent.homeTeam.slug}`);
     if(existingEvent.awayTeam.slug) revalidatePath(`/sports/${existingEvent.sportSlug}/teams/${existingEvent.awayTeam.slug}`);
     revalidatePath('/profile');
-    return { success: `Event ${eventId} updated. Status: ${status}.${settlementMessage}` };
+    return { success: `Event ID ${eventId} (status: ${status}) updated.${settlementMessage}` };
   } catch (error) {
-    console.error('Update event error:', error);
+    console.error(`[adminEventsAction] Server: Unexpected error during event update for ID ${eventId}:`, error);
     return { error: 'An unexpected error occurred while updating the event.' };
   }
 }

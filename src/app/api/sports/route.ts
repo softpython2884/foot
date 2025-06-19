@@ -4,8 +4,10 @@ import { supportedSports } from '@/lib/mockData';
 import type { SportDefinition } from '@/lib/types';
 
 export async function GET() {
+  console.log('[API /api/sports] GET request received for supported sports.');
   try {
     const sports: SportDefinition[] = supportedSports;
+    console.log(`[API /api/sports] Returning ${sports.length} supported sports.`);
     return NextResponse.json(sports, {
       headers: {
         'Cache-Control': 'no-store, max-age=0',
@@ -13,7 +15,7 @@ export async function GET() {
     });
   } catch (error)
     {
-        console.error('Error fetching supported sports:', error);
+        console.error('[API /api/sports] Error fetching supported sports:', error);
         return NextResponse.json({ error: 'Failed to fetch supported sports' }, { 
           status: 500,
           headers: {
@@ -22,4 +24,3 @@ export async function GET() {
         });
     }
 }
-
