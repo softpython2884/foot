@@ -1,6 +1,5 @@
 
-
-import type { League, Team, SportDefinition, MatchApp, F1DriverApp, F1RaceResultApp, BasketballPlayerApp, BasketballGameResultApp } from './types';
+import type { League, Team, SportDefinition, MatchApp, F1DriverApp, F1RaceResultApp, BasketballPlayerApp, BasketballGameResultApp, ManagedEventApp, ManagedEventDb } from './types';
 
 function slugify(text: string): string {
   return text
@@ -20,7 +19,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v3.football.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/600x400.png',
+    iconUrl: 'https://img.freepik.com/vecteurs-premium/conception-modele-football-banniere-football-conception-mise-page-sportive-vecteur-theme-vert_42237-1120.jpg',
   },
   {
     name: 'Formule 1',
@@ -28,7 +27,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.formula-1.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/600x400.png',
+    iconUrl: 'https://global-img.gamergen.com/f1-2021-bannire-vignette-test_0903D4000000985248.jpg',
   },
   {
     name: 'Basketball',
@@ -36,7 +35,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.basketball.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/600x400.png',
+    iconUrl: 'https://as2.ftcdn.net/jpg/02/43/86/13/1000_F_243861393_ZAkjU7BW8ja9cbpEOO7KhomyxNSqF4Ef.jpg',
   },
 ];
 
@@ -113,7 +112,7 @@ const mockMatchPsgVsInter: MatchApp = {
     name: uclLeagueMock.name,
     logoUrl: uclLeagueMock.logoUrl,
     country: uclLeagueMock.country,
-    season: 2025,
+    season: 2025, // Example future season
     sportSlug: 'football',
   } : {
     id: 2, name: 'Champions League', logoUrl: 'https://media.api-sports.io/football/leagues/2.png', country: 'Europe', season: 2025, sportSlug: 'football',
@@ -142,8 +141,8 @@ export const mockF1Drivers: F1DriverApp[] = [
 
 export const mockF1RaceResults: F1RaceResultApp[] = [
     { id: 101, competitionName: 'Formula 1 Gulf Air Bahrain Grand Prix', circuitName: 'Bahrain International Circuit', date: '2024-03-02T15:00:00Z', season: 2024, type: 'Race', status: 'Finished', driverResults: [
-        { driverName: 'Max Verstappen', position: 1, points: 26, time: '1:31:44.742', grid:1, laps:57, driverNumber:1 },
-        { driverName: 'Sergio Perez', position: 2, points: 18, time: '+22.457s', grid:5, laps:57, driverNumber:11 },
+        { driverName: 'Max Verstappen', position: 1, points: 26, time: '1:31:44.742', grid:1, laps:57, driverNumber:1, driverImage: 'https://media.api-sports.io/formula-1/drivers/20.png' },
+        { driverName: 'Sergio Perez', position: 2, points: 18, time: '+22.457s', grid:5, laps:57, driverNumber:11, driverImage: 'https://media.api-sports.io/formula-1/drivers/24.png' }, // Assuming Perez is driver 24
     ]},
 ];
 
@@ -157,7 +156,7 @@ export const mockBasketballPlayers: BasketballPlayerApp[] = [
 export const mockBasketballGames: BasketballGameResultApp[] = [
     {
         id: 20001,
-        league: { id: 12, name: 'NBA', logoUrl: 'https://media.api-sports.io/basketball/leagues/12.png', season: 2023, sportSlug: 'basketball' },
+        league: { id: 12, name: 'NBA', logoUrl: 'https://media.api-sports.io/basketball/leagues/12.png', season: 2023, sportSlug: 'basketball', type: 'League' },
         homeTeam: { id: 133, name: 'Los Angeles Lakers', logoUrl: 'https://media.api-sports.io/basketball/teams/133.png', sportSlug: 'basketball' },
         awayTeam: { id: 120, name: 'Boston Celtics', logoUrl: 'https://media.api-sports.io/basketball/teams/120.png', sportSlug: 'basketball' },
         matchTime: '2023-12-25T22:00:00Z',
@@ -169,7 +168,7 @@ export const mockBasketballGames: BasketballGameResultApp[] = [
         homeQuarterScores: [28,30,27,30], awayQuarterScores: [32,28,38,28],
     },
 ];
-    
+
 // Helper type for mockBasketballPlayers
 type BasketballPlayerAppWithTeamId = BasketballPlayerApp & { teamId?: number };
 (mockBasketballPlayers as BasketballPlayerAppWithTeamId[]).forEach(p => {

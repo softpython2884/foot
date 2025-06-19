@@ -85,16 +85,28 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'media.api-sports.io', // Added for API-Sports
+        hostname: 'media.api-sports.io', 
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.freepik.com', // For Football Banner
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'global-img.gamergen.com', // For F1 Banner
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'as2.ftcdn.net', // For Basketball Banner
         port: '',
         pathname: '/**',
       }
-      // {
-      //   protocol: 'https',
-      //   hostname: 'crests.football-data.org', // Removed
-      //   port: '',
-      //   pathname: '/**',
-      // },
     ],
   },
 };

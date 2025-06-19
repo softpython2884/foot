@@ -411,7 +411,6 @@ export interface ApiSportsBasketballPlayerResponseItem { // Used by Basketball /
       pos: string | null; // Position e.g. "F", "G", "C", "F-G"
     }
   };
-  // Note: API-Sports /players endpoint for basketball does not directly provide a photo URL.
 }
 export interface ApiSportsBasketballPlayersApiResponse { // Used by Basketball /players
   response: ApiSportsBasketballPlayerResponseItem[];
@@ -555,11 +554,11 @@ export interface PlayerApp { // Generic player, can be extended
 // F1 Specific App Types
 export interface F1DriverApp extends PlayerApp {
   abbr?: string | null;
-  grandsPrixEntered?: number | null; // This might require another API call or be part of a more detailed driver object
-  worldChampionships?: number | null; // This might require another API call
-  podiums?: number | null; // This might require another API call
-  careerPoints?: string | null; // This might require another API call
-  birthDate?: string | null; // For calculating age if not directly provided by ranking
+  grandsPrixEntered?: number | null;
+  worldChampionships?: number | null;
+  podiums?: number | null;
+  careerPoints?: string | null;
+  birthDate?: string | null;
 }
 
 export interface F1RaceResultApp {
@@ -618,10 +617,14 @@ export interface User {
 export type AuthenticatedUser = Omit<User, 'hashedPassword'>;
 export type LeaderboardUser = Omit<User, 'hashedPassword'>;
 
+export type EventSource = 'api' | 'custom';
+export type ManagedEventStatus = 'upcoming' | 'live' | 'paused' | 'finished' | 'cancelled';
+
 export interface Bet {
   id: number;
   userId: number;
-  matchId: number;
+  eventId: number; // Renamed from matchId
+  eventSource: EventSource;
   teamIdBetOn: number;
   amountBet: number;
   potentialWinnings: number;
@@ -635,25 +638,56 @@ export interface BetWithMatchDetails extends Bet {
   homeTeamName: string;
   awayTeamName: string;
   teamBetOnName: string;
-  matchTime: string;
-  leagueName: string;
+  matchTime: string; // Keep for display, might be eventTime for custom events
+  leagueName: string; // Keep for display, might be eventName for custom events
 }
+
+export interface ManagedEventDb {
+  id: number;
+  name: string;
+  sport_slug: string;
+  home_team_id: number;
+  away_team_id: number;
+  event_time: string; // ISO8601 string
+  status: ManagedEventStatus;
+  home_score?: number | null;
+  away_score?: number | null;
+  winning_team_id?: number | null;
+  elapsed_time?: number | null; // In minutes for example
+  notes?: string | null; // For sub-events, cards, etc.
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface ManagedEventApp {
+  id: number;
+  name: string;
+  sportSlug: string;
+  homeTeam: TeamApp;
+  awayTeam: TeamApp;
+  eventTime: string; // ISO8601 string
+  status: ManagedEventStatus;
+  homeScore?: number | null;
+  awayScore?: number | null;
+  winningTeamId?: number | null;
+  elapsedTime?: number | null;
+  notes?: string | null;
+}
+
 
 // --- Mock Data specific types ---
 export interface Team extends TeamApp { // Team for mockData, extends TeamApp
   shortName?: string;
-  base?: string | null;
-  championships?: number | null;
-  director?: string | null;
-  technicalManager?: string | null;
-  chassis?: string | null;
-  engine?: string | null;
-  conference?: string | null;
-  division?: string | null;
+  // base?: string | null; // Already in TeamApp for F1
+  // championships?: number | null; // Already in TeamApp for F1
+  // director?: string | null; // Already in TeamApp for F1
+  // technicalManager?: string | null; // Already in TeamApp for F1
+  // chassis?: string | null; // Already in TeamApp for F1
+  // engine?: string | null; // Already in TeamApp for F1
+  // conference?: string | null; // Already in TeamApp for Basketball
+  // division?: string | null; // Already in TeamApp for Basketball
 }
 
 export interface League extends LeagueApp {
   code?: string;
 }
-
-    
