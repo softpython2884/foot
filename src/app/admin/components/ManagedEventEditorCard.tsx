@@ -26,10 +26,10 @@ interface ManagedEventEditorCardProps {
 
 const updateEventStatusFormSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string)),
-  homeScore: z.string().optional(),
-  awayScore: z.string().optional(),
+  homeScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a positive integer or empty." }),
+  awayScore: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Score must be a positive integer or empty." }),
   winningTeamId: z.string().optional(),
-  elapsedTime: z.string().optional(),
+  elapsedTime: z.string().optional().refine(val => val === '' || val == null || /^\d+$/.test(val), { message: "Elapsed time must be a positive integer or empty." }),
   notes: z.string().optional(),
 });
 
@@ -125,7 +125,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Elapsed Time (minutes)</FormLabel>
-                    <FormControl><Input type="number" placeholder="e.g., 45" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                    <FormControl><Input type="number" placeholder="e.g., 45" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -138,7 +138,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Home Score ({event.homeTeam.name})</FormLabel>
-                    <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -149,7 +149,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Away Score ({event.awayTeam.name})</FormLabel>
-                    <FormControl><Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? '' : parseInt(e.target.value, 10))} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -162,9 +162,15 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Winning Team (auto-set if scores differ, or select for draws/manual override)</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value?.toString()} disabled={
-                            (form.getValues('homeScore') !== '' && form.getValues('awayScore') !== '' && Number(form.getValues('homeScore')) !== Number(form.getValues('awayScore')))
-                        }>
+                        <Select 
+                            onValueChange={field.onChange} 
+                            value={field.value?.toString()} // Ensure value is string for Select
+                            disabled={
+                                (form.getValues('homeScore') !== '' && form.getValues('awayScore') !== '' && 
+                                 !isNaN(Number(form.getValues('homeScore'))) && !isNaN(Number(form.getValues('awayScore'))) &&
+                                 Number(form.getValues('homeScore')) !== Number(form.getValues('awayScore')))
+                            }
+                        >
                             <FormControl><SelectTrigger><SelectValue placeholder="Select winning team (or Draw)" /></SelectTrigger></FormControl>
                             <SelectContent>
                             <SelectItem value="">Draw / No Winner</SelectItem>
