@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams, notFound, useRouter } from 'next/navigation';
+import { useRouter, notFound } from 'next/navigation'; // Removed useParams as sportSlug is fixed
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { TeamBannerCard } from '@/components/TeamBannerCard';
@@ -19,17 +19,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
 
-
-export default function SportTeamsPage() {
-  const params = useParams();
-  const sportSlug = params.sportSlug as string;
+export default function FootballTeamsPage() { // Renamed to be specific
   const router = useRouter();
   const { toast } = useToast();
   const { currentUser } = useAuth();
 
-  const [sport, setSport] = useState<SportDefinition | null>(null);
+  const sportSlug = 'football'; // Hardcoded for this football-specific page
+  const sport = supportedSports.find(s => s.slug === sportSlug);
+
   const [teamsToShow, setTeamsToShow] = useState<Team[]>([]);
-  const [pageTitleSuffix, setPageTitleSuffix] = useState("Entities");
+  const [pageTitleSuffix, setPageTitleSuffix] = useState("Teams"); // Specific to football
   const [managedEvents, setManagedEvents] = useState<ManagedEventApp[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
 
@@ -37,47 +36,31 @@ export default function SportTeamsPage() {
   const [selectedEventForBetting, setSelectedEventForBetting] = useState<ManagedEventApp | MatchApp | null>(null);
   const [selectedTeamForBetting, setSelectedTeamForBetting] = useState<TeamApp | null>(null);
 
+  // If sport is not found (e.g., 'football' slug removed from supportedSports), then 404.
+  if (!sport) {
+    notFound();
+    return null; // Stop rendering
+  }
 
   useEffect(() => {
-    if (!sportSlug) {
-      notFound();
-      return;
-    }
-    const currentSport = supportedSports.find(s => s.slug === sportSlug);
-    if (!currentSport) {
-      notFound();
-      return;
-    }
-    setSport(currentSport);
-
-    let currentTeams: Team[] = [];
-    let suffix = "Entities";
-    if (currentSport.slug === 'football') {
-      currentTeams = footballTeams || [];
-      suffix = "Teams";
-    } else if (currentSport.slug === 'formula-1') {
-      currentTeams = formula1Entities || [];
-      suffix = "Écuries";
-    } else if (currentSport.slug === 'basketball') {
-      currentTeams = basketballTeams || [];
-      suffix = "Teams";
-    }
-    setTeamsToShow(currentTeams);
-    setPageTitleSuffix(suffix);
+    // `sport` is guaranteed to be defined here due to the check above.
+    setTeamsToShow(footballTeams || []); // Directly use footballTeams
+    setPageTitleSuffix("Teams");
 
     async function fetchManagedEvents() {
       setIsLoadingEvents(true);
       try {
-        const response = await fetch(`/api/sport-events/${sportSlug}?status=upcoming&status=live`);
+        // sport.slug is 'football' here
+        const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live`);
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Failed to fetch ${sportSlug} events`);
+          const errorData = await response.json().catch(() => ({error: `Failed to fetch ${sport.name} events and parse error response`}));
+          throw new Error(errorData.error || `Failed to fetch ${sport.name} events. Status: ${response.status}`);
         }
         const data: ManagedEventApp[] = await response.json();
         setManagedEvents(data);
       } catch (error) {
-        console.error(`Error fetching managed ${sportSlug} events:`, error);
-        toast({ variant: 'destructive', title: 'Error', description: (error as Error).message });
+        console.error(`Error fetching managed ${sport.name} events:`, error);
+        toast({ variant: 'destructive', title: 'Error Loading Events', description: (error as Error).message });
         setManagedEvents([]);
       }
       setIsLoadingEvents(false);
@@ -85,7 +68,7 @@ export default function SportTeamsPage() {
 
     fetchManagedEvents();
 
-  }, [sportSlug, toast]);
+  }, [sport, toast]); // Depend on the `sport` object (which is constant for this page)
 
   const handleOpenBettingModal = (event: ManagedEventApp | MatchApp, team: TeamApp) => {
     if (!currentUser) {
@@ -117,37 +100,6 @@ export default function SportTeamsPage() {
     return 'text-muted-foreground';
   };
 
-
-  if (!sport && !sportSlug) { // Initial loading state or invalid slug before useEffect runs
-    return (
-        <div className="flex flex-col min-h-screen bg-background">
-            <Header />
-            <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
-                <LoadingSpinner size="lg"/>
-            </main>
-            <Footer />
-        </div>
-    );
-  }
-  
-  if(!sport && sportSlug) { // Sport slug is valid, but sport object hasn't been set from useEffect yet, or notFound was called
-     // notFound() would have been called by useEffect if slug was bad. This state means useEffect is running or finished negatively.
-     // If notFound was called, this return won't be reached. So this is effectively a loading state for sport object.
-     return (
-        <div className="flex flex-col min-h-screen bg-background">
-            <Header />
-            <main className="flex-grow container mx-auto px-4 py-8 flex justify-center items-center">
-                 {/* This should ideally be caught by notFound() if sport is truly not found by slug */}
-                <p>Loading sport details or sport not found...</p> 
-            </main>
-            <Footer />
-        </div>
-     );
-  }
-  // If sport is null here, it means notFound() should have been called, but as a guard:
-  if (!sport) return null;
-
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
@@ -169,7 +121,7 @@ export default function SportTeamsPage() {
           {teamsToShow.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
               {teamsToShow.map((item: Team) => (
-                <TeamBannerCard key={item.id} team={item} sportSlug={sport!.slug} />
+                <TeamBannerCard key={item.id} team={item} sportSlug={sport.slug} />
               ))}
             </div>
           ) : (
