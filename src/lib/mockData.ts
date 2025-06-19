@@ -20,7 +20,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v3.football.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png?text=Football',
+    iconUrl: 'https://placehold.co/400x300.png',
   },
   {
     name: 'Formule 1',
@@ -28,7 +28,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.formula-1.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png?text=F1',
+    iconUrl: 'https://placehold.co/400x300.png',
   },
   {
     name: 'Basketball',
@@ -36,7 +36,7 @@ export const supportedSports: SportDefinition[] = [
     apiBaseUrl: 'https://v1.basketball.api-sports.io',
     apiKeyHeaderName: 'x-apisports-key',
     apiKeyEnvVar: 'API_SPORTS_KEY',
-    iconUrl: 'https://placehold.co/400x300.png?text=Basketball',
+    iconUrl: 'https://placehold.co/400x300.png',
   },
 ];
 
@@ -176,7 +176,7 @@ type BasketballPlayerAppWithTeamId = BasketballPlayerApp & { teamId?: number };
     if (p.teamId) {
         const team = basketballTeams.find(t => t.id === p.teamId);
         if (team) {
-            p.name = `${p.name} (${team.name})`; // Add team name to player name for display if needed
+            // p.name = `${p.name} (${team.name})`; // Add team name to player name for display if needed
         }
     }
 });

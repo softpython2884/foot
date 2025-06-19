@@ -36,7 +36,7 @@ export default function HomePage() {
                       layout="fill"
                       objectFit="cover"
                       className="transition-transform duration-300 group-hover:scale-105"
-                      data-ai-hint={`${sport.name} icon`} // Added data-ai-hint
+                      data-ai-hint={`${sport.slug === 'football' ? 'soccer ball' : sport.slug === 'formula-1' ? 'race car' : sport.slug === 'basketball' ? 'basketball hoop' : 'sport generic'}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
                   </CardHeader>
