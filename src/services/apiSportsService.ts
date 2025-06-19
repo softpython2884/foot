@@ -20,7 +20,7 @@ import type {
   ApiSportsBasketballTeamApiResponse,
   ApiSportsBasketballTeamResponseItem,
   ApiSportsBasketballPlayersApiResponse,
-  ApiSportsBasketballPlayerResponseItem, // Added this
+  ApiSportsBasketballPlayerResponseItem,
   ApiSportsBasketballGamesApiResponse,
   ApiSportsBasketballGameResponseItem,
   LeagueApp,
@@ -33,11 +33,11 @@ import type {
   BasketballPlayerApp,
   BasketballGameResultApp,
   ApiSportsPlayerInfoInSquad,
-  SportDefinition
+  // SportDefinition // Not used directly here but by getApiKeyForSport
 } from '@/lib/types';
 import { supportedSports } from '@/lib/mockData';
 
-const FOOTBALL_CURRENT_SEASON = 2023;
+const FOOTBALL_CURRENT_SEASON = 2023; // For 2023-2024 season
 const F1_CURRENT_SEASON = 2024; 
 const BASKETBALL_CURRENT_SEASON = 2023; // For NBA 2023-2024 season
 
@@ -63,7 +63,7 @@ async function fetchDataForSport<T>(
   const headers = new Headers();
   headers.append(apiKeyHeader, apiKey);
 
-  console.log(`Fetching from API-Sports (${sportApiBaseUrl}): ${url.toString()}`);
+  // console.log(`Fetching from API-Sports (${sportApiBaseUrl}): ${url.toString()}`);
 
   const response = await fetch(url.toString(), {
     method: 'GET',
@@ -81,16 +81,23 @@ async function fetchDataForSport<T>(
 
   if (data.errors && (Object.keys(data.errors).length > 0 || (Array.isArray(data.errors) && data.errors.length > 0))) {
     console.error(`API-Sports logical error for ${url.toString()}:`, JSON.stringify(data.errors));
+    // Potentially throw an error here if specific API errors should halt execution
+    // For now, we log and let the caller decide based on data.results or data.response
   }
   if (data.results === 0 && !(endpoint === '/status')) {
-    console.warn(`API-Sports returned 0 results for ${url.toString()}`);
+    // This is a common case (e.g. no games on a certain day), not necessarily an error.
+    // console.warn(`API-Sports returned 0 results for ${url.toString()}`);
   }
   return data as T;
 }
 
 function getApiKeyForSport(sportSlug: string): string | undefined {
     const sport = supportedSports.find(s => s.slug === sportSlug);
-    if (!sport) return undefined;
+    if (!sport) {
+        console.error(`Sport with slug ${sportSlug} not found in supportedSports.`);
+        return undefined;
+    }
+    // All api-sports.io APIs (football, F1, basketball) use the same key from the .env
     return process.env.API_SPORTS_KEY;
 }
 
@@ -149,7 +156,7 @@ function mapApiFixtureToMatchApp(apiFixture: ApiSportsFixtureResponseItem, sport
     name: apiFixture.league.name,
     logoUrl: apiFixture.league.logo,
     country: apiFixture.league.country,
-    season: apiFixture.league.season,
+    season: typeof apiFixture.league.season === 'number' ? apiFixture.league.season : parseInt(String(apiFixture.league.season).split('-')[0]),
     sportSlug: sportSlug,
   };
 
@@ -236,12 +243,13 @@ export async function getFootballLeagues(footballApiBaseUrl: string, leagueIds: 
       );
       if (data.response && data.response.length > 0) {
         const leagueData = data.response[0];
+        const currentSeason = leagueData.seasons.find(s => s.current)?.year || leagueData.seasons[leagueData.seasons.length-1]?.year || FOOTBALL_CURRENT_SEASON;
         leagues.push({
           id: leagueData.league.id,
           name: leagueData.league.name,
           logoUrl: leagueData.league.logo,
           country: leagueData.country.name,
-          season: leagueData.seasons.find(s => s.current)?.year || FOOTBALL_CURRENT_SEASON,
+          season: currentSeason,
           sportSlug: 'football',
         });
       }
@@ -330,6 +338,9 @@ function mapApiF1ConstructorToTeamApp(apiConstructor: ApiSportsF1ConstructorResp
     technicalManager: apiConstructor.technical_manager,
     chassis: apiConstructor.chassis,
     engine: apiConstructor.engine,
+    firstTeamEntry: apiConstructor.first_team_entry,
+    polePositions: apiConstructor.pole_positions,
+    fastestLaps: apiConstructor.fastest_laps,
   };
 }
 
@@ -385,9 +396,17 @@ function mapApiF1DriverToF1DriverApp(apiDriver: ApiSportsF1DriverResponseItem): 
 export async function getF1DriversForSeason(constructorId: number, season: number = F1_CURRENT_SEASON, f1ApiBaseUrl: string): Promise<F1DriverApp[]> {
   try {
     const apiKey = getApiKeyForSport('formula-1');
+    // F1 API /drivers endpoint might not directly filter by team, but returns teams for each driver.
+    // If a direct team filter exists and works, use it. Otherwise, fetch for season and filter.
+    // The documentation for /drivers shows search by id, name, or general search.
+    // The response for a driver includes the teams they raced for in a season.
+    // The most reliable way if `/drivers?team=X` isn't supported is to fetch all drivers for a season
+    // and then filter. This is less efficient.
+    // Alternative: the F1 /rankings/drivers endpoint with a 'team' and 'season' parameter might list drivers for that team.
+    // For now, trying with `/drivers?team={constructorId}&season={season}` as it's often supported despite docs.
     const data = await fetchDataForSport<ApiSportsF1DriversApiResponse>(
         f1ApiBaseUrl,
-        '/drivers',
+        '/drivers', // API F1 /drivers endpoint
         apiKey,
         'x-apisports-key',
         { team: constructorId, season: season } 
@@ -402,33 +421,32 @@ export async function getF1DriversForSeason(constructorId: number, season: numbe
   }
 }
 
-function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, constructorId: number): F1RaceResultApp {
-  const driverResultsForTeam = [];
-  if (apiRace.teams) {
-    const targetTeam = apiRace.teams.find(t => t.team.id === constructorId);
-    if (targetTeam) {
-      driverResultsForTeam.push(...targetTeam.drivers.map(dr => ({
-        driverName: dr.driver.name,
-        driverImage: dr.driver.image,
-        driverNumber: dr.driver.number,
-        position: dr.position,
-        grid: dr.grid,
-        laps: dr.laps,
-        time: dr.time,
-        points: dr.points,
-      })));
+function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, constructorIdFocus: number): F1RaceResultApp {
+  const driverResultsForTeam: F1RaceResultApp['driverResults'] = [];
+
+  // Helper to process a driver result object
+  const processDriverResult = (driverResult: any, teamId?: number) => {
+    if (teamId === constructorIdFocus) {
+      driverResultsForTeam.push({
+        driverName: driverResult.driver.name,
+        driverImage: driverResult.driver.image,
+        driverNumber: driverResult.driver.number,
+        position: driverResult.position,
+        grid: driverResult.grid,
+        laps: driverResult.laps,
+        time: driverResult.time,
+        points: driverResult.points,
+      });
     }
-  } else if (apiRace.results) { 
-     driverResultsForTeam.push(...apiRace.results.filter(r => r.team.id === constructorId).map(dr => ({
-        driverName: dr.driver.name,
-        driverImage: dr.driver.image,
-        driverNumber: dr.driver.number,
-        position: dr.position,
-        grid: dr.grid,
-        laps: dr.laps,
-        time: dr.time,
-        points: dr.points,
-      })));
+  };
+
+  if (apiRace.teams) { // If results are nested under teams
+    const targetTeam = apiRace.teams.find(t => t.team.id === constructorIdFocus);
+    if (targetTeam) {
+      targetTeam.drivers.forEach(dr => processDriverResult(dr, targetTeam.team.id));
+    }
+  } else if (apiRace.results) { // If results are in a flat array
+    apiRace.results.forEach(res => processDriverResult(res, res.team.id));
   }
 
   return {
@@ -440,6 +458,7 @@ function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, con
     season: apiRace.season,
     type: apiRace.type,
     status: apiRace.status,
+    weather: apiRace.weather,
     driverResults: driverResultsForTeam,
   };
 }
@@ -447,6 +466,7 @@ function mapApiF1RaceToF1RaceResultApp(apiRace: ApiSportsF1RaceResponseItem, con
 export async function getF1RaceResultsForSeason(constructorId: number, season: number = F1_CURRENT_SEASON, f1ApiBaseUrl: string, limit: number = 5): Promise<F1RaceResultApp[]> {
   try {
     const apiKey = getApiKeyForSport('formula-1');
+    // Fetch all finished races for the season, then filter for the constructor
     const data = await fetchDataForSport<ApiSportsF1RacesApiResponse>(
         f1ApiBaseUrl,
         '/races',
@@ -457,7 +477,7 @@ export async function getF1RaceResultsForSeason(constructorId: number, season: n
     if (data.response && data.response.length > 0) {
       return data.response
         .map(race => mapApiF1RaceToF1RaceResultApp(race, constructorId))
-        .filter(raceApp => raceApp.driverResults.length > 0) 
+        .filter(raceApp => raceApp.driverResults.length > 0) // Only include races where the constructor had participants
         .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()) 
         .slice(0, limit);
     }
@@ -479,7 +499,8 @@ function mapApiBasketballTeamToTeamApp(apiTeam: ApiSportsBasketballTeamResponseI
     country: apiTeam.country?.name,
     sportSlug: 'basketball',
     conference: apiTeam.conference, 
-    division: apiTeam.division,   
+    division: apiTeam.division,
+    national: apiTeam.national,   
   };
 }
 
@@ -515,7 +536,6 @@ function mapApiBasketballPlayerToPlayerApp(apiPlayer: ApiSportsBasketballPlayerR
     }
   }
   
-  // Try to find a relevant league (e.g., 'standard' for NBA regular season)
   const leagueInfo = apiPlayer.leagues?.standard || apiPlayer.leagues?.vegas || Object.values(apiPlayer.leagues || {})[0];
 
   return {
@@ -523,11 +543,13 @@ function mapApiBasketballPlayerToPlayerApp(apiPlayer: ApiSportsBasketballPlayerR
     name: `${apiPlayer.firstname || ''} ${apiPlayer.lastname || ''}`.trim(),
     firstName: apiPlayer.firstname,
     lastName: apiPlayer.lastname,
+    // API does not provide photo URL for players in this endpoint.
     photoUrl: `https://placehold.co/80x80.png?text=${(apiPlayer.firstname?.charAt(0) || '')}${(apiPlayer.lastname?.charAt(0) || '')}`, 
     number: leagueInfo?.jersey,
     position: leagueInfo?.pos,
     age: age,
     heightMeters: apiPlayer.height?.meters,
+    weightKilograms: apiPlayer.weight?.kilograms,
     college: apiPlayer.college,
     birthDate: apiPlayer.birth?.date,
     nbaStartYear: apiPlayer.nba?.start,
@@ -537,22 +559,25 @@ function mapApiBasketballPlayerToPlayerApp(apiPlayer: ApiSportsBasketballPlayerR
 }
 
 
-export async function getBasketballRoster(teamId: number, season: number = BASKETBALL_CURRENT_SEASON, basketballApiBaseUrl: string): Promise<BasketballPlayerApp[]> {
+export async function getBasketballRoster(teamId: number, seasonString: string | number = `${BASKETBALL_CURRENT_SEASON}-${BASKETBALL_CURRENT_SEASON + 1}`, basketballApiBaseUrl: string): Promise<BasketballPlayerApp[]> {
   try {
     const apiKey = getApiKeyForSport('basketball');
+    // Ensure season is in "YYYY-YYYY" format if it's just YYYY
+    const seasonParam = typeof seasonString === 'number' ? `${seasonString}-${seasonString + 1}` : seasonString;
+
     const data = await fetchDataForSport<ApiSportsBasketballPlayersApiResponse>(
         basketballApiBaseUrl,
         '/players', 
         apiKey,
         'x-apisports-key',
-        { team: teamId, season: season }
+        { team: teamId, season: seasonParam }
     );
     if (data.response && data.response.length > 0) {
         return data.response.map(player => mapApiBasketballPlayerToPlayerApp(player));
     }
     return [];
   } catch (error) {
-    console.error(`Error fetching Basketball roster for team ${teamId}, season ${season}:`, error);
+    console.error(`Error fetching Basketball roster for team ${teamId}, season ${seasonString}:`, error);
     return [];
   }
 }
@@ -575,7 +600,8 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
     name: apiGame.league.name,
     logoUrl: apiGame.league.logo,
     country: apiGame.country?.name,
-    season: apiGame.league.season,
+    season: typeof apiGame.league.season === 'number' ? apiGame.league.season : String(apiGame.league.season),
+    type: apiGame.league.type,
     sportSlug: 'basketball',
   };
 
@@ -595,27 +621,28 @@ function mapApiBasketballGameToGameResultApp(apiGame: ApiSportsBasketballGameRes
       apiGame.scores.home.quarter_2,
       apiGame.scores.home.quarter_3,
       apiGame.scores.home.quarter_4,
-    ],
+    ].filter(score => score !== undefined) as (number | null)[], // Filter out undefined if API gives sparse data
     awayQuarterScores: [
       apiGame.scores.away.quarter_1,
       apiGame.scores.away.quarter_2,
       apiGame.scores.away.quarter_3,
       apiGame.scores.away.quarter_4,
-    ],
+    ].filter(score => score !== undefined) as (number | null)[],
     homeOvertimeScore: apiGame.scores.home.over_time,
     awayOvertimeScore: apiGame.scores.away.over_time,
   };
 }
 
-export async function getBasketballGamesForTeam(teamId: number, season: number = BASKETBALL_CURRENT_SEASON, basketballApiBaseUrl: string, limit: number = 10): Promise<BasketballGameResultApp[]> {
+export async function getBasketballGamesForTeam(teamId: number, seasonString: string | number = `${BASKETBALL_CURRENT_SEASON}-${BASKETBALL_CURRENT_SEASON + 1}`, basketballApiBaseUrl: string, limit: number = 10): Promise<BasketballGameResultApp[]> {
   try {
     const apiKey = getApiKeyForSport('basketball');
+    const seasonParam = typeof seasonString === 'number' ? `${seasonString}-${seasonString + 1}` : seasonString;
     const data = await fetchDataForSport<ApiSportsBasketballGamesApiResponse>(
         basketballApiBaseUrl,
         '/games',
         apiKey,
         'x-apisports-key',
-        { team: teamId, season: season, status: 'Finished' } // Fetch finished games
+        { team: teamId, season: seasonParam, status: 'Finished' } 
     );
     if (data.response && data.response.length > 0) {
       return data.response
@@ -625,8 +652,9 @@ export async function getBasketballGamesForTeam(teamId: number, season: number =
     }
     return [];
   } catch (error) {
-    console.error(`Error fetching Basketball games for team ${teamId}, season ${season}:`, error);
+    console.error(`Error fetching Basketball games for team ${teamId}, season ${seasonString}:`, error);
     return [];
   }
 }
 
+    
