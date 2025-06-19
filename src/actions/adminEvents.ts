@@ -3,7 +3,7 @@
 
 import { z } from 'zod';
 import { createManagedEventInDb, updateManagedEventInDb, getManagedEventFromDb } from '@/lib/db';
-import { settleBetsForManagedEvent } from './bets'; // Corrected import path
+import { settleBetsForManagedEvent } from './bets';
 import type { ManagedEventStatus } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
 
@@ -16,27 +16,37 @@ const CreateEventSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string), {
     message: "Invalid event status",
   }).optional().default('upcoming'),
-  homeScore: z.coerce.number().int().min(0).optional().nullable(),
-  awayScore: z.coerce.number().int().min(0).optional().nullable(),
-  elapsedTime: z.coerce.number().int().min(0).optional().nullable(),
+  homeScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
+  awayScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
+  elapsedTime: z.coerce.number().int().min(0, "Elapsed time cannot be negative.").optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
 export async function createManagedEventAction(formData: FormData): Promise<{ error?: string; success?: string; eventId?: number; details?: any }> {
+  const rawHomeScore = formData.get('homeScore');
+  const homeScoreForZod = (rawHomeScore === '' || rawHomeScore === null) ? null : rawHomeScore;
+
+  const rawAwayScore = formData.get('awayScore');
+  const awayScoreForZod = (rawAwayScore === '' || rawAwayScore === null) ? null : rawAwayScore;
+
+  const rawElapsedTime = formData.get('elapsedTime');
+  const elapsedTimeForZod = (rawElapsedTime === '' || rawElapsedTime === null) ? null : rawElapsedTime;
+
   const validatedFields = CreateEventSchema.safeParse({
     name: formData.get('name'),
     sportSlug: formData.get('sportSlug'),
-    homeTeamId: formData.get('homeTeamId'),
-    awayTeamId: formData.get('awayTeamId'),
+    homeTeamId: formData.get('homeTeamId'), // z.coerce.number will handle string from FormData
+    awayTeamId: formData.get('awayTeamId'), // z.coerce.number will handle string from FormData
     eventTime: formData.get('eventTime'),
     status: formData.get('status') || 'upcoming',
-    homeScore: formData.get('homeScore') ? parseInt(formData.get('homeScore') as string, 10) : null,
-    awayScore: formData.get('awayScore') ? parseInt(formData.get('awayScore') as string, 10) : null,
-    elapsedTime: formData.get('elapsedTime') ? parseInt(formData.get('elapsedTime') as string, 10) : null,
+    homeScore: homeScoreForZod,
+    awayScore: awayScoreForZod,
+    elapsedTime: elapsedTimeForZod,
     notes: formData.get('notes') || null,
   });
 
   if (!validatedFields.success) {
+    console.log("Zod errors (create):", validatedFields.error.flatten());
     return { error: 'Invalid event data.', details: validatedFields.error.flatten().fieldErrors };
   }
 
@@ -52,11 +62,11 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
       sportSlug,
       homeTeamId,
       awayTeamId,
-      new Date(eventTime).toISOString(), // Ensure ISO format
+      new Date(eventTime).toISOString(),
       status,
-      homeScore,
-      awayScore,
-      elapsedTime,
+      homeScore, // Already number or null due to Zod coerce
+      awayScore, // Already number or null
+      elapsedTime, // Already number or null
       notes
     );
 
@@ -65,11 +75,13 @@ export async function createManagedEventAction(formData: FormData): Promise<{ er
     }
     revalidatePath('/admin');
     revalidatePath(`/sports/${sportSlug}/teams`);
-    // Revalidate individual team pages if they are affected
-    const homeTeamSlug = (await getManagedEventFromDb(eventId))?.homeTeam.slug;
-    const awayTeamSlug = (await getManagedEventFromDb(eventId))?.awayTeam.slug;
-    if(homeTeamSlug) revalidatePath(`/sports/${sportSlug}/teams/${homeTeamSlug}`);
-    if(awayTeamSlug) revalidatePath(`/sports/${sportSlug}/teams/${awayTeamSlug}`);
+    
+    const createdEventDetails = await getManagedEventFromDb(eventId);
+    if (createdEventDetails) {
+        if(createdEventDetails.homeTeam.slug) revalidatePath(`/sports/${sportSlug}/teams/${createdEventDetails.homeTeam.slug}`);
+        if(createdEventDetails.awayTeam.slug) revalidatePath(`/sports/${sportSlug}/teams/${createdEventDetails.awayTeam.slug}`);
+    }
+
 
     return { success: 'Event created successfully!', eventId };
   } catch (error) {
@@ -83,31 +95,45 @@ const UpdateEventSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string), {
     message: "Invalid event status",
   }),
-  homeScore: z.coerce.number().int().min(0).optional().nullable(),
-  awayScore: z.coerce.number().int().min(0).optional().nullable(),
-  winningTeamId: z.coerce.number().int().positive().optional().nullable(), // This will be determined if status is 'finished'
-  elapsedTime: z.coerce.number().int().min(0).optional().nullable(),
+  homeScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
+  awayScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
+  winningTeamId: z.coerce.number().int().positive().optional().nullable(),
+  elapsedTime: z.coerce.number().int().min(0, "Elapsed time cannot be negative.").optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
 
 export async function updateManagedEventAction(formData: FormData): Promise<{ error?: string; success?: string; details?: any }> {
+  const rawHomeScore = formData.get('homeScore');
+  const homeScoreForZod = (rawHomeScore === '' || rawHomeScore === null) ? null : rawHomeScore;
+
+  const rawAwayScore = formData.get('awayScore');
+  const awayScoreForZod = (rawAwayScore === '' || rawAwayScore === null) ? null : rawAwayScore;
+  
+  const rawElapsedTime = formData.get('elapsedTime');
+  const elapsedTimeForZod = (rawElapsedTime === '' || rawElapsedTime === null) ? null : rawElapsedTime;
+
+  const rawWinningTeamId = formData.get('winningTeamId');
+  const winningTeamIdForZod = (rawWinningTeamId === '' || rawWinningTeamId === null || rawWinningTeamId === 'null' || rawWinningTeamId === undefined) ? null : rawWinningTeamId;
+
+
   const validatedFields = UpdateEventSchema.safeParse({
-    eventId: formData.get('eventId'),
+    eventId: formData.get('eventId'), // z.coerce.number will handle
     status: formData.get('status'),
-    homeScore: formData.get('homeScore') ? parseInt(formData.get('homeScore') as string, 10) : null,
-    awayScore: formData.get('awayScore') ? parseInt(formData.get('awayScore') as string, 10) : null,
-    // winningTeamId will be determined based on scores if status is 'finished'
-    elapsedTime: formData.get('elapsedTime') ? parseInt(formData.get('elapsedTime') as string, 10) : null,
+    homeScore: homeScoreForZod,
+    awayScore: awayScoreForZod,
+    winningTeamId: winningTeamIdForZod, // z.coerce.number for string id, or null
+    elapsedTime: elapsedTimeForZod,
     notes: formData.get('notes') || null,
   });
 
   if (!validatedFields.success) {
+    console.log("Zod errors (update):", validatedFields.error.flatten());
     return { error: 'Invalid update data.', details: validatedFields.error.flatten().fieldErrors };
   }
 
   const { eventId, status, homeScore, awayScore, elapsedTime, notes } = validatedFields.data;
-  let determinedWinningTeamId: number | null | undefined = undefined;
+  let { winningTeamId } = validatedFields.data; // winningTeamId from Zod can be number or null
 
 
   const existingEvent = await getManagedEventFromDb(eventId);
@@ -120,20 +146,25 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
       return { error: 'Home and Away scores are required to finish an event.' };
     }
     if (homeScore > awayScore) {
-      determinedWinningTeamId = existingEvent.homeTeam.id;
+      winningTeamId = existingEvent.homeTeam.id;
     } else if (awayScore > homeScore) {
-      determinedWinningTeamId = existingEvent.awayTeam.id;
-    } else { // Draw
-      determinedWinningTeamId = null;
+      winningTeamId = existingEvent.awayTeam.id;
+    } else { 
+      winningTeamId = null; // Draw explicitly
     }
   } else {
-     // For 'live', 'paused', 'upcoming', 'cancelled' keep winningTeamId as null or undefined
-     // unless explicitly set (though the schema doesn't allow explicit setting here if not finished)
-     determinedWinningTeamId = null;
+     // If not finished, winningTeamId should remain null unless explicitly set by admin (though UI might restrict this)
+     // If the form sends a specific winningTeamId (e.g. for a paused game where admin notes a clear leader),
+     // it will be used if it passes Zod validation (i.e., it's a number or null).
+     // However, bets are only settled on 'finished'.
+     // Let's ensure winningTeamId is explicitly null if not finished and not otherwise set by validated data.
+     if (validatedFields.data.winningTeamId === undefined && status !== 'finished') {
+        winningTeamId = null;
+     }
   }
 
   try {
-    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, determinedWinningTeamId, elapsedTime, notes);
+    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, winningTeamId, elapsedTime, notes);
 
     if (!success) {
       return { error: 'Failed to update event in database.' };
