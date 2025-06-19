@@ -9,9 +9,10 @@ import {
   updateUserScoreDb,
   getUserBetsWithDetailsDb,
   getManagedEventFromDb,
-  getPendingBetsForManagedEventDb
+  getPendingBetsForManagedEventDb,
+  getUserById, // Added to fetch user score
 } from '@/lib/db';
-import type { Bet, BetWithMatchDetails, EventSource, ManagedEventApp } from '@/lib/types';
+import type { Bet, BetWithMatchDetails, EventSource, ManagedEventApp, User } from '@/lib/types';
 import { footballTeams, supportedSports, formula1Entities, basketballTeams } from '@/lib/mockData';
 import { getFootballFixtureById } from '@/services/apiSportsService';
 import { revalidatePath } from 'next/cache';
@@ -44,6 +45,14 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
     }
 
     const { userId, eventId, eventSource, teamIdBetOn, amountBet, sportSlug } = validatedFields.data;
+
+    const currentUser = await getUserById(userId);
+    if (!currentUser) {
+      return { error: 'User not found.' };
+    }
+    if (currentUser.score < amountBet) {
+      return { error: `Insufficient points. Your current score is ${currentUser.score}.` };
+    }
 
     const sport = supportedSports.find(s => s.slug === sportSlug);
     if (!sport) {
@@ -97,6 +106,10 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
     if (!betId) {
       return { error: 'Failed to place bet.' };
     }
+
+    // Deduct bet amount from user's score
+    await updateUserScoreDb(userId, -amountBet);
+
 
     revalidatePath('/profile');
     if(eventSource === 'custom') {
@@ -168,9 +181,11 @@ export async function settleApiBetAction(formData: FormData): Promise<{ error?: 
 
     if (userWon) {
       newStatus = 'won';
-      scoreChange = bet.potentialWinnings;
+      scoreChange = bet.potentialWinnings; // User gets potential winnings, bet amount was already deducted
     } else {
       newStatus = 'lost';
+      // No score change here, as the bet amount was already deducted when placing the bet.
+      // If the logic was different (e.g., deduct only on loss), this would change.
     }
 
     const statusUpdated = await updateBetStatusDb(betId, newStatus);
@@ -178,9 +193,9 @@ export async function settleApiBetAction(formData: FormData): Promise<{ error?: 
       return { error: 'Failed to update bet status.' };
     }
 
-    if (scoreChange !== 0) {
+    if (newStatus === 'won' && scoreChange > 0) { // Only update score if won and there's a positive change
       const scoreUpdated = await updateUserScoreDb(bet.userId, scoreChange);
-      if (!scoreUpdated && newStatus === 'won') {
+      if (!scoreUpdated) {
         return { error: 'Bet status updated to won, but failed to update user score. Please contact support.' };
       }
     }
@@ -220,7 +235,7 @@ export async function settleBetsForManagedEvent(managedEventId: number): Promise
     try {
       let userWon: boolean;
       if (winningTeamId === null) { // Draw
-        userWon = false; // Assuming no "bet on draw" option for now
+        userWon = false; 
       } else {
         userWon = bet.teamIdBetOn === winningTeamId;
       }
@@ -229,18 +244,16 @@ export async function settleBetsForManagedEvent(managedEventId: number): Promise
       const newStatus: 'won' | 'lost' = userWon ? 'won' : 'lost';
 
       if (userWon) {
-        scoreChange = bet.potentialWinnings;
-      } else {
-        // For custom events, user could lose the amountBet, or not. Current setup: no penalty.
-        // If penalty: scoreChange = -bet.amountBet;
+        scoreChange = bet.potentialWinnings; // User gets potential winnings
       }
+      // No score change for lost custom event bets as amount was already deducted.
 
       const statusUpdated = await updateBetStatusDb(bet.id, newStatus);
       if (!statusUpdated) {
         throw new Error(`Failed to update status for bet ID ${bet.id}`);
       }
 
-      if (scoreChange !== 0) {
+      if (newStatus === 'won' && scoreChange > 0) {
         const scoreUpdated = await updateUserScoreDb(bet.userId, scoreChange);
         if (!scoreUpdated) {
           throw new Error(`Failed to update score for user ID ${bet.userId} for bet ID ${bet.id}`);
@@ -272,3 +285,4 @@ export async function settleBetsForManagedEvent(managedEventId: number): Promise
     details: { successCount, errorCount }
   };
 }
+
