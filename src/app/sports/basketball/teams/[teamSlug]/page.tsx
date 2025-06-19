@@ -77,34 +77,47 @@ export default function BasketballTeamProfilePage() {
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
         setTeamDetails(detailsResult.value);
       } else {
-        console.error("Failed to fetch Basketball team details:", detailsResult.status === 'rejected' && detailsResult.reason);
+        console.error("Failed to fetch Basketball team details:", detailsResult.status === 'rejected' ? detailsResult.reason : 'Team details API call succeeded but returned no data.');
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load team details.' });
         // Keep mockTeamData if API fails
       }
 
-      if (rosterResult.status === 'fulfilled' && rosterResult.value.length > 0) {
-        setRoster(rosterResult.value);
-      } else {
-        console.error("Failed to fetch Basketball roster:", rosterResult.status === 'rejected' ? rosterResult.reason : 'No roster data');
-        setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0]))); // Improved mock filtering
-        toast({ variant: 'default', title: 'Info', description: 'Could not load live roster, showing mock data if available.' });
+      if (rosterResult.status === 'fulfilled') {
+        if (rosterResult.value && rosterResult.value.length > 0) {
+          setRoster(rosterResult.value);
+        } else {
+          console.info(`No live basketball roster found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON}. Falling back to mock data.`);
+          setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
+          toast({ variant: 'default', title: 'Info', description: 'No live roster data found, showing mock data if available.' });
+        }
+      } else { // rosterResult.status === 'rejected'
+        console.error("Failed to fetch Basketball roster due to API error:", rosterResult.reason);
+        setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live roster due to an API error, showing mock data if available.' });
       }
       setIsLoadingRoster(false);
 
-      if (gamesResult.status === 'fulfilled' && gamesResult.value.length > 0) {
-        setGameResults(gamesResult.value);
-      } else {
-        console.error("Failed to fetch Basketball game results:", gamesResult.status === 'rejected' ? gamesResult.reason : 'No game data');
+      if (gamesResult.status === 'fulfilled') {
+        if (gamesResult.value && gamesResult.value.length > 0) {
+          setGameResults(gamesResult.value);
+        } else {
+          console.info(`No live basketball game results found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON}. Falling back to mock data.`);
+          const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
+          setGameResults(mockGamesForTeam);
+          toast({ variant: 'default', title: 'Info', description: 'No live game results found, showing mock data if available.' });
+        }
+      } else { // gamesResult.status === 'rejected'
+        console.error("Failed to fetch Basketball game results due to API error:", gamesResult.reason);
         const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
         setGameResults(mockGamesForTeam);
-        toast({ variant: 'default', title: 'Info', description: 'Could not load live game results, showing mock data if available.' });
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live game results due to an API error, showing mock data if available.' });
       }
       setIsLoadingResults(false);
 
       if (summaryResult.status === 'fulfilled' && summaryResult.value) {
         setAiSummary(summaryResult.value.response);
       } else {
-        console.error("Error fetching AI summary for Basketball team:", summaryResult.status === 'rejected' && summaryResult.reason);
+        console.error("Error fetching AI summary for Basketball team:", summaryResult.status === 'rejected' ? summaryResult.reason : "AI summary call succeeded but returned no data.");
         setAiError("Failed to load AI summary.");
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
