@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, UserCog, Clock } from 'lucide-react'; // Added UserCog and Clock
+import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, UserCog, Clock } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -49,7 +49,7 @@ export default function Formula1TeamProfilePage() {
   const [constructorDetails, setConstructorDetails] = useState<TeamApp | null>(null);
   const [drivers, setDrivers] = useState<F1DriverApp[]>([]);
   const [raceResults, setRaceResults] = useState<F1RaceResultApp[]>([]);
-  
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
@@ -72,7 +72,7 @@ export default function Formula1TeamProfilePage() {
     setIsLoadingData(true);
     setIsLoadingDrivers(true);
     setIsLoadingResults(true);
-    setIsAiLoading(true); 
+    setIsAiLoading(true);
 
     try {
       const [detailsResult, driversResult, racesResult, summaryResult] = await Promise.allSettled([
@@ -85,47 +85,32 @@ export default function Formula1TeamProfilePage() {
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
         setConstructorDetails(detailsResult.value);
       } else {
-        console.error("Failed to fetch F1 constructor details:", detailsResult.status === 'rejected' ? detailsResult.reason : 'Constructor details API call succeeded but returned no data.');
+        console.warn("Could not fetch live F1 constructor details, using mock. Reason:", detailsResult.status === 'rejected' ? detailsResult.reason : 'No data returned');
         setConstructorDetails(formula1Entities.find(e => e.id === entityId) || null);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load live constructor details. Displaying basic info.' });
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live constructor details. Displaying basic info.' });
       }
       setIsLoadingData(false);
 
-      if (driversResult.status === 'fulfilled') {
-         if (driversResult.value && driversResult.value.length > 0) {
-            setDrivers(driversResult.value);
-         } else {
-            console.info(`No live F1 drivers found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data if available.`);
-            const mockDriversForTeam = mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())); // Simple filter
-            setDrivers(mockDriversForTeam);
-            toast({ variant: 'default', title: 'Info', description: (mockDriversForTeam.length > 0 ? 'No live driver data found, showing mock data.' : 'No live or mock driver data found for this team.')});
-         }
-      } else { 
-        console.error("Failed to fetch F1 drivers due to API error:", driversResult.reason);
+      if (driversResult.status === 'fulfilled' && driversResult.value && driversResult.value.length > 0) {
+          setDrivers(driversResult.value);
+      } else {
+        console.info(`No live F1 drivers found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data if available. Reason: ${driversResult.status === 'rejected' ? driversResult.reason : 'No data returned'}`);
         const mockDriversForTeam = mockF1Drivers.filter(d => d.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()));
         setDrivers(mockDriversForTeam);
-        toast({ variant: 'destructive', title: 'API Error', description: 'Could not load live F1 drivers due to an API error, showing mock data.' });
+        toast({ variant: 'default', title: 'Info', description: (mockDriversForTeam.length > 0 ? 'No live driver data found, showing mock data.' : 'No live or mock driver data found for this team.')});
       }
       setIsLoadingDrivers(false);
 
-      if (racesResult.status === 'fulfilled') {
-        if (racesResult.value && racesResult.value.length > 0) {
-            setRaceResults(racesResult.value);
-        } else {
-            console.info(`No live F1 race results found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data.`);
-            const mockResultsForTeam = mockF1RaceResults.filter(r => 
-                r.driverResults.some(dr => 
-                    drivers.some(d => d.name === dr.driverName) || // Check against fetched/mock drivers
-                    mockF1Drivers.find(md => md.name === dr.driverName && md.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())) // Fallback to check against general mock drivers for this team
-                )
-            );
-            setRaceResults(mockResultsForTeam); 
-            toast({ variant: 'default', title: 'Info', description: (mockResultsForTeam.length > 0 ? 'No live race results found, showing mock data.' : 'No live or mock race results found.') });
-        }
-      } else { 
-        console.error("Failed to fetch F1 race results:", racesResult.status === 'rejected' ? racesResult.reason : 'No race data');
-        setRaceResults(mockF1RaceResults.filter(r => r.driverResults.some(dr => dr.driverName?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase()))));
-        toast({ variant: 'destructive', title: 'API Error', description: 'Could not load live F1 race results due to an API error, showing mock data.' });
+      if (racesResult.status === 'fulfilled' && racesResult.value && racesResult.value.length > 0) {
+          setRaceResults(racesResult.value);
+      } else {
+        console.info(`No live F1 race results found for constructor ${entityId}, season ${CURRENT_F1_SEASON}. Falling back to mock data. Reason: ${racesResult.status === 'rejected' ? racesResult.reason : 'No data returned'}`);
+        const mockResultsForTeam = mockF1RaceResults.filter(r =>
+            (drivers.length > 0 ? r.driverResults.some(dr => drivers.some(d => d.name === dr.driverName)) : false) || // Check against fetched drivers first
+            r.driverResults.some(dr => mockF1Drivers.find(md => md.name === dr.driverName && md.name?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())))
+        );
+        setRaceResults(mockResultsForTeam);
+        toast({ variant: 'default', title: 'Info', description: (mockResultsForTeam.length > 0 ? 'No live race results found, showing mock data.' : 'No live or mock race results found.') });
       }
       setIsLoadingResults(false);
 
@@ -136,7 +121,7 @@ export default function Formula1TeamProfilePage() {
         setAiError("Failed to load AI summary.");
         setAiSummary(`Could not load summary for ${entityName}.`);
       }
-      
+
     } catch (error) {
       console.error("Overall error fetching F1 page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all F1 page data.' });
@@ -145,7 +130,7 @@ export default function Formula1TeamProfilePage() {
        const mockResultsForTeam = mockF1RaceResults.filter(r => r.driverResults.some(dr => dr.driverName?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())));
        setRaceResults(mockResultsForTeam);
     } finally {
-      setIsAiLoading(false); 
+      setIsAiLoading(false);
     }
   }, [currentSport.apiBaseUrl, toast, drivers]);
 
@@ -194,9 +179,9 @@ export default function Formula1TeamProfilePage() {
       const teamNameContext = constructorDetails?.name || mockEntityData?.name || 'leur écurie actuelle';
       const input: TeamInfoInput = {
         entityName: driver.name,
-        entityType: 'player', 
+        entityType: 'player',
         contextName: teamNameContext,
-        question: `Fournis une biographie concise pour le pilote de Formule 1 ${driver.name}, en mentionnant son écurie actuelle ${teamNameContext}, ses faits marquants et son style de pilotage si possible.`,
+        question: `Fournis une biographie concise pour le pilote de Formule 1 ${driver.name}, en mentionnant son écurie actuelle ${teamNameContext}, ses faits marquants (comme son numéro ${driver.number || 'N/A'}, sa nationalité ${driver.nationality || 'N/A'}) et son style de pilotage si possible.`,
       };
       const result = await getTeamInfo(input);
       setDriverBioContent(result.response);
@@ -222,7 +207,7 @@ export default function Formula1TeamProfilePage() {
   if (!mockEntityData && !constructorDetails && !isLoadingData) {
     notFound(); return null;
   }
-  
+
   const displayEntityName = constructorDetails?.name || mockEntityData?.name || 'F1 Entity Profile';
   const displayEntityLogo = constructorDetails?.logoUrl || mockEntityData?.logoUrl;
   const entityDetailsToDisplay = constructorDetails || mockEntityData;
@@ -251,8 +236,8 @@ export default function Formula1TeamProfilePage() {
             </div>
           </div>
         </Card>
-        
-      
+
+
         <Card className="mb-8 shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary" /> AI Summary & Info</CardTitle>
@@ -266,7 +251,7 @@ export default function Formula1TeamProfilePage() {
                   </div>
                 )}
                 {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
-                
+
                 <div className="space-y-2">
                   <Textarea placeholder={`Ask a question about ${displayEntityName}...`} value={userQuestion} onChange={(e) => setUserQuestion(e.target.value)} className="resize-none" />
                   <Button onClick={handleAskAi} disabled={isAiLoading || !userQuestion.trim()}> {isAiLoading && userQuestion ? <LoadingSpinner size="sm" /> : "Ask AI"} </Button>
@@ -283,7 +268,7 @@ export default function Formula1TeamProfilePage() {
                 {aiError && userQuestion && <p className="text-destructive mt-2">{aiError}</p>}
               </CardContent>
           </Card>
-        
+
 
         <Card className="mb-8 shadow-lg">
           <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Info className="text-primary"/>Constructor Details</CardTitle></CardHeader>
@@ -310,12 +295,12 @@ export default function Formula1TeamProfilePage() {
             <CardDescription>Cliquez sur un pilote pour voir sa biographie.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingDrivers ? <div className="flex justify-center py-5"><LoadingSpinner/></div> : 
+            {isLoadingDrivers ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
              drivers.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {drivers.map(driver => (
-                  <Card 
-                    key={driver.id || driver.name} 
+                  <Card
+                    key={driver.id || driver.name}
                     className="p-4 bg-card shadow-sm hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleDriverCardClick(driver)}
                     role="button"
@@ -328,17 +313,17 @@ export default function Formula1TeamProfilePage() {
                         <h4 className="text-lg font-semibold">{driver.name} {driver.number && <span className="text-primary font-bold">#{driver.number}</span>}</h4>
                         {driver.nationality && <p className="text-xs text-muted-foreground flex items-center gap-1"><Flag size={14}/>{driver.nationality}</p>}
                         {driver.abbr && <p className="text-xs text-muted-foreground">Abbr: {driver.abbr}</p>}
-                        {driver.age != null && <p className="text-xs text-muted-foreground">Age: {driver.age}</p>}
+                        {/* Age and other details might be added to F1DriverApp if fetched from /drivers/{id} in bio */}
                       </div>
                     </div>
                   </Card>
                 ))}
               </div>
-             ) : <p className="text-muted-foreground text-center py-4">Driver information for {CURRENT_F1_SEASON} not available or team had no drivers listed.</p>
+             ) : <p className="text-muted-foreground text-center py-4">Driver information for {CURRENT_F1_SEASON} not available or team had no drivers listed in rankings for this season.</p>
             }
           </CardContent>
         </Card>
-        
+
         {selectedDriverForBio && (
           <Dialog open={!!selectedDriverForBio} onOpenChange={(open) => !open && setSelectedDriverForBio(null)}>
             <DialogContent className="sm:max-w-lg">
@@ -358,7 +343,7 @@ export default function Formula1TeamProfilePage() {
                   <div className="flex-1">
                     <DialogTitle className="text-2xl font-headline mb-1">{selectedDriverForBio.name || "Driver Biography"}</DialogTitle>
                     {selectedDriverForBio.nationality && <p className="text-sm text-muted-foreground">Nationality: {selectedDriverForBio.nationality}</p>}
-                     {selectedDriverForBio.age != null && <p className="text-sm text-muted-foreground">Age: {selectedDriverForBio.age}</p>}
+                    {/* Add more details here if available in selectedDriverForBio */}
                   </div>
                 </DialogHeader>
               <div className="py-4 max-h-[60vh] overflow-y-auto">
@@ -373,7 +358,7 @@ export default function Formula1TeamProfilePage() {
               </div>
               <DialogClose asChild>
                 <Button type="button" variant="outline" className="absolute right-4 top-4 p-1.5 h-auto">
-                   <X size={18}/> {/* Using X from lucide for close */}
+                   <X size={18}/>
                   <span className="sr-only">Close</span>
                 </Button>
               </DialogClose>
@@ -408,7 +393,7 @@ export default function Formula1TeamProfilePage() {
                                     </li>
                                 ))}
                             </ul>
-                        ) : <p className="text-xs text-muted-foreground italic">No specific results for this constructor in this race.</p>}
+                        ) : <p className="text-xs text-muted-foreground italic">No results for this constructor in this race.</p>}
                         {race.weather && <p className="text-xs text-muted-foreground mt-2">Weather: {race.weather}</p>}
                     </Card>
                 ))
@@ -416,9 +401,9 @@ export default function Formula1TeamProfilePage() {
             }
           </CardContent>
         </Card>
-        
+
         <Card className="mb-8 shadow-lg">
-            <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Car className="text-primary"/>Car Details & Partners</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Rocket className="text-primary"/>Car & Partners</CardTitle></CardHeader>
             <CardContent className="text-center py-10">
                 <p className="text-muted-foreground">Detailed car specifications and partner information coming soon!</p>
             </CardContent>

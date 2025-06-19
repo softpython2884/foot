@@ -243,11 +243,19 @@ export interface ApiSportsF1ConstructorApiResponse { // Used by F1 /teams
   response: ApiSportsF1ConstructorResponseItem[];
 }
 
-export interface ApiSportsF1DriverResponseItem { // Used by F1 /drivers
+export interface ApiSportsF1DriverInfo { // Sub-object within rankings and potentially /drivers
   id: number;
   name: string;
   abbr: string | null;
-  image: string | null;
+  number: number | null;
+  image: string | null; // Photo URL for driver
+}
+
+export interface ApiSportsF1DriverResponseItem { // Used by F1 /drivers (if ever needed for full details)
+  id: number;
+  name: string;
+  abbr: string | null;
+  image: string | null; // Photo URL
   nationality: string | null;
   country: {
     name: string | null;
@@ -278,6 +286,28 @@ export interface ApiSportsF1DriversApiResponse { // Used by F1 /drivers
   response: ApiSportsF1DriverResponseItem[];
 }
 
+export interface ApiSportsF1RankingDriverResponseItem { // For /rankings/drivers endpoint
+  position: number;
+  driver: ApiSportsF1DriverInfo; // Contains driver details including image
+  team: {
+    id: number;
+    name: string;
+    logo: string | null;
+  };
+  points: number | null;
+  wins: number | null;
+  behind: number | null;
+  season: number;
+}
+export interface ApiSportsF1RankingDriversApiResponse { // For /rankings/drivers endpoint
+  get: string;
+  parameters: Record<string, any>;
+  errors: any[] | Record<string, string>;
+  results: number;
+  response: ApiSportsF1RankingDriverResponseItem[];
+}
+
+
 export interface ApiSportsF1RaceResponseItem { // Used by F1 /races
   id: number;
   competition: {
@@ -298,36 +328,23 @@ export interface ApiSportsF1RaceResponseItem { // Used by F1 /races
   date: string; // ISO 8601 date string
   status: string; // E.g., "Finished", "Scheduled"
   weather?: string | null;
-  // Results can be under 'teams' or directly under 'results'
-  teams?: Array<{
+  teams?: Array<{ // Results might be nested under teams
     team: {
       id: number;
       name: string;
       logo: string | null;
     };
-    drivers: Array<{
-      driver: {
-        id: number;
-        name: string;
-        abbr: string | null;
-        number: number | null;
-        image: string | null;
-      };
+    drivers: Array<{ // Driver result details for that team
+      driver: ApiSportsF1DriverInfo; // Re-use the detailed driver info
       position: number | null;
       grid: number | null;
       laps: number | null;
-      time: string | null; // E.g., "1:23:45.678" or "DNF"
+      time: string | null;
       points: number | null;
     }>
   }>;
-  results?: Array<{ // Used if results are not nested under teams
-    driver: {
-        id: number;
-        name: string;
-        abbr: string | null;
-        number: number | null;
-        image: string | null;
-      };
+  results?: Array<{ // Or results might be a flat array
+    driver: ApiSportsF1DriverInfo;
     team: {
       id: number;
       name: string;
@@ -538,11 +555,11 @@ export interface PlayerApp { // Generic player, can be extended
 // F1 Specific App Types
 export interface F1DriverApp extends PlayerApp {
   abbr?: string | null;
-  grandsPrixEntered?: number | null;
-  worldChampionships?: number | null;
-  podiums?: number | null;
-  careerPoints?: string | null; // API returns as string
-  birthDate?: string | null; // For calculating age if not directly provided
+  grandsPrixEntered?: number | null; // This might require another API call or be part of a more detailed driver object
+  worldChampionships?: number | null; // This might require another API call
+  podiums?: number | null; // This might require another API call
+  careerPoints?: string | null; // This might require another API call
+  birthDate?: string | null; // For calculating age if not directly provided by ranking
 }
 
 export interface F1RaceResultApp {
@@ -555,15 +572,14 @@ export interface F1RaceResultApp {
   type: string; // E.g., "Race", "Sprint"
   status: string;
   weather?: string | null;
-  // Simplified results for the team's drivers in this race
   driverResults: Array<{
     driverName: string;
-    driverImage?: string | null; // From F1 /drivers endpoint
+    driverImage?: string | null;
     driverNumber?: number | null;
     position: number | null;
     grid: number | null;
     laps: number | null;
-    time: string | null; // E.g., "1:23:45.678" or "DNF"
+    time: string | null;
     points: number | null;
   }>;
 }
@@ -578,7 +594,6 @@ export interface BasketballPlayerApp extends PlayerApp {
   college?: string | null;
   nbaStartYear?: number | null;
   yearsPro?: number | null;
-  // Jersey number and position are in PlayerApp
 }
 
 export interface BasketballGameResultApp extends MatchApp {
@@ -627,14 +642,12 @@ export interface BetWithMatchDetails extends Bet {
 // --- Mock Data specific types ---
 export interface Team extends TeamApp { // Team for mockData, extends TeamApp
   shortName?: string;
-  // Ensure F1 specific fields are optional here too if not all mock teams have them
   base?: string | null;
   championships?: number | null;
   director?: string | null;
   technicalManager?: string | null;
   chassis?: string | null;
   engine?: string | null;
-  // Basketball specific fields
   conference?: string | null;
   division?: string | null;
 }

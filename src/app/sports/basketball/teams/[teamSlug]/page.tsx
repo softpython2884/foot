@@ -21,7 +21,7 @@ import { formatMatchDateTime } from '@/lib/dateUtils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-const CURRENT_BASKETBALL_SEASON_STRING = "2023-2024"; // For NBA 2023-2024 season API
+const CURRENT_BASKETBALL_SEASON_STRING = "2023-2024";
 const MAX_GAME_RESULTS_BASKETBALL = 10;
 
 function simpleMarkdownToHtml(markdown: string): string {
@@ -54,7 +54,7 @@ export default function BasketballTeamProfilePage() {
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isLoadingRoster, setIsLoadingRoster] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
-  
+
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [userQuestion, setUserQuestion] = useState<string>('');
   const [aiAnswer, setAiAnswer] = useState<string | null>(null);
@@ -73,7 +73,7 @@ export default function BasketballTeamProfilePage() {
     setIsLoadingData(true);
     setIsLoadingRoster(true);
     setIsLoadingResults(true);
-    setIsAiLoading(true); 
+    setIsAiLoading(true);
 
     try {
       const [detailsResult, rosterResult, gamesResult, summaryResult] = await Promise.allSettled([
@@ -86,10 +86,9 @@ export default function BasketballTeamProfilePage() {
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
         setTeamDetails(detailsResult.value);
       } else {
-        console.error("Failed to fetch Basketball team details:", detailsResult.status === 'rejected' ? detailsResult.reason : 'Team details API call succeeded but returned no data.');
-        // Keep mockTeamData if API fails
+        console.warn("Could not fetch live Basketball team details, using mock. Reason:", detailsResult.status === 'rejected' ? detailsResult.reason : 'No data returned');
         setTeamDetails(basketballTeams.find(t => t.id === teamId) || null);
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load live team details. Displaying basic info.' });
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live team details. Displaying basic info.' });
       }
       setIsLoadingData(false);
 
@@ -105,7 +104,7 @@ export default function BasketballTeamProfilePage() {
 
       if (gamesResult.status === 'fulfilled' && gamesResult.value && gamesResult.value.length > 0) {
           setGameResults(gamesResult.value);
-      } else { 
+      } else {
         console.info(`No live basketball game results found for team ${teamId}, season ${CURRENT_BASKETBALL_SEASON_STRING}. Falling back to mock data. Reason: ${gamesResult.status === 'rejected' ? gamesResult.reason : 'No data returned'}`);
         const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
         setGameResults(mockGamesForTeam);
@@ -120,7 +119,7 @@ export default function BasketballTeamProfilePage() {
         setAiError("Failed to load AI summary.");
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
-      
+
     } catch (error) {
       console.error("Overall error fetching Basketball page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all Basketball page data.' });
@@ -129,7 +128,7 @@ export default function BasketballTeamProfilePage() {
        const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
        setGameResults(mockGamesForTeam);
     } finally {
-      setIsAiLoading(false); 
+      setIsAiLoading(false);
     }
   }, [currentSport.apiBaseUrl, toast]);
 
@@ -137,7 +136,7 @@ export default function BasketballTeamProfilePage() {
   useEffect(() => {
     if (teamSlug) {
       const foundTeam = basketballTeams.find((t) => t.slug === teamSlug);
-      setMockTeamData(foundTeam || null); // Set mock data first for basic display
+      setMockTeamData(foundTeam || null);
       if (foundTeam) {
         fetchBasketballData(foundTeam.id, foundTeam.name);
       } else {
@@ -178,7 +177,7 @@ export default function BasketballTeamProfilePage() {
       const teamNameContext = teamDetails?.name || mockTeamData?.name || 'leur équipe actuelle';
       const input: TeamInfoInput = {
         entityName: player.name,
-        entityType: 'player', // Using 'player' for individual bio
+        entityType: 'player',
         contextName: teamNameContext,
         question: `Fournis une biographie concise pour le joueur de basketball ${player.name}, en mentionnant son équipe actuelle ${teamNameContext}, ses faits marquants (comme le collège, les années pro, les distinctions) et son style de jeu si possible.`,
       };
@@ -192,7 +191,7 @@ export default function BasketballTeamProfilePage() {
     setIsPlayerBioLoading(false);
   };
 
-  if (isLoadingData && !mockTeamData) { // Show loading only if no mock data to display initially
+  if (isLoadingData && !mockTeamData) {
     return (
       <div className="flex flex-col min-h-screen bg-background">
         <Header />
@@ -202,7 +201,7 @@ export default function BasketballTeamProfilePage() {
     );
   }
 
-  if (!mockTeamData && !teamDetails && !isLoadingData) { // If after loading, still no data, then 404
+  if (!mockTeamData && !teamDetails && !isLoadingData) {
     notFound(); return null;
   }
 
@@ -235,7 +234,7 @@ export default function BasketballTeamProfilePage() {
           </div>
         </Card>
 
-        
+
         <Card className="mb-8 shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary" /> AI Summary & Info</CardTitle>
@@ -249,7 +248,7 @@ export default function BasketballTeamProfilePage() {
                   </div>
                 )}
                 {aiError && !aiSummary && <p className="text-destructive">{aiError}</p>}
-                
+
                 <div className="space-y-2">
                   <Textarea placeholder={`Ask a question about ${displayTeamName}...`} value={userQuestion} onChange={(e) => setUserQuestion(e.target.value)} className="resize-none" />
                   <Button onClick={handleAskAi} disabled={isAiLoading || !userQuestion.trim()}> {isAiLoading && userQuestion ? <LoadingSpinner size="sm" /> : "Ask AI"} </Button>
@@ -266,22 +265,22 @@ export default function BasketballTeamProfilePage() {
                 {aiError && userQuestion && <p className="text-destructive mt-2">{aiError}</p>}
               </CardContent>
           </Card>
-        
+
 
         <Card className="mb-8 shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline flex items-center gap-2">
                 <Users className="text-primary"/>Team Roster ({CURRENT_BASKETBALL_SEASON_STRING})
             </CardTitle>
-            <CardDescription>Cliquez sur un joueur pour voir sa biographie. L'API actuelle ne fournit pas les photos réelles des joueurs de basketball. Des images placeholder sont utilisées.</CardDescription>
+            <CardDescription>Cliquez sur un joueur pour voir sa biographie. L'API ne fournit pas les photos réelles des joueurs de basketball pour cet endpoint. Des images placeholder sont utilisées.</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingRoster ? <div className="flex justify-center py-5"><LoadingSpinner/></div> : 
+            {isLoadingRoster ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
              roster.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {roster.map((player) => (
-                  <Card 
-                    key={player.id || player.name} 
+                  <Card
+                    key={player.id || player.name}
                     className="p-3 bg-card shadow-sm hover:shadow-md transition-shadow text-center cursor-pointer"
                     onClick={() => handlePlayerCardClick(player)}
                     role="button"
@@ -291,8 +290,6 @@ export default function BasketballTeamProfilePage() {
                      <div className="relative w-24 h-24 mx-auto mb-2">
                         {player.photoUrl && player.photoUrl.startsWith('https://placehold.co') ? (
                              <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="contain" className="rounded-full shadow-md" data-ai-hint="player placeholder"/>
-                        ) : player.photoUrl ? ( // Should not happen with current service logic but kept for robustness
-                            <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="cover" className="rounded-full shadow-md" data-ai-hint={`${player.name} portrait`} />
                         ) : (
                             <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-3xl font-bold text-muted-foreground" data-ai-hint="player initials">
                                 {(player.firstName?.charAt(0) || '') + (player.lastName?.charAt(0) || '') || '?'}
@@ -343,7 +340,7 @@ export default function BasketballTeamProfilePage() {
               </div>
               <DialogClose asChild>
                 <Button type="button" variant="outline" className="absolute right-4 top-4 p-1.5 h-auto">
-                  <ExternalLink className="sr-only" /> {/* Using X from lucide */}
+                  <X size={18} />
                   <span className="sr-only">Close</span>
                 </Button>
               </DialogClose>
@@ -385,7 +382,7 @@ export default function BasketballTeamProfilePage() {
                         {(game.homeQuarterScores?.length || game.awayQuarterScores?.length) && (
                             <div className="mt-2 text-xs text-muted-foreground">
                                 <div className="flex justify-around font-semibold items-center">
-                                    <span className="w-8"></span> {/* Spacer for team name column */}
+                                    <span className="w-8"></span>
                                     {Array.from({ length: Math.max(game.homeQuarterScores?.length || 0, game.awayQuarterScores?.length || 0, 4) }, (_, i) => (
                                         <span key={`q${i+1}`} className="w-6 text-center">Q{i+1}</span>
                                     ))}
@@ -416,7 +413,7 @@ export default function BasketballTeamProfilePage() {
             }
           </CardContent>
         </Card>
-        
+
         <Card className="mb-8 shadow-lg">
             <CardHeader><CardTitle className="font-headline flex items-center gap-2"><BarChart3 className="text-primary"/>Team Statistics</CardTitle></CardHeader>
             <CardContent className="text-center py-10">
