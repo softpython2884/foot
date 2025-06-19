@@ -129,7 +129,7 @@ export default function FootballTeamProfilePage() {
         } catch (err) {
           console.error("Error fetching AI summary:", err);
           setAiError("Failed to load AI summary.");
-          setAiSummary(\`Could not load summary for \${nameForAISummary}.\`);
+          setAiSummary(`Could not load summary for ${nameForAISummary}.`);
         } finally {
           setIsAiLoading(false);
         }
