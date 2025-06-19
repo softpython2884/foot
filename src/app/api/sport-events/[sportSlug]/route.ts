@@ -16,7 +16,12 @@ export async function GET(
   if (teamIdParam) {
     teamId = parseInt(teamIdParam, 10);
     if (isNaN(teamId)) {
-      return NextResponse.json({ error: 'Invalid teamId parameter' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid teamId parameter' }, { 
+        status: 400,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
     }
   }
 
@@ -30,17 +35,26 @@ export async function GET(
       eventsDb = eventsDb.filter(event => event.homeTeam.id === teamId || event.awayTeam.id === teamId);
     }
     
-    // Ensure all team data is at least minimally present before sending response
     const eventsApp = eventsDb.map(event => ({
         ...event,
-        homeTeam: event.homeTeam || { id: -1, name: 'Unknown Home Team', sportSlug: event.sportSlug },
-        awayTeam: event.awayTeam || { id: -1, name: 'Unknown Away Team', sportSlug: event.sportSlug },
+        homeTeam: event.homeTeam || { id: -1, name: 'Unknown Home Team', sportSlug: event.sportSlug, logoUrl: undefined },
+        awayTeam: event.awayTeam || { id: -1, name: 'Unknown Away Team', sportSlug: event.sportSlug, logoUrl: undefined },
     }));
 
 
-    return NextResponse.json(eventsApp);
+    return NextResponse.json(eventsApp, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
   } catch (error) {
     console.error(`Error fetching managed events for sport ${sportSlug}:`, error);
-    return NextResponse.json({ error: 'Failed to fetch events for sport' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch events for sport' }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
   }
 }
+

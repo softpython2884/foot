@@ -21,18 +21,27 @@ export async function GET(
 
   if (!FOOTBALL_API_BASE_URL) {
     console.error('Football API base URL not configured');
-    return NextResponse.json({ error: 'Football API configuration error' }, { status: 500 });
+    return NextResponse.json({ error: 'Football API configuration error' }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
   }
 
   try {
     const mockTeam = footballTeams.find(t => t.slug === teamSlug);
     if (!mockTeam) {
-      return NextResponse.json({ error: 'Football team not found in mock data' }, { status: 404 });
+      return NextResponse.json({ error: 'Football team not found in mock data' }, { 
+        status: 404,
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      });
     }
 
     const teamId = mockTeam.id;
 
-    // Fetch all data in parallel
     const [
       teamDetailsData,
       pastMatchesData,
@@ -44,7 +53,7 @@ export async function GET(
       getFootballMatchesForTeam(teamId, SEASON_FOR_MATCHES, { status: 'FT' }, FOOTBALL_API_BASE_URL),
       getFootballCoachForTeam(teamId, FOOTBALL_API_BASE_URL),
       getFootballSquadForTeam(teamId, FOOTBALL_API_BASE_URL),
-      getTeamInfo({ entityName: mockTeam.name, entityType: 'team' }) // Explicitly set entityType
+      getTeamInfo({ entityName: mockTeam.name, entityType: 'team' })
     ]);
 
     const teamDetails = teamDetailsData.status === 'fulfilled' ? teamDetailsData.value : null;
@@ -53,7 +62,7 @@ export async function GET(
     if (pastMatchesData.status === 'fulfilled' && pastMatchesData.value) {
         pastMatches = pastMatchesData.value
           .sort((a, b) => new Date(b.matchTime).getTime() - new Date(a.matchTime).getTime())
-          .slice(0, 10); // Get top 10 most recent
+          .slice(0, 10);
     }
     
     const coach = coachData.status === 'fulfilled' ? coachData.value : null;
@@ -68,10 +77,20 @@ export async function GET(
       aiSummary,
     };
 
-    return NextResponse.json(responsePayload);
+    return NextResponse.json(responsePayload, {
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
 
   } catch (error) {
-    console.error(\`Error fetching details for football team \${teamSlug}:\`, error);
-    return NextResponse.json({ error: \`Failed to fetch details for football team \${teamSlug}\` }, { status: 500 });
+    console.error(`Error fetching details for football team ${teamSlug}:`, error);
+    return NextResponse.json({ error: `Failed to fetch details for football team ${teamSlug}` }, { 
+      status: 500,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+      },
+    });
   }
 }
+
