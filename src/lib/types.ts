@@ -353,7 +353,6 @@ export interface ApiSportsBasketballTeamResponseItem { // Similar to Football's 
     code: string | null;
     flag: string | null;
   } | null;
-  // Basketball specific fields might be here
   conference?: string;
   division?: string;
 }
@@ -366,17 +365,17 @@ export interface ApiSportsBasketballPlayerResponseItem {
   firstname: string | null;
   lastname: string | null;
   birth: {
-    date: string | null;
+    date: string | null; // e.g. "1984-12-30"
     country: string | null;
   } | null;
   nba: {
-    start: number | null; // Start year in NBA
-    pro: number | null; // Years pro
+    start: number | null; // Start year in NBA, e.g. 2003
+    pro: number | null; // Years pro, e.g. 19
   } | null;
   height: {
     feets: string | null; // e.g. "6"
-    inches: string | null; // e.g. "8"
-    meters: string | null; // e.g. "2.03"
+    inches: string | null; // e.g. "9"
+    meters: string | null; // e.g. "2.06"
   } | null;
   weight: {
     pounds: string | null; // e.g. "250"
@@ -385,47 +384,24 @@ export interface ApiSportsBasketballPlayerResponseItem {
   college: string | null;
   affiliation: string | null; // Often same as college
   leagues: {
-    [key: string]: { // e.g., "standard", "vegas"
-      jersey: number | null;
+    [key: string]: { // e.g., "standard", "vegas", "utah", "sacramento"
+      jersey: number | null; // Player's number
       active: boolean;
-      pos: string | null; // Position e.g. "F-C"
+      pos: string | null; // Position e.g. "F", "G", "C", "F-G"
     }
-  }
-  // Image might not be directly in player info from /players endpoint, might need other source or be part of team squad list
-  photoUrl?: string; // Placeholder if we find a way to get it
+  };
+  // The API-Sports `/players` endpoint does not directly provide a photo URL.
+  // This might need to be sourced differently or use placeholders.
 }
 export interface ApiSportsBasketballPlayersApiResponse {
   response: ApiSportsBasketballPlayerResponseItem[];
 }
 
-// For Squads in Basketball - using a more specific structure
-export interface ApiSportsBasketballSquadPlayer {
-  id: number;
-  name: string; // Typically "firstname lastname"
-  // API-Sports might provide details differently for basketball, check their docs
-  // Assuming 'number' and 'position' might be in a 'leagues.standard' object or similar
-  jersey?: number | null;
-  position?: string | null;
-  photoUrl?: string; // Placeholder
-}
-
-export interface ApiSportsBasketballSquadResponseItem {
-  team: {
-    id: number;
-    name: string;
-    logo: string | null;
-  };
-  players: ApiSportsBasketballSquadPlayer[]; // Adjust if API structure is different
-}
-export interface ApiSportsBasketballSquadsApiResponse {
-   response: ApiSportsBasketballSquadResponseItem[];
-}
-
 
 export interface ApiSportsBasketballGameResponseItem {
   id: number; // Game ID
-  date: string; // ISO 8601 datetime string
-  time: string; // E.g., "02:30"
+  date: string; // ISO 8601 datetime string "YYYY-MM-DDTHH:mm:ssZ"
+  time: string; // E.g., "02:30" - redundant if date has time
   timestamp: number;
   timezone: string;
   stage: string | null; // E.g., "Regular Season", "Playoffs"
@@ -439,7 +415,7 @@ export interface ApiSportsBasketballGameResponseItem {
     id: number;
     name: string;
     type: string; // "League", "Cup"
-    season: number;
+    season: number; // e.g. 2023 for 2023-2024 season
     logo: string | null;
   };
   country: {
@@ -449,8 +425,8 @@ export interface ApiSportsBasketballGameResponseItem {
     flag: string | null;
   };
   teams: {
-    home: ApiSportsTeamMinimal & {logo?: string}; // Add logo here if API provides it
-    away: ApiSportsTeamMinimal & {logo?: string};
+    home: ApiSportsTeamMinimal & {logo?: string | null};
+    away: ApiSportsTeamMinimal & {logo?: string | null};
   };
   scores: {
     home: {
@@ -652,3 +628,4 @@ export interface Team extends TeamApp {
 export interface League extends LeagueApp {
   code?: string;
 }
+

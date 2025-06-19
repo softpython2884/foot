@@ -64,63 +64,62 @@ export default function BasketballTeamProfilePage() {
     setIsLoadingData(true);
     setIsLoadingRoster(true);
     setIsLoadingResults(true);
-    setIsAiLoading(true);
+    setIsAiLoading(true); // Start AI loading for summary
 
     try {
-      const [details, fetchedRoster, fetchedGames, summary] = await Promise.allSettled([
+      const [detailsResult, rosterResult, gamesResult, summaryResult] = await Promise.allSettled([
         getBasketballTeamDetails(teamId, currentSport.apiBaseUrl),
         getBasketballRoster(teamId, CURRENT_BASKETBALL_SEASON, currentSport.apiBaseUrl),
         getBasketballGamesForTeam(teamId, CURRENT_BASKETBALL_SEASON, currentSport.apiBaseUrl, 10),
         getTeamInfo({ entityName: teamName, entityType: 'team', contextName: 'Basketball' })
       ]);
 
-      if (details.status === 'fulfilled' && details.value) {
-        setTeamDetails(details.value);
+      if (detailsResult.status === 'fulfilled' && detailsResult.value) {
+        setTeamDetails(detailsResult.value);
       } else {
-        console.error("Failed to fetch Basketball team details:", details.status === 'rejected' && details.reason);
+        console.error("Failed to fetch Basketball team details:", detailsResult.status === 'rejected' && detailsResult.reason);
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load team details.' });
+        // Keep mockTeamData if API fails
       }
 
-      if (fetchedRoster.status === 'fulfilled' && fetchedRoster.value) {
-        setRoster(fetchedRoster.value.length > 0 ? fetchedRoster.value : []);
+      if (rosterResult.status === 'fulfilled' && rosterResult.value.length > 0) {
+        setRoster(rosterResult.value);
       } else {
-        console.error("Failed to fetch Basketball roster:", fetchedRoster.status === 'rejected' && fetchedRoster.reason);
-        setRoster(mockBasketballPlayers.filter(p => (p as any).teamId === teamId)); // Fallback, needs better mock matching
-        toast({ variant: 'default', title: 'Info', description: 'Could not load live roster, showing mock data.' });
+        console.error("Failed to fetch Basketball roster:", rosterResult.status === 'rejected' ? rosterResult.reason : 'No roster data');
+        setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0]))); // Improved mock filtering
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live roster, showing mock data if available.' });
       }
       setIsLoadingRoster(false);
 
-      if (fetchedGames.status === 'fulfilled' && fetchedGames.value) {
-        setGameResults(fetchedGames.value.length > 0 ? fetchedGames.value : []);
+      if (gamesResult.status === 'fulfilled' && gamesResult.value.length > 0) {
+        setGameResults(gamesResult.value);
       } else {
-        console.error("Failed to fetch Basketball game results:", fetchedGames.status === 'rejected' && fetchedGames.reason);
-        // Filter mock games based on teamId for more relevant fallback
+        console.error("Failed to fetch Basketball game results:", gamesResult.status === 'rejected' ? gamesResult.reason : 'No game data');
         const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
         setGameResults(mockGamesForTeam);
-        toast({ variant: 'default', title: 'Info', description: 'Could not load live game results, showing mock data.' });
+        toast({ variant: 'default', title: 'Info', description: 'Could not load live game results, showing mock data if available.' });
       }
       setIsLoadingResults(false);
 
-      if (summary.status === 'fulfilled' && summary.value) {
-        setAiSummary(summary.value.response);
+      if (summaryResult.status === 'fulfilled' && summaryResult.value) {
+        setAiSummary(summaryResult.value.response);
       } else {
-        console.error("Error fetching AI summary for Basketball team:", summary.status === 'rejected' && summary.reason);
+        console.error("Error fetching AI summary for Basketball team:", summaryResult.status === 'rejected' && summaryResult.reason);
         setAiError("Failed to load AI summary.");
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
-      setIsAiLoading(false);
+      
 
     } catch (error) {
       console.error("Overall error fetching Basketball page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all Basketball page data.' });
-       setRoster(mockBasketballPlayers.filter(p => (p as any).teamId === teamId));
+       // Fallback to mocks in case of complete failure
+       setRoster(mockBasketballPlayers.filter(p => p.id && basketballTeams.find(bt => bt.id === teamId)?.name.includes(p.name.split(' (')[0])));
        const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
        setGameResults(mockGamesForTeam);
     } finally {
-      setIsLoadingData(false);
-      setIsLoadingRoster(false);
-      setIsLoadingResults(false);
-      setIsAiLoading(false);
+      setIsLoadingData(false); // General data loading done (details)
+      setIsAiLoading(false); // AI summary loading finished
     }
   }, [currentSport.apiBaseUrl, toast]);
 
@@ -135,6 +134,7 @@ export default function BasketballTeamProfilePage() {
          setIsLoadingData(false);
          setIsLoadingRoster(false);
          setIsLoadingResults(false);
+         setIsAiLoading(false);
       }
     }
   }, [teamSlug, fetchBasketballData]);
@@ -167,7 +167,7 @@ export default function BasketballTeamProfilePage() {
     );
   }
 
-  if (!mockTeamData && !isLoadingData) {
+  if (!mockTeamData && !teamDetails && !isLoadingData) {
     notFound(); return null;
   }
 
@@ -200,14 +200,14 @@ export default function BasketballTeamProfilePage() {
           </div>
         </Card>
 
-        {teamDetailsToDisplay && (
-           <Card className="mb-8 shadow-lg">
+        
+        <Card className="mb-8 shadow-lg">
             <CardHeader>
                 <CardTitle className="font-headline flex items-center gap-2"><Brain className="text-primary" /> AI Summary & Info</CardTitle>
                 <CardDescription> General information and answers about {displayTeamName}. </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                {(isAiLoading && !aiSummary) && <div className="py-2 flex justify-center"><LoadingSpinner size="md" /></div>}
+                {(isAiLoading && !aiSummary && !aiAnswer) && <div className="py-2 flex justify-center"><LoadingSpinner size="md" /></div>}
                 {aiSummary && (
                   <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 p-4 rounded-md mb-6">
                     <div dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(aiSummary) }} />
@@ -231,7 +231,7 @@ export default function BasketballTeamProfilePage() {
                 {aiError && userQuestion && <p className="text-destructive mt-2">{aiError}</p>}
               </CardContent>
           </Card>
-        )}
+        
 
         <Card className="mb-8 shadow-lg">
           <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Users className="text-primary"/>Team Roster ({CURRENT_BASKETBALL_SEASON}-{CURRENT_BASKETBALL_SEASON+1})</CardTitle></CardHeader>
@@ -240,15 +240,17 @@ export default function BasketballTeamProfilePage() {
              roster.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {roster.map((player) => (
-                  <Card key={player.id || player.name} className="p-3 bg-muted/40 text-center">
-                    {player.photoUrl && player.photoUrl.includes('placehold.co') ? (
-                       <div className="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-2 flex items-center justify-center text-2xl font-bold text-gray-500" data-ai-hint={`${player.name} placeholder`}>
-                           {player.name?.charAt(0)}
-                       </div>
-                    ) : (
-                       <Image src={player.photoUrl || 'https://placehold.co/80x80.png'} alt={player.name || 'Player'} width={80} height={80} className="rounded-full mx-auto mb-2 shadow-md object-cover" data-ai-hint={`${player.name} portrait`}/>
-                    )}
-                    <p className="font-semibold text-sm">{player.name}</p>
+                  <Card key={player.id || player.name} className="p-3 bg-card shadow-sm hover:shadow-md transition-shadow text-center">
+                     <div className="relative w-20 h-20 mx-auto mb-2">
+                        {player.photoUrl && !player.photoUrl.includes('placehold.co') ? (
+                            <Image src={player.photoUrl} alt={player.name || 'Player'} layout="fill" objectFit="cover" className="rounded-full shadow-md" data-ai-hint={`${player.name} portrait`}/>
+                        ) : (
+                            <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-2xl font-bold text-muted-foreground" data-ai-hint={`${player.name} placeholder`}>
+                                {player.name?.split(' ').map(n => n[0]).join('') || '?'}
+                            </div>
+                        )}
+                    </div>
+                    <p className="font-semibold text-sm text-foreground">{player.name}</p>
                     {player.number != null && <p className="text-xs text-muted-foreground">#{player.number}</p>}
                     {player.position && <p className="text-xs text-muted-foreground">{player.position}</p>}
                     {player.heightMeters && <p className="text-xs text-muted-foreground">H: {player.heightMeters}m</p>}
@@ -267,26 +269,50 @@ export default function BasketballTeamProfilePage() {
             {isLoadingResults ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
              gameResults.length > 0 ? (
                 gameResults.map(game => (
-                    <Card key={game.id} className="p-3 bg-muted/40">
+                    <Card key={game.id} className="p-3 bg-card shadow-sm">
                         <div className="flex justify-between items-center mb-1">
                             <span className="text-xs text-muted-foreground">{formatMatchDateTime(game.matchTime).date}</span>
-                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${game.statusShort === 'FT' ? 'bg-gray-200 text-gray-700' : 'bg-green-200 text-green-700'}`}>{game.statusLong}</span>
+                            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${game.statusShort === 'FT' ? 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-200' : 'bg-green-200 text-green-700 dark:bg-green-700 dark:text-green-200'}`}>{game.statusLong}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Image src={game.homeTeam.logoUrl || 'https://placehold.co/24x24.png'} alt={game.homeTeam.name} width={24} height={24} data-ai-hint={`${game.homeTeam.name} logo small`}/>
-                                <span className="font-medium text-sm">{game.homeTeam.name}</span>
+                                <Image src={game.homeTeam.logoUrl || 'https://placehold.co/24x24.png'} alt={game.homeTeam.name} width={24} height={24} className="object-contain" data-ai-hint={`${game.homeTeam.name} logo small`}/>
+                                <span className="font-medium text-sm text-foreground">{game.homeTeam.name}</span>
                             </div>
-                            <span className={`font-bold text-lg ${game.homeScore !== null && game.awayScore !== null && game.homeScore > game.awayScore ? 'text-primary' : ''}`}>{game.homeScore ?? '-'}</span>
+                            <span className={`font-bold text-lg ${game.homeScore != null && game.awayScore != null && game.homeScore > game.awayScore ? 'text-primary' : 'text-foreground'}`}>{game.homeScore ?? '-'}</span>
                         </div>
                          <div className="flex items-center justify-between mt-1">
                             <div className="flex items-center gap-2">
-                                <Image src={game.awayTeam.logoUrl || 'https://placehold.co/24x24.png'} alt={game.awayTeam.name} width={24} height={24} data-ai-hint={`${game.awayTeam.name} logo small`}/>
-                                <span className="font-medium text-sm">{game.awayTeam.name}</span>
+                                <Image src={game.awayTeam.logoUrl || 'https://placehold.co/24x24.png'} alt={game.awayTeam.name} width={24} height={24} className="object-contain" data-ai-hint={`${game.awayTeam.name} logo small`}/>
+                                <span className="font-medium text-sm text-foreground">{game.awayTeam.name}</span>
                             </div>
-                            <span className={`font-bold text-lg ${game.homeScore !== null && game.awayScore !== null && game.awayScore > game.homeScore ? 'text-primary' : ''}`}>{game.awayScore ?? '-'}</span>
+                            <span className={`font-bold text-lg ${game.homeScore != null && game.awayScore != null && game.awayScore > game.homeScore ? 'text-primary' : 'text-foreground'}`}>{game.awayScore ?? '-'}</span>
                         </div>
-                        {game.league.name && <p className="text-xs text-muted-foreground text-center mt-1">{game.league.name}</p>}
+                        {game.league.name && <p className="text-xs text-muted-foreground text-center mt-1">{game.league.name} - {game.league.season}</p>}
+                         {/* Display Quarter Scores */}
+                        {(game.homeQuarterScores || game.awayQuarterScores) && (
+                            <div className="mt-2 text-xs text-muted-foreground">
+                                <div className="flex justify-around">
+                                    <span>Qtrs</span>
+                                    <span>H</span>
+                                    <span>A</span>
+                                </div>
+                                {([1, 2, 3, 4]).map((q, index) => (
+                                <div key={`q-${index}`} className="flex justify-around items-center">
+                                    <span>Q{q}</span>
+                                    <span>{game.homeQuarterScores?.[index] ?? '-'}</span>
+                                    <span>{game.awayQuarterScores?.[index] ?? '-'}</span>
+                                </div>
+                                ))}
+                                {game.homeOvertimeScore != null || game.awayOvertimeScore != null ? (
+                                <div className="flex justify-around items-center font-semibold">
+                                    <span>OT</span>
+                                    <span>{game.homeOvertimeScore ?? '-'}</span>
+                                    <span>{game.awayOvertimeScore ?? '-'}</span>
+                                </div>
+                                ) : null}
+                            </div>
+                        )}
                     </Card>
                 ))
              ) : <p className="text-muted-foreground text-center">Recent game results not available.</p>
