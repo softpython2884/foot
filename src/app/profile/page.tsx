@@ -68,7 +68,7 @@ export default function ProfilePage() {
   const fetchUserData = useCallback(async () => {
     if (!currentUser) return;
     console.log('[ProfilePage] fetchUserData: Fetching fresh user data and bet history.');
-    setIsBetHistoryLoading(true);
+    setBetHistoryLoading(true); // Corrected: s minuscule
     // Fetch fresh user details
     const userDetailsResult = await getUserDetailsAction(currentUser.id);
     if (userDetailsResult.user) {
@@ -84,8 +84,8 @@ export default function ProfilePage() {
     } else if (betHistoryResult.error) {
       toast({ variant: 'destructive', title: 'Error fetching bet history', description: betHistoryResult.error });
     }
-    setIsBetHistoryLoading(false);
-  }, [currentUser, toast, updateAuthContextUser]);
+    setBetHistoryLoading(false); // Corrected: s minuscule
+  }, [currentUser, toast, updateAuthContextUser, setBetHistoryLoading, setBetHistory]);
 
 
   useEffect(() => {
@@ -169,9 +169,8 @@ export default function ProfilePage() {
     const settlementResult = await settleApiBetAction(formData);
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
-      await fetchUserData(); // Refetch user data and bet history
+      await fetchUserData(); 
       
-      // Optionally refetch leaderboard if score changes significantly affect rankings often
       const leaderboardResult = await getLeaderboardAction();
         if (leaderboardResult.users) {
             setLeaderboard(leaderboardResult.users);
@@ -193,7 +192,7 @@ export default function ProfilePage() {
     const result = await addPointsAction(formData);
     if (result.success) {
       toast({ title: 'Points Added!', description: result.success });
-      await fetchUserData(); // Refetch user data to update score in context and UI
+      await fetchUserData(); 
     } else {
       toast({ variant: 'destructive', title: 'Error Adding Points', description: result.error || 'Could not add points.' });
     }
@@ -479,3 +478,4 @@ export default function ProfilePage() {
     </div>
   );
 }
+
