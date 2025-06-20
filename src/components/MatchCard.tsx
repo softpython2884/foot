@@ -20,7 +20,6 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
   const [formattedDateTime, setFormattedDateTime] = useState({ date: 'Loading...', time: 'Loading...' });
 
   useEffect(() => {
-    // Ensure matchTime is valid before formatting
     if (match.matchTime) {
         setFormattedDateTime(formatMatchDateTime(match.matchTime));
     } else {
@@ -29,11 +28,11 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
   }, [match.matchTime]);
 
   const getStatusColor = (statusShort: string) => {
-    if (['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE'].includes(statusShort)) return 'text-red-500'; // Live/Ongoing
-    if (statusShort === 'FT' || statusShort === 'AET' || statusShort === 'PEN') return 'text-gray-500'; // Finished
-    if (statusShort === 'NS') return 'text-green-500'; // Not Started
-    if (['PST', 'SUSP', 'INT', 'CANC', 'ABD', 'AWD', 'WO'].includes(statusShort)) return 'text-yellow-600'; // Postponed/Cancelled/Other
-    return 'text-muted-foreground'; // Default for other statuses like TBD etc.
+    if (['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE'].includes(statusShort)) return 'text-red-500';
+    if (statusShort === 'FT' || statusShort === 'AET' || statusShort === 'PEN') return 'text-gray-500';
+    if (statusShort === 'NS') return 'text-green-500'; 
+    if (['PST', 'SUSP', 'INT', 'CANC', 'ABD', 'AWD', 'WO'].includes(statusShort)) return 'text-yellow-600';
+    return 'text-muted-foreground'; 
   };
 
   return (
@@ -115,7 +114,7 @@ export function MatchCard({ match, isWatchlisted, onToggleWatchlist }: MatchCard
         )}
         {match.venueName && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users size={16} /> {/* Using Users icon for venue, could be MapPin too */}
+            <Users size={16} /> 
             <span>{match.venueName}{match.venueCity && `, ${match.venueCity}`}</span>
           </div>
         )}

@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, X, Gamepad2, Tv } from 'lucide-react';
+import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, X, Gamepad2, Tv, Clock } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -74,7 +74,7 @@ export default function Formula1TeamProfilePage() {
   const [driverBioError, setDriverBioError] = useState<string | null>(null);
   
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false);
-  const [selectedEventForBetting, setSelectedEventForBetting] = useState<ManagedEventApp | MatchApp | null>(null); // MatchApp used as a generic event type for modal
+  const [selectedEventForBetting, setSelectedEventForBetting] = useState<ManagedEventApp | MatchApp | null>(null);
   const [selectedTeamForBetting, setSelectedTeamForBetting] = useState<TeamApp | null>(null);
 
 
@@ -243,7 +243,7 @@ export default function Formula1TeamProfilePage() {
   
   const getStatusColor = (statusShort: string | undefined) => {
     if (!statusShort) return 'text-muted-foreground';
-    if (statusShort === 'Live' || statusShort === 'live') return 'text-red-500'; // Adjusted for F1 status
+    if (statusShort === 'Live' || statusShort === 'live') return 'text-red-500';
     if (statusShort === 'Finished' || statusShort === 'finished') return 'text-gray-500';
     if (statusShort === 'Scheduled' || statusShort === 'upcoming') return 'text-green-500';
     if (['Postponed', 'Cancelled', 'paused', 'cancelled'].includes(statusShort)) return 'text-yellow-600';
@@ -285,11 +285,20 @@ export default function Formula1TeamProfilePage() {
         </div>
 
         <Card className="mb-8 shadow-xl overflow-hidden">
-          <div className="relative h-56 md:h-72 w-full bg-muted flex items-center justify-center p-4">
+          <div className="relative h-56 md:h-72 w-full">
             {displayEntityLogo ? (
-              <Image src={displayEntityLogo} alt={`${displayEntityName} Logo`} width={250} height={250} style={{ objectFit: 'contain' }} data-ai-hint={`${displayEntityName} logo large`} priority />
+              <Image 
+                src={displayEntityLogo} 
+                alt={`${displayEntityName} Logo`} 
+                fill={true} 
+                style={{ objectFit: 'contain', padding: '1rem' }}
+                className="bg-muted"
+                data-ai-hint={`${displayEntityName} logo large`} 
+                priority 
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
             ) : (
-              <div className="w-32 h-32 bg-gray-200 flex items-center justify-center rounded-full text-gray-500"> <Rocket size={64} /> </div>
+              <div className="w-full h-full bg-muted flex items-center justify-center text-gray-500"> <Rocket size={64} /> </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center justify-end p-6">
               <h1 className="text-4xl md:text-6xl font-bold font-headline text-white text-center drop-shadow-lg"> {displayEntityName} </h1>
@@ -343,7 +352,6 @@ export default function Formula1TeamProfilePage() {
               {entityDetailsToDisplay?.championships != null && <div className="flex items-center gap-2"><Trophy size={16} className="text-muted-foreground"/><strong>World Championships:</strong> {entityDetailsToDisplay.championships}</div>}
               {entityDetailsToDisplay?.firstTeamEntry != null && <div className="flex items-center gap-2"><CalendarClock size={16} className="text-muted-foreground"/><strong>First Entry:</strong> {entityDetailsToDisplay.firstTeamEntry}</div>}
               {entityDetailsToDisplay?.polePositions != null && <div className="flex items-center gap-2"><BarChartHorizontalBig size={16} className="text-muted-foreground"/><strong>Pole Positions:</strong> {entityDetailsToDisplay.polePositions}</div>}
-              {/* fastestLaps might not be directly on constructor details, might need team rankings or sum from races */}
               {entityDetailsToDisplay?.fastestLaps != null && <div className="flex items-center gap-2"><Clock size={16} className="text-muted-foreground"/><strong>Fastest Laps:</strong> {entityDetailsToDisplay.fastestLaps}</div>}
               {!isLoadingData && (!entityDetailsToDisplay?.director && !entityDetailsToDisplay?.base && !constructorDetails) && <p className="text-muted-foreground md:col-span-2 text-center py-2">Detailed constructor information not available.</p>}
             </>
@@ -370,7 +378,7 @@ export default function Formula1TeamProfilePage() {
                     onKeyDown={(e) => e.key === 'Enter' && handleDriverCardClick(driver)}
                   >
                     <div className="flex items-center gap-4">
-                      <Image src={driver.photoUrl || 'https://placehold.co/80x80.png?text=F1'} alt={driver.name || 'Driver'} width={80} height={80} className="rounded-full shadow-md object-cover" data-ai-hint={`${driver.name} portrait`}/>
+                      <Image src={driver.photoUrl || 'https://placehold.co/80x80.png?text=F1'} alt={driver.name || 'Driver'} width={80} height={80} className="rounded-full shadow-md" style={{objectFit: 'cover'}} data-ai-hint={`${driver.name} portrait`}/>
                       <div>
                         <h4 className="text-lg font-semibold">{driver.name} {driver.number && <span className="text-primary font-bold">#{driver.number}</span>}</h4>
                         {driver.nationality && <p className="text-xs text-muted-foreground flex items-center gap-1"><Flag size={14}/>{driver.nationality}</p>}
@@ -395,7 +403,8 @@ export default function Formula1TeamProfilePage() {
                       alt={selectedDriverForBio.name || 'Driver'}
                       width={80}
                       height={80}
-                      className="rounded-lg shadow-md object-cover mt-1"
+                      className="rounded-lg shadow-md"
+                      style={{objectFit: 'cover'}}
                       data-ai-hint="selected driver portrait"
                     />
                   ) : (
@@ -503,7 +512,7 @@ export default function Formula1TeamProfilePage() {
                                 {race.driverResults.map(dr => (
                                     <li key={`${race.id}-${dr.driverName}`} className="flex justify-between items-center py-1 border-b border-border last:border-b-0">
                                         <div className="flex items-center gap-2">
-                                            {dr.driverImage && <Image src={dr.driverImage} alt={dr.driverName} width={20} height={20} className="rounded-full object-cover" data-ai-hint={`${dr.driverName} small portrait`} />}
+                                            {dr.driverImage && <Image src={dr.driverImage} alt={dr.driverName} width={20} height={20} className="rounded-full" style={{objectFit:'cover'}} data-ai-hint={`${dr.driverName} small portrait`} />}
                                             <span>{dr.driverName} {dr.driverNumber && <span className="text-muted-foreground text-xs">#{dr.driverNumber}</span>}</span>
                                         </div>
                                         <span className="font-medium">P{dr.position || 'N/A'} {dr.points != null && `(${dr.points} pts)`}</span>
@@ -530,7 +539,7 @@ export default function Formula1TeamProfilePage() {
           <Link href="/"> <Button variant="outline">Back to Home</Button> </Link>
         </div>
       </main>
-      {selectedEventForBetting && selectedTeamForBetting && currentSport && (
+       {selectedEventForBetting && selectedTeamForBetting && currentSport && (
         <BettingModal
           isOpen={isBettingModalOpen}
           onClose={handleCloseBettingModal}

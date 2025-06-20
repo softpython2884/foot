@@ -33,9 +33,10 @@ export default function HomePage() {
                     <Image
                       src={sport.iconUrl || `https://placehold.co/600x400.png`}
                       alt={`${sport.name} icon`}
-                      layout="fill"
-                      objectFit="cover"
+                      fill={true}
+                      style={{ objectFit: 'cover' }}
                       className="transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       data-ai-hint={`${sport.slug === 'football' ? 'soccer ball stadium' : sport.slug === 'formula-1' ? 'race car track' : sport.slug === 'basketball' ? 'basketball hoop action' : 'sport generic'}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
@@ -68,5 +69,3 @@ export default function HomePage() {
     </div>
   );
 }
-
-    

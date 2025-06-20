@@ -247,10 +247,9 @@ export default function BasketballTeamProfilePage() {
     if (statusShort === 'finished') return 'text-gray-500';
     if (statusShort === 'upcoming') return 'text-green-500';
     if (['paused', 'cancelled'].includes(statusShort)) return 'text-yellow-600';
-    // For API specific statuses (basketball)
-    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT'].includes(statusShort)) return 'text-red-500'; // Live/Ongoing
-    if (statusShort === 'FT' || statusShort === 'AOT') return 'text-gray-500'; // Finished
-    if (statusShort === 'NS') return 'text-green-500'; // Not Started
+    if (['Q1', 'Q2', 'Q3', 'Q4', 'OT', 'HT'].includes(statusShort)) return 'text-red-500'; 
+    if (statusShort === 'FT' || statusShort === 'AOT') return 'text-gray-500'; 
+    if (statusShort === 'NS') return 'text-green-500'; 
     return 'text-muted-foreground';
   };
 
@@ -288,11 +287,20 @@ export default function BasketballTeamProfilePage() {
         </div>
 
         <Card className="mb-8 shadow-xl overflow-hidden">
-          <div className="relative h-56 md:h-72 w-full bg-muted flex items-center justify-center p-4">
+          <div className="relative h-56 md:h-72 w-full">
             {displayTeamLogo ? (
-              <Image src={displayTeamLogo} alt={`${displayTeamName} Logo`} width={200} height={200} style={{ objectFit: 'contain' }} data-ai-hint={`${displayTeamName} logo large`} priority />
+              <Image 
+                src={displayTeamLogo} 
+                alt={`${displayTeamName} Logo`} 
+                fill={true} 
+                style={{ objectFit: 'contain', padding: '1rem' }}
+                className="bg-muted" 
+                data-ai-hint={`${displayTeamName} logo large`} 
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+              />
             ) : (
-              <div className="w-32 h-32 bg-gray-200 flex items-center justify-center rounded-full text-gray-500"> <Star size={64} /> </div>
+              <div className="w-full h-full bg-muted flex items-center justify-center text-gray-500"> <Star size={64} /> </div>
             )}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col items-center justify-end p-6">
               <h1 className="text-4xl md:text-6xl font-bold font-headline text-white text-center drop-shadow-lg"> {displayTeamName} </h1>
@@ -357,7 +365,7 @@ export default function BasketballTeamProfilePage() {
                   >
                      <div className="relative w-24 h-24 mx-auto mb-2">
                         {player.photoUrl && player.photoUrl.startsWith('https://placehold.co') ? (
-                             <Image src={player.photoUrl} alt={player.name || 'Player'} fill objectFit="contain" className="rounded-full shadow-md" data-ai-hint="player placeholder"/>
+                             <Image src={player.photoUrl} alt={player.name || 'Player'} fill={true} style={{objectFit:"contain"}} className="rounded-full shadow-md" data-ai-hint="player placeholder" sizes="96px"/>
                         ) : (
                             <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-3xl font-bold text-muted-foreground" data-ai-hint="player initials">
                                 {(player.firstName?.charAt(0) || '') + (player.lastName?.charAt(0) || '') || '?'}
@@ -383,7 +391,7 @@ export default function BasketballTeamProfilePage() {
               <DialogHeader className="flex flex-row items-start gap-4 pr-10">
                   <div className="relative w-20 h-20 shrink-0 mt-1">
                     {selectedPlayerForBio.photoUrl && selectedPlayerForBio.photoUrl.startsWith('https://placehold.co') ? (
-                        <Image src={selectedPlayerForBio.photoUrl} alt={selectedPlayerForBio.name || 'Player'} fill objectFit="contain" className="rounded-full shadow-md" data-ai-hint="selected player placeholder"/>
+                        <Image src={selectedPlayerForBio.photoUrl} alt={selectedPlayerForBio.name || 'Player'} fill={true} style={{objectFit:"contain"}} className="rounded-full shadow-md" data-ai-hint="selected player placeholder" sizes="80px"/>
                     ) : (
                         <div className="w-full h-full bg-muted rounded-full flex items-center justify-center text-3xl font-bold text-muted-foreground" data-ai-hint="selected player initials">
                             {(selectedPlayerForBio.firstName?.charAt(0) || '') + (selectedPlayerForBio.lastName?.charAt(0) || '') || '?'}
@@ -487,14 +495,14 @@ export default function BasketballTeamProfilePage() {
                         </div>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <Image src={game.homeTeam.logoUrl || 'https://placehold.co/24x24.png?text=H'} alt={game.homeTeam.name} width={24} height={24} className="object-contain" data-ai-hint={`${game.homeTeam.name} logo small`}/>
+                                <Image src={game.homeTeam.logoUrl || 'https://placehold.co/24x24.png?text=H'} alt={game.homeTeam.name} width={24} height={24} style={{objectFit:"contain"}} data-ai-hint={`${game.homeTeam.name} logo small`}/>
                                 <span className="font-medium text-sm text-foreground">{game.homeTeam.name}</span>
                             </div>
                             <span className={`font-bold text-lg ${game.homeScore != null && game.awayScore != null && game.homeScore > game.awayScore ? 'text-primary' : 'text-foreground'}`}>{game.homeScore ?? '-'}</span>
                         </div>
                          <div className="flex items-center justify-between mt-1">
                             <div className="flex items-center gap-2">
-                                <Image src={game.awayTeam.logoUrl || 'https://placehold.co/24x24.png?text=A'} alt={game.awayTeam.name} width={24} height={24} className="object-contain" data-ai-hint={`${game.awayTeam.name} logo small`}/>
+                                <Image src={game.awayTeam.logoUrl || 'https://placehold.co/24x24.png?text=A'} alt={game.awayTeam.name} width={24} height={24} style={{objectFit:"contain"}} data-ai-hint={`${game.awayTeam.name} logo small`}/>
                                 <span className="font-medium text-sm text-foreground">{game.awayTeam.name}</span>
                             </div>
                             <span className={`font-bold text-lg ${game.homeScore != null && game.awayScore != null && game.awayScore > game.homeScore ? 'text-primary' : 'text-foreground'}`}>{game.awayScore ?? '-'}</span>
@@ -551,7 +559,7 @@ export default function BasketballTeamProfilePage() {
           isOpen={isBettingModalOpen}
           onClose={handleCloseBettingModal}
           eventData={selectedEventForBetting}
-          eventSource="custom" // Assuming these are custom events from team page
+          eventSource="custom" 
           teamToBetOn={selectedTeamForBetting}
           currentUser={currentUser}
           sportSlug={currentSport.slug}

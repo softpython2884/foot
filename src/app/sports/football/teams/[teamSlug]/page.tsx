@@ -21,18 +21,15 @@ import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
 import { getFootballTeamDetails, getFootballMatchesForTeam, getFootballCoachForTeam, getFootballSquadForTeam } from '@/services/apiSportsService';
 import { MatchCard } from '@/components/MatchCard';
 
-const SEASONS_TO_FETCH_FOOTBALL = [2023, 2022, 2021]; // Fetch for these recent seasons
+const SEASONS_TO_FETCH_FOOTBALL = [2023, 2022, 2021];
 
 function simpleMarkdownToHtml(markdown: string): string {
   if (!markdown) return '';
   let html = markdown;
-  // Bold
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__(.*?)__/g, '<strong>$1</strong>');
-  // Italic
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
   html = html.replace(/_(.*?)_/g, '<em>$1</em>');
-  // Unordered lists
   html = html.replace(/^- (.*$)/gm, '<li>$1</li>');
   html = html.replace(/^\* (.*$)/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>\s*)+/g, '<ul>$&</ul>'); 
@@ -146,7 +143,7 @@ export default function FootballTeamProfilePage() {
         } catch (err) {
           console.error("Error fetching AI summary:", err);
           setAiError("Failed to load AI summary.");
-          setAiSummary(`Could not load summary for ${nameForAISummary}.`); // Corrected line
+          setAiSummary(`Could not load summary for ${nameForAISummary}.`);
         } finally {
           setIsAiLoading(false);
         }
@@ -259,19 +256,20 @@ export default function FootballTeamProfilePage() {
             </Button>
         </div>
         <Card className="mb-8 shadow-xl overflow-hidden">
-          <div className="relative h-48 md:h-64 w-full bg-muted flex items-center justify-center p-4">
+          <div className="relative h-48 md:h-64 w-full">
             {displayTeamLogo ? (
               <Image
                 src={displayTeamLogo}
                 alt={`${displayTeamName || 'Team'} Logo`}
-                width={200}
-                height={200}
-                style={{ objectFit: 'contain' }}
+                fill={true}
+                style={{ objectFit: 'contain', padding: '1rem' }}
+                className="bg-muted"
                 data-ai-hint={`${displayTeamName || 'Team'} logo large`}
                 priority
+                sizes="(max-width: 768px) 100vw, 50vw"
               />
             ) : (
-              <div className="w-32 h-32 bg-gray-200 flex items-center justify-center rounded-full text-gray-500">
+              <div className="w-full h-full bg-muted flex items-center justify-center text-gray-500">
                 <Users size={64} />
               </div>
             )}
@@ -341,6 +339,7 @@ export default function FootballTeamProfilePage() {
                   width={100}
                   height={100}
                   className="rounded-lg shadow-md"
+                  style={{ objectFit: 'cover' }}
                   data-ai-hint="coach portrait"
                 />
                 <div>
@@ -380,6 +379,7 @@ export default function FootballTeamProfilePage() {
                       width={80}
                       height={80}
                       className="rounded-full mb-2 shadow-md"
+                      style={{ objectFit: 'cover' }}
                       data-ai-hint="player portrait"
                     />
                     <p className="font-semibold text-sm">{player.name}</p>
@@ -398,7 +398,7 @@ export default function FootballTeamProfilePage() {
         {selectedPlayerForBio && (
           <Dialog open={!!selectedPlayerForBio} onOpenChange={(open) => !open && setSelectedPlayerForBio(null)}>
             <DialogContent className="sm:max-w-lg">
-              <DialogHeader className="flex flex-row items-center gap-4 pr-10"> {/* pr-10 to avoid overlap with close button */}
+              <DialogHeader className="flex flex-row items-center gap-4 pr-10">
                 {selectedPlayerForBio.photoUrl ? (
                   <Image
                     src={selectedPlayerForBio.photoUrl}
@@ -406,6 +406,7 @@ export default function FootballTeamProfilePage() {
                     width={60}
                     height={60}
                     className="rounded-full shadow-md"
+                    style={{ objectFit: 'cover' }}
                     data-ai-hint="selected player portrait"
                   />
                 ) : (
@@ -480,6 +481,3 @@ export default function FootballTeamProfilePage() {
     </div>
   );
 }
-    
-
-    

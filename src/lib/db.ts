@@ -13,34 +13,43 @@ const DB_PATH = path.join(DB_DIR, 'app.db');
 let dbInstance: Database | null = null;
 
 export async function getDb(): Promise<Database> {
+  console.log('[DB] getDb called. DB_PATH:', DB_PATH);
   if (!fs.existsSync(DB_DIR)) {
+    console.log('[DB] DB_DIR does not exist, creating...');
     fs.mkdirSync(DB_DIR, { recursive: true });
   }
 
   if (dbInstance) {
+    console.log('[DB] Returning existing dbInstance.');
     return dbInstance;
   }
+  console.log('[DB] No existing dbInstance, opening new connection...');
   dbInstance = await open({
     filename: DB_PATH,
     driver: sqlite3.Database,
   });
+  console.log('[DB] DB connection opened. Initializing DB schema...');
   await initializeDb(dbInstance);
+  console.log('[DB] DB schema initialized.');
   return dbInstance;
 }
 
 async function initializeDb(db: Database): Promise<void> {
+  console.log('[DB Initialize] Creating users table if not exists...');
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       hashedPassword TEXT NOT NULL,
-      score INTEGER DEFAULT 10 NOT NULL, -- Changed default score from 0 to 10
+      score INTEGER DEFAULT 10 NOT NULL,
       rank INTEGER DEFAULT 0 NOT NULL,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
+  console.log('[DB Initialize] Users table checked/created.');
 
+  console.log('[DB Initialize] Creating managed_events table if not exists...');
   await db.exec(`
     CREATE TABLE IF NOT EXISTS managed_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,10 +65,12 @@ async function initializeDb(db: Database): Promise<void> {
       elapsed_time INTEGER, -- e.g., in minutes
       notes TEXT, -- For sub-events, cards, etc.
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME
+      updated_at DATETIME 
     );
   `);
+  console.log('[DB Initialize] Managed_events table checked/created.');
 
+  console.log('[DB Initialize] Creating bets table if not exists...');
   await db.exec(`
     CREATE TABLE IF NOT EXISTS bets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +87,7 @@ async function initializeDb(db: Database): Promise<void> {
       FOREIGN KEY (userId) REFERENCES users(id)
     );
   `);
+  console.log('[DB Initialize] Bets table checked/created.');
 }
 
 // --- User Functions ---
@@ -91,13 +103,13 @@ export async function getUserById(id: number): Promise<User | undefined> {
 
 export async function createUser(name: string, email: string, hashedPassword: string):Promise<number | undefined> {
   const db = await getDb();
-  // The score will default to 10 due to the table schema change.
   const result = await db.run(
     'INSERT INTO users (name, email, hashedPassword) VALUES (?, ?, ?)',
     name,
     email,
     hashedPassword
   );
+  console.log(`[DB createUser] User created with ID: ${result.lastID}`);
   return result.lastID;
 }
 
@@ -125,16 +137,17 @@ export async function getTopUsersDb(limit: number = 10): Promise<Omit<User, 'has
 export async function createBetDb(userId: number, eventId: number, eventSource: EventSource, teamIdBetOn: number, amountBet: number, potentialWinnings: number, sportSlug: string): Promise<number | undefined> {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO bets (userId, eventId, eventSource, teamIdBetOn, amountBet, potentialWinnings, status, sportSlug) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO bets (userId, eventId, eventSource, teamIdBetOn, amountBet, potentialWinnings, status, sportSlug, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
     userId,
     eventId,
     eventSource,
     teamIdBetOn,
     amountBet,
     potentialWinnings,
-    'pending', // Default status
+    'pending', 
     sportSlug
   );
+  console.log(`[DB createBetDb] Bet created with ID: ${result.lastID} for user ${userId}`);
   return result.lastID;
 }
 
@@ -165,7 +178,6 @@ export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithM
           }
         }
       }
-      // TODO: Add similar logic for 'api' events of other sports (F1, Basketball) if betting is enabled for them
     } else if (bet.eventSource === 'custom') {
       const managedEvent = await getManagedEventFromDb(bet.eventId);
       if (managedEvent) {
@@ -173,7 +185,7 @@ export async function getUserBetsWithDetailsDb(userId: number): Promise<BetWithM
         awayTeamName = managedEvent.awayTeam.name;
         teamBetOnName = managedEvent.homeTeam.id === bet.teamIdBetOn ? managedEvent.homeTeam.name : managedEvent.awayTeam.name;
         matchTime = managedEvent.eventTime;
-        leagueName = managedEvent.name; // Or some other identifier for custom events
+        leagueName = managedEvent.name; 
       }
     }
     
@@ -197,12 +209,14 @@ export async function getBetByIdDb(betId: number): Promise<Bet | undefined> {
 export async function updateUserScoreDb(userId: number, scoreChange: number): Promise<boolean> {
   const db = await getDb();
   const result = await db.run('UPDATE users SET score = score + ? WHERE id = ?', scoreChange, userId);
+  console.log(`[DB updateUserScoreDb] User ${userId} score changed by ${scoreChange}. Success: ${(result.changes ?? 0) > 0}`);
   return (result.changes ?? 0) > 0;
 }
 
 export async function updateBetStatusDb(betId: number, status: 'won' | 'lost'): Promise<boolean> {
   const db = await getDb();
   const result = await db.run('UPDATE bets SET status = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?', status, betId);
+  console.log(`[DB updateBetStatusDb] Bet ${betId} status updated to ${status}. Success: ${(result.changes ?? 0) > 0}`);
   return (result.changes ?? 0) > 0;
 }
 
@@ -236,9 +250,10 @@ export async function createManagedEventInDb(
 ): Promise<number | undefined> {
   const db = await getDb();
   const result = await db.run(
-    'INSERT INTO managed_events (name, sport_slug, home_team_id, away_team_id, event_time, status, home_score, away_score, elapsed_time, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO managed_events (name, sport_slug, home_team_id, away_team_id, event_time, status, home_score, away_score, elapsed_time, notes, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)',
     name, sportSlug, homeTeamId, awayTeamId, eventTime, status, homeScore, awayScore, elapsedTime, notes
   );
+  console.log(`[DB createManagedEventInDb] Event created with ID: ${result.lastID}`);
   return result.lastID;
 }
 
@@ -251,14 +266,13 @@ export async function getManagedEventFromDb(id: number): Promise<ManagedEventApp
   const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug);
 
   if (!homeTeam || !awayTeam) {
-    console.error(`Could not find team details for managed event ${id}`);
-    // Return with placeholder team data to avoid crashing if teams were deleted from mockData
+    console.warn(`[DB getManagedEventFromDb] Could not find full team details for managed event ${id}. Using fallback.`);
      return {
       id: eventDb.id,
       name: eventDb.name,
       sportSlug: eventDb.sport_slug,
-      homeTeam: homeTeam || { id: eventDb.home_team_id, name: 'Unknown Home Team', sportSlug: eventDb.sport_slug },
-      awayTeam: awayTeam || { id: eventDb.away_team_id, name: 'Unknown Away Team', sportSlug: eventDb.sport_slug },
+      homeTeam: homeTeam || { id: eventDb.home_team_id, name: `Home Team ID ${eventDb.home_team_id}`, sportSlug: eventDb.sport_slug },
+      awayTeam: awayTeam || { id: eventDb.away_team_id, name: `Away Team ID ${eventDb.away_team_id}`, sportSlug: eventDb.sport_slug },
       eventTime: eventDb.event_time,
       status: eventDb.status,
       homeScore: eventDb.home_score,
@@ -290,8 +304,8 @@ export async function getAllManagedEventsFromDb(): Promise<ManagedEventApp[]> {
   const eventsDb = await db.all<ManagedEventDb[]>('SELECT * FROM managed_events ORDER BY event_time DESC');
   
   return eventsDb.map(eventDb => {
-    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: 'Unknown Home', sportSlug: eventDb.sport_slug, logoUrl: undefined};
-    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: 'Unknown Away', sportSlug: eventDb.sport_slug, logoUrl: undefined};
+    const homeTeam = getTeamById(eventDb.home_team_id, eventDb.sport_slug) || {id: eventDb.home_team_id, name: `Home Team ID ${eventDb.home_team_id}`, sportSlug: eventDb.sport_slug, logoUrl: undefined};
+    const awayTeam = getTeamById(eventDb.away_team_id, eventDb.sport_slug) || {id: eventDb.away_team_id, name: `Away Team ID ${eventDb.away_team_id}`, sportSlug: eventDb.sport_slug, logoUrl: undefined};
     return {
       id: eventDb.id,
       name: eventDb.name,
@@ -353,11 +367,11 @@ export async function updateManagedEventInDb(
   notes?: string | null
 ): Promise<boolean> {
   const db = await getDb();
+  // Corrected column name from updatedAt to updated_at
   const result = await db.run(
-    'UPDATE managed_events SET status = ?, home_score = ?, away_score = ?, winning_team_id = ?, elapsed_time = ?, notes = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?',
+    'UPDATE managed_events SET status = ?, home_score = ?, away_score = ?, winning_team_id = ?, elapsed_time = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     status, homeScore, awayScore, winningTeamId, elapsedTime, notes, eventId
   );
+  console.log(`[DB updateManagedEventInDb] Event ${eventId} updated. Success: ${(result.changes ?? 0) > 0}`);
   return (result.changes ?? 0) > 0;
 }
-
-    
