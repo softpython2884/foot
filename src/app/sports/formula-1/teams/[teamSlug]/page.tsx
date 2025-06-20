@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, X, Gamepad2, Tv, Clock } from 'lucide-react';
+import { Brain, Users, Trophy, ChevronLeft, Settings, CalendarClock, Rocket, Flag, BarChartHorizontalBig, Car, Building, Info, UserCircle, ExternalLink, X, Gamepad2, Tv, Clock, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -60,6 +60,7 @@ export default function Formula1TeamProfilePage() {
   const [isLoadingDrivers, setIsLoadingDrivers] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
   const [isLoadingManagedEvents, setIsLoadingManagedEvents] = useState(true);
+  const [isRefreshingManagedEvents, setIsRefreshingManagedEvents] = useState(false);
 
 
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -80,23 +81,39 @@ export default function Formula1TeamProfilePage() {
 
   const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition;
 
+  const fetchManagedEventsForTeam = useCallback(async (teamId: number) => {
+    setIsLoadingManagedEvents(true);
+    try {
+      const response = await fetch(`/api/sport-events/${sportSlug}?teamId=${teamId}&status=upcoming&status=live&status=paused&status=finished&status=cancelled`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error from fetching managed events' }));
+        throw new Error(errorData.error || 'Failed to fetch managed events for team');
+      }
+      const data: ManagedEventApp[] = await response.json();
+      setManagedEvents(data);
+    } catch (error) {
+      console.error(`Error fetching managed events for team ${teamId}:`, error);
+      toast({ variant: 'destructive', title: 'Error Loading Custom Events', description: (error as Error).message });
+      setManagedEvents([]);
+    }
+    setIsLoadingManagedEvents(false);
+    setIsRefreshingManagedEvents(false);
+  }, [sportSlug, toast]);
+
   const fetchF1Data = useCallback(async (entityId: number, entityName: string) => {
     setIsLoadingData(true);
     setIsLoadingDrivers(true);
     setIsLoadingResults(true);
     setIsAiLoading(true);
-    setIsLoadingManagedEvents(true);
+    
+    fetchManagedEventsForTeam(entityId);
 
     try {
-      const [detailsResult, driversResult, racesResult, summaryResult, managedEventsResult] = await Promise.allSettled([
+      const [detailsResult, driversResult, racesResult, summaryResult] = await Promise.allSettled([
         getF1ConstructorDetails(entityId, currentSport.apiBaseUrl),
         getF1DriversForSeason(entityId, CURRENT_F1_SEASON, currentSport.apiBaseUrl),
         getF1RaceResultsForSeason(entityId, CURRENT_F1_SEASON, currentSport.apiBaseUrl, MAX_RACE_RESULTS_F1),
         getTeamInfo({ entityName: entityName, entityType: 'team', contextName: 'Formule 1' }),
-        fetch(`/api/sport-events/${sportSlug}?teamId=${entityId}&status=upcoming&status=live`).then(res => {
-            if (!res.ok) throw new Error('Failed to fetch managed events');
-            return res.json();
-        })
       ]);
 
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
@@ -139,14 +156,6 @@ export default function Formula1TeamProfilePage() {
         setAiSummary(`Could not load summary for ${entityName}.`);
       }
       
-      if (managedEventsResult.status === 'fulfilled' && managedEventsResult.value) {
-        setManagedEvents(managedEventsResult.value);
-      } else {
-        console.error("Error fetching managed events for F1 team:", managedEventsResult.status === 'rejected' ? managedEventsResult.reason : "Call succeeded but returned no data.");
-        setManagedEvents([]);
-      }
-      setIsLoadingManagedEvents(false);
-
     } catch (error) {
       console.error("Overall error fetching F1 page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all F1 page data.' });
@@ -154,11 +163,10 @@ export default function Formula1TeamProfilePage() {
        setDrivers(mockDriversForTeam);
        const mockResultsForTeam = mockF1RaceResults.filter(r => r.driverResults.some(dr => dr.driverName?.toLowerCase().includes(entityName.split(' ')[0].toLowerCase())));
        setRaceResults(mockResultsForTeam);
-       setManagedEvents([]);
     } finally {
       setIsAiLoading(false);
     }
-  }, [currentSport.apiBaseUrl, toast, drivers, sportSlug]);
+  }, [currentSport.apiBaseUrl, toast, drivers, fetchManagedEventsForTeam]);
 
 
   useEffect(() => {
@@ -176,6 +184,13 @@ export default function Formula1TeamProfilePage() {
       }
     }
   }, [teamSlug, fetchF1Data]);
+
+  const handleRefreshManagedEvents = () => {
+    if (mockEntityData || constructorDetails) {
+        setIsRefreshingManagedEvents(true);
+        fetchManagedEventsForTeam((constructorDetails || mockEntityData)!.id);
+    }
+  };
 
   const handleAskAi = async () => {
     const entityNameToUse = constructorDetails?.name || mockEntityData?.name;
@@ -239,6 +254,9 @@ export default function Formula1TeamProfilePage() {
     setIsBettingModalOpen(false);
     setSelectedEventForBetting(null);
     setSelectedTeamForBetting(null);
+     if(mockEntityData || constructorDetails) {
+      fetchManagedEventsForTeam((constructorDetails || mockEntityData)!.id);
+    }
   };
   
   const getStatusColor = (statusShort: string | undefined) => {
@@ -268,10 +286,6 @@ export default function Formula1TeamProfilePage() {
   const displayEntityName = constructorDetails?.name || mockEntityData?.name || 'F1 Entity Profile';
   const displayEntityLogo = constructorDetails?.logoUrl || mockEntityData?.logoUrl;
   const entityDetailsToDisplay = constructorDetails || mockEntityData;
-
-  const teamSpecificManagedEvents = managedEvents.filter(
-    (event) => event.homeTeam.id === entityDetailsToDisplay?.id || event.awayTeam.id === entityDetailsToDisplay?.id
-  );
 
 
   return (
@@ -378,7 +392,7 @@ export default function Formula1TeamProfilePage() {
                     onKeyDown={(e) => e.key === 'Enter' && handleDriverCardClick(driver)}
                   >
                     <div className="flex items-center gap-4">
-                      <Image src={driver.photoUrl || 'https://placehold.co/80x80.png?text=F1'} alt={driver.name || 'Driver'} width={80} height={80} className="rounded-full shadow-md" style={{objectFit: 'cover'}} data-ai-hint={`${driver.name} portrait`}/>
+                      <Image src={driver.photoUrl || 'https://placehold.co/80x80.png?text=F1'} alt={driver.name || 'Driver'} width={80} height={80} className="rounded-full shadow-md" style={{objectFit: 'cover'}} data-ai-hint={`${driver.name} portrait`} sizes="80px"/>
                       <div>
                         <h4 className="text-lg font-semibold">{driver.name} {driver.number && <span className="text-primary font-bold">#{driver.number}</span>}</h4>
                         {driver.nationality && <p className="text-xs text-muted-foreground flex items-center gap-1"><Flag size={14}/>{driver.nationality}</p>}
@@ -406,6 +420,7 @@ export default function Formula1TeamProfilePage() {
                       className="rounded-lg shadow-md"
                       style={{objectFit: 'cover'}}
                       data-ai-hint="selected driver portrait"
+                       sizes="80px"
                     />
                   ) : (
                     <UserCircle size={80} className="text-muted-foreground mt-1" />
@@ -436,12 +451,21 @@ export default function Formula1TeamProfilePage() {
         )}
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Gamepad2 className="text-primary"/>Custom Events for {displayEntityName}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex-1">
+                    <CardTitle className="font-headline flex items-center gap-2"><Gamepad2 className="text-primary"/>Custom Events for {displayEntityName}</CardTitle>
+                    <CardDescription>Upcoming, live, paused, and recently finished/cancelled custom events involving this entity.</CardDescription>
+                </div>
+                <Button onClick={handleRefreshManagedEvents} variant="outline" size="sm" disabled={isRefreshingManagedEvents || !entityDetailsToDisplay}>
+                    <RefreshCw size={14} className={cn("mr-2", isRefreshingManagedEvents && "animate-spin")} />
+                    {isRefreshingManagedEvents ? 'Refreshing...' : 'Refresh'}
+                </Button>
+            </CardHeader>
           <CardContent>
-            {isLoadingManagedEvents ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
-              teamSpecificManagedEvents.length > 0 ? (
+            {isLoadingManagedEvents && !isRefreshingManagedEvents ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
+              managedEvents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {teamSpecificManagedEvents.map(event => {
+                  {managedEvents.map(event => {
                     const {date, time} = formatMatchDateTime(event.eventTime);
                     return (
                       <Card key={event.id} className="shadow-md">
@@ -465,8 +489,19 @@ export default function Formula1TeamProfilePage() {
                                     {event.homeScore} - {event.awayScore}
                                 </p>
                             )}
+                             {event.status === 'finished' && (
+                                <p className="font-bold text-md text-center text-foreground py-1">
+                                    Final: {event.homeScore} - {event.awayScore}
+                                    {event.winningTeamId === event.homeTeam.id && ` (${event.homeTeam.name} won)`}
+                                    {event.winningTeamId === event.awayTeam.id && ` (${event.awayTeam.name} won)`}
+                                    {event.winningTeamId == null && !event.winningTeamId && " (Draw)"}
+                                </p>
+                            )}
+                            {event.status === 'cancelled' && (
+                                 <p className="font-bold text-md text-center text-destructive py-1">Event Cancelled</p>
+                            )}
                         </CardContent>
-                        {event.status === 'upcoming' && currentUser && (
+                        {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && currentUser && (
                             <CardContent className="flex flex-col sm:flex-row gap-2 pt-0">
                                 <Button size="sm" className="flex-1" variant="outline" onClick={() => handleOpenBettingModal(event, event.homeTeam)}>
                                     Bet on {event.homeTeam.name}
@@ -476,7 +511,7 @@ export default function Formula1TeamProfilePage() {
                                 </Button>
                             </CardContent>
                         )}
-                        {event.status === 'upcoming' && !currentUser && (
+                         {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && !currentUser && (
                              <CardContent className="pt-0">
                                 <Button className="w-full" size="sm" variant="outline" onClick={() => router.push('/login')}>Log in to Bet</Button>
                             </CardContent>
@@ -485,7 +520,7 @@ export default function Formula1TeamProfilePage() {
                     )
                   })}
                 </div>
-              ) : <p className="text-muted-foreground text-center py-4">No upcoming or live custom events involving {displayEntityName} at the moment.</p>
+              ) : <p className="text-muted-foreground text-center py-4">No custom events involving {displayEntityName} at the moment.</p>
             }
           </CardContent>
         </Card>
@@ -512,7 +547,7 @@ export default function Formula1TeamProfilePage() {
                                 {race.driverResults.map(dr => (
                                     <li key={`${race.id}-${dr.driverName}`} className="flex justify-between items-center py-1 border-b border-border last:border-b-0">
                                         <div className="flex items-center gap-2">
-                                            {dr.driverImage && <Image src={dr.driverImage} alt={dr.driverName} width={20} height={20} className="rounded-full" style={{objectFit:'cover'}} data-ai-hint={`${dr.driverName} small portrait`} />}
+                                            {dr.driverImage && <Image src={dr.driverImage} alt={dr.driverName} width={20} height={20} className="rounded-full" style={{objectFit:'cover'}} data-ai-hint={`${dr.driverName} small portrait`} sizes="20px"/>}
                                             <span>{dr.driverName} {dr.driverNumber && <span className="text-muted-foreground text-xs">#{dr.driverNumber}</span>}</span>
                                         </div>
                                         <span className="font-medium">P{dr.position || 'N/A'} {dr.points != null && `(${dr.points} pts)`}</span>

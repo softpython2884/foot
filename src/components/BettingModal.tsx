@@ -1,25 +1,27 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Keep if used, otherwise remove
+// import { Label } from '@/components/ui/label'; // Keep if used, otherwise remove
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { placeBetAction } from '@/actions/bets';
 import type { MatchApp, TeamApp, AuthenticatedUser, ManagedEventApp, EventSource } from '@/lib/types';
 import { LoadingSpinner } from './LoadingSpinner';
+import { useAuth } from '@/context/AuthContext'; // Import useAuth to update user score
+import { getUserDetailsAction } from '@/actions/user'; // To fetch fresh user data
 
 interface BettingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  eventData: MatchApp | ManagedEventApp; // Can be either API match or managed event
-  eventSource: EventSource; // 'api' or 'custom'
+  eventData: MatchApp | ManagedEventApp; 
+  eventSource: EventSource; 
   teamToBetOn: TeamApp; 
   currentUser: AuthenticatedUser | null;
   sportSlug: string;
@@ -33,7 +35,15 @@ type BetFormValues = z.infer<typeof betSchema>;
 
 export function BettingModal({ isOpen, onClose, eventData, eventSource, teamToBetOn, currentUser, sportSlug }: BettingModalProps) {
   const { toast } = useToast();
+  const { login: updateAuthContextUser } = useAuth(); // Get login/update function from AuthContext
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentScore, setCurrentScore] = useState(currentUser?.score || 0);
+
+  useEffect(() => {
+    if (currentUser) {
+      setCurrentScore(currentUser.score);
+    }
+  }, [currentUser]);
 
   const form = useForm<BetFormValues>({
     resolver: zodResolver(betSchema),
@@ -58,6 +68,11 @@ export function BettingModal({ isOpen, onClose, eventData, eventSource, teamToBe
         onClose();
         return;
     }
+    if (data.amount > currentScore) {
+      toast({ variant: 'destructive', title: 'Insufficient Points', description: `You only have ${currentScore} points.` });
+      return;
+    }
+
 
     setIsSubmitting(true);
     const formData = new FormData();
@@ -68,14 +83,27 @@ export function BettingModal({ isOpen, onClose, eventData, eventSource, teamToBe
     formData.append('amountBet', data.amount.toString());
     formData.append('sportSlug', sportSlug);
 
+    console.log('[BettingModal] Submitting bet. FormData:', Object.fromEntries(formData.entries()));
+
     const result = await placeBetAction(formData);
 
     if (result.success) {
       toast({ title: 'Bet Placed!', description: result.success });
       form.reset();
-      onClose();
+      
+      // Fetch updated user details and update context
+      const userDetailsResult = await getUserDetailsAction(currentUser.id);
+      if (userDetailsResult.user) {
+        updateAuthContextUser(userDetailsResult.user);
+        setCurrentScore(userDetailsResult.user.score); // Update local score for immediate feedback if needed
+      } else {
+        console.warn('[BettingModal] Failed to refresh user details after placing bet.');
+      }
+      
+      onClose(); // Close modal after all updates
     } else {
       toast({ variant: 'destructive', title: 'Bet Failed', description: result.error || 'Could not place bet.' });
+      console.error('[BettingModal] Bet placement failed. Server response:', result);
     }
     setIsSubmitting(false);
   };
@@ -89,11 +117,13 @@ export function BettingModal({ isOpen, onClose, eventData, eventSource, teamToBe
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Place Bet on {sportSlug === 'football' ? 'Football Event' : sportSlug}</DialogTitle>
+          <DialogTitle>Place Bet on {sportSlug === 'football' ? 'Football Event' : sportSlug === 'formula-1' ? 'F1 Event' : 'Basketball Event'}</DialogTitle>
           <DialogDescription>
             You are betting on <span className="font-semibold text-primary">{teamToBetOn.name}</span> to win the event:
             <br />
             {eventTitle}
+            <br />
+            Your current score: <span className="font-semibold">{currentScore} points</span>
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>

@@ -41,7 +41,7 @@ const passwordFormSchema = z.object({
 });
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
-const POINTS_TO_ADD = 100; // Amount of points to give when user "buys" more
+const POINTS_TO_ADD = 100; 
 
 export default function ProfilePage() {
   const { currentUser, login: updateAuthContextUser, isLoading: authLoading } = useAuth();
@@ -65,17 +65,27 @@ export default function ProfilePage() {
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
-  const fetchBetHistory = useCallback(async () => {
+  const fetchUserData = useCallback(async () => {
     if (!currentUser) return;
-    setBetHistoryLoading(true);
-    const result = await getBetHistoryAction(currentUser.id);
-    if (result.bets) {
-      setBetHistory(result.bets);
-    } else if (result.error) {
-      toast({ variant: 'destructive', title: 'Error fetching bet history', description: result.error });
+    console.log('[ProfilePage] fetchUserData: Fetching fresh user data and bet history.');
+    setIsBetHistoryLoading(true);
+    // Fetch fresh user details
+    const userDetailsResult = await getUserDetailsAction(currentUser.id);
+    if (userDetailsResult.user) {
+      updateAuthContextUser(userDetailsResult.user); // Update context
+    } else if (userDetailsResult.error) {
+      toast({variant: 'destructive', title: 'Failed to refresh user data', description: userDetailsResult.error});
     }
-    setBetHistoryLoading(false);
-  }, [currentUser, toast]);
+
+    // Fetch bet history
+    const betHistoryResult = await getBetHistoryAction(currentUser.id);
+    if (betHistoryResult.bets) {
+      setBetHistory(betHistoryResult.bets);
+    } else if (betHistoryResult.error) {
+      toast({ variant: 'destructive', title: 'Error fetching bet history', description: betHistoryResult.error });
+    }
+    setIsBetHistoryLoading(false);
+  }, [currentUser, toast, updateAuthContextUser]);
 
 
   useEffect(() => {
@@ -83,9 +93,9 @@ export default function ProfilePage() {
       router.push('/login');
     } else if (currentUser) {
       nameForm.reset({ newName: currentUser.name });
-      fetchBetHistory(); 
+      fetchUserData(); 
     }
-  }, [currentUser, authLoading, router, nameForm, fetchBetHistory]);
+  }, [currentUser, authLoading, router, nameForm, fetchUserData]);
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -159,15 +169,9 @@ export default function ProfilePage() {
     const settlementResult = await settleApiBetAction(formData);
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
+      await fetchUserData(); // Refetch user data and bet history
       
-      const userDetailsResult = await getUserDetailsAction(currentUser.id);
-      if (userDetailsResult.user) {
-        updateAuthContextUser(userDetailsResult.user);
-      } else if (userDetailsResult.error) {
-        toast({variant: 'destructive', title: 'Failed to refresh user data', description: userDetailsResult.error});
-      }
-
-      fetchBetHistory(); 
+      // Optionally refetch leaderboard if score changes significantly affect rankings often
       const leaderboardResult = await getLeaderboardAction();
         if (leaderboardResult.users) {
             setLeaderboard(leaderboardResult.users);
@@ -189,12 +193,7 @@ export default function ProfilePage() {
     const result = await addPointsAction(formData);
     if (result.success) {
       toast({ title: 'Points Added!', description: result.success });
-      const userDetailsResult = await getUserDetailsAction(currentUser.id);
-      if (userDetailsResult.user) {
-        updateAuthContextUser(userDetailsResult.user);
-      } else if (userDetailsResult.error) {
-         toast({variant: 'destructive', title: 'Failed to refresh user data after adding points', description: userDetailsResult.error});
-      }
+      await fetchUserData(); // Refetch user data to update score in context and UI
     } else {
       toast({ variant: 'destructive', title: 'Error Adding Points', description: result.error || 'Could not add points.' });
     }
@@ -480,4 +479,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

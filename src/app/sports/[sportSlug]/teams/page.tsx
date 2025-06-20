@@ -27,7 +27,6 @@ export default function SportTeamsPage() {
   const { currentUser } = useAuth();
 
   const sportSlug = params.sportSlug as string;
-
   const sport = supportedSports.find(s => s.slug === sportSlug);
 
   if (!sportSlug || !sport) {
@@ -47,10 +46,10 @@ export default function SportTeamsPage() {
 
 
   const fetchManagedEvents = useCallback(async () => {
-    if (!sport) return; // Should not happen due to check above but good practice
+    if (!sport) return; 
     setIsLoadingEvents(true);
     try {
-      const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live&status=paused`);
+      const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live&status=paused&status=finished&status=cancelled`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({error: `Failed to fetch ${sport.name} events and parse error response`}));
         throw new Error(errorData.error || `Failed to fetch ${sport.name} events. Status: ${response.status}`);
@@ -67,7 +66,7 @@ export default function SportTeamsPage() {
   }, [sport, toast]);
 
   useEffect(() => {
-    if (!sport) return; // Should not happen due to check above
+    if (!sport) return; 
 
     let currentTeams: Team[] = [];
     let suffix = "Entities";
@@ -112,6 +111,7 @@ export default function SportTeamsPage() {
     setIsBettingModalOpen(false);
     setSelectedEventForBetting(null);
     setSelectedTeamForBetting(null);
+    fetchManagedEvents(); // Refresh events after betting modal closes
   };
   
   const getStatusColor = (statusShort: string | undefined) => {
@@ -235,7 +235,7 @@ export default function SportTeamsPage() {
                   )
               })}
             </div>
-            ) : <p className="text-center text-muted-foreground">No upcoming, live, or paused custom events for {sport.name} at the moment.</p>
+            ) : <p className="text-center text-muted-foreground">No custom events for {sport.name} at the moment. Check back later or create one in the admin panel!</p>
           }
         </section>
 

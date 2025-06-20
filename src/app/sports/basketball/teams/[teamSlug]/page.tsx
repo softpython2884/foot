@@ -12,7 +12,7 @@ import { Footer } from '@/components/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star, CalendarClock, BarChart3, Shirt, UserCircle, ExternalLink, X, Gamepad2, Tv } from 'lucide-react';
+import { Brain, Users, Trophy, ChevronLeft, ShieldHalf, Star, CalendarClock, BarChart3, Shirt, UserCircle, ExternalLink, X, Gamepad2, Tv, RefreshCw } from 'lucide-react';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { useToast } from '@/hooks/use-toast';
 import { getTeamInfo, type TeamInfoInput } from '@/ai/flows/team-info-flow';
@@ -62,6 +62,7 @@ export default function BasketballTeamProfilePage() {
   const [isLoadingRoster, setIsLoadingRoster] = useState(true);
   const [isLoadingResults, setIsLoadingResults] = useState(true);
   const [isLoadingManagedEvents, setIsLoadingManagedEvents] = useState(true);
+  const [isRefreshingManagedEvents, setIsRefreshingManagedEvents] = useState(false);
 
 
   const [aiSummary, setAiSummary] = useState<string | null>(null);
@@ -82,23 +83,40 @@ export default function BasketballTeamProfilePage() {
 
   const currentSport = supportedSports.find(s => s.slug === sportSlug) as SportDefinition;
 
+  const fetchManagedEventsForTeam = useCallback(async (teamId: number) => {
+    setIsLoadingManagedEvents(true);
+    try {
+      const response = await fetch(`/api/sport-events/${sportSlug}?teamId=${teamId}&status=upcoming&status=live&status=paused&status=finished&status=cancelled`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Failed to parse error from fetching managed events' }));
+        throw new Error(errorData.error || 'Failed to fetch managed events for team');
+      }
+      const data: ManagedEventApp[] = await response.json();
+      setManagedEvents(data);
+    } catch (error) {
+      console.error(`Error fetching managed events for team ${teamId}:`, error);
+      toast({ variant: 'destructive', title: 'Error Loading Custom Events', description: (error as Error).message });
+      setManagedEvents([]);
+    }
+    setIsLoadingManagedEvents(false);
+    setIsRefreshingManagedEvents(false);
+  }, [sportSlug, toast]);
+
+
   const fetchBasketballData = useCallback(async (teamId: number, teamName: string) => {
     setIsLoadingData(true);
     setIsLoadingRoster(true);
     setIsLoadingResults(true);
     setIsAiLoading(true);
-    setIsLoadingManagedEvents(true);
+    
+    fetchManagedEventsForTeam(teamId);
 
     try {
-      const [detailsResult, rosterResult, gamesResult, summaryResult, managedEventsResult] = await Promise.allSettled([
+      const [detailsResult, rosterResult, gamesResult, summaryResult] = await Promise.allSettled([
         getBasketballTeamDetails(teamId, currentSport.apiBaseUrl),
         getBasketballRoster(teamId, CURRENT_BASKETBALL_SEASON_STRING, currentSport.apiBaseUrl),
         getBasketballGamesForTeam(teamId, CURRENT_BASKETBALL_SEASON_STRING, currentSport.apiBaseUrl, MAX_GAME_RESULTS_BASKETBALL),
         getTeamInfo({ entityName: teamName, entityType: 'team', contextName: 'Basketball' }),
-        fetch(`/api/sport-events/${sportSlug}?teamId=${teamId}&status=upcoming&status=live`).then(res => {
-            if (!res.ok) throw new Error('Failed to fetch managed events');
-            return res.json();
-        })
       ]);
 
       if (detailsResult.status === 'fulfilled' && detailsResult.value) {
@@ -138,15 +156,6 @@ export default function BasketballTeamProfilePage() {
         setAiSummary(`Could not load summary for ${teamName}.`);
       }
       
-      if (managedEventsResult.status === 'fulfilled' && managedEventsResult.value) {
-        setManagedEvents(managedEventsResult.value);
-      } else {
-        console.error("Error fetching managed events for basketball team:", managedEventsResult.status === 'rejected' ? managedEventsResult.reason : "Call succeeded but returned no data.");
-        setManagedEvents([]);
-      }
-      setIsLoadingManagedEvents(false);
-
-
     } catch (error) {
       console.error("Overall error fetching Basketball page data:", error);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not load all Basketball page data.' });
@@ -154,11 +163,10 @@ export default function BasketballTeamProfilePage() {
        setRoster(mockRosterForTeam);
        const mockGamesForTeam = mockBasketballGames.filter(g => g.homeTeam.id === teamId || g.awayTeam.id === teamId);
        setGameResults(mockGamesForTeam);
-       setManagedEvents([]);
     } finally {
       setIsAiLoading(false);
     }
-  }, [currentSport.apiBaseUrl, toast, sportSlug]);
+  }, [currentSport.apiBaseUrl, toast, fetchManagedEventsForTeam]);
 
 
   useEffect(() => {
@@ -176,6 +184,13 @@ export default function BasketballTeamProfilePage() {
       }
     }
   }, [teamSlug, fetchBasketballData]);
+  
+  const handleRefreshManagedEvents = () => {
+    if (mockTeamData || teamDetails) {
+        setIsRefreshingManagedEvents(true);
+        fetchManagedEventsForTeam((teamDetails || mockTeamData)!.id);
+    }
+  };
 
   const handleAskAi = async () => {
     const teamNameToUse = teamDetails?.name || mockTeamData?.name;
@@ -239,6 +254,9 @@ export default function BasketballTeamProfilePage() {
     setIsBettingModalOpen(false);
     setSelectedEventForBetting(null);
     setSelectedTeamForBetting(null);
+    if(mockTeamData || teamDetails) {
+      fetchManagedEventsForTeam((teamDetails || mockTeamData)!.id);
+    }
   };
 
   const getStatusColor = (statusShort: string | undefined) => {
@@ -271,10 +289,6 @@ export default function BasketballTeamProfilePage() {
   const displayTeamName = teamDetails?.name || mockTeamData?.name || 'Basketball Team Profile';
   const displayTeamLogo = teamDetails?.logoUrl || mockTeamData?.logoUrl;
   const entityDetailsToDisplay = teamDetails || mockTeamData;
-
-  const teamSpecificManagedEvents = managedEvents.filter(
-    (event) => event.homeTeam.id === entityDetailsToDisplay?.id || event.awayTeam.id === entityDetailsToDisplay?.id
-  );
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -425,12 +439,21 @@ export default function BasketballTeamProfilePage() {
         )}
 
         <Card className="mb-8 shadow-lg">
-          <CardHeader><CardTitle className="font-headline flex items-center gap-2"><Gamepad2 className="text-primary"/>Custom Events for {displayTeamName}</CardTitle></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex-1">
+                    <CardTitle className="font-headline flex items-center gap-2"><Gamepad2 className="text-primary"/>Custom Events for {displayTeamName}</CardTitle>
+                    <CardDescription>Upcoming, live, paused, and recently finished/cancelled custom events involving this team.</CardDescription>
+                </div>
+                 <Button onClick={handleRefreshManagedEvents} variant="outline" size="sm" disabled={isRefreshingManagedEvents || !entityDetailsToDisplay}>
+                    <RefreshCw size={14} className={cn("mr-2", isRefreshingManagedEvents && "animate-spin")} />
+                    {isRefreshingManagedEvents ? 'Refreshing...' : 'Refresh'}
+                </Button>
+            </CardHeader>
           <CardContent>
-            {isLoadingManagedEvents ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
-              teamSpecificManagedEvents.length > 0 ? (
+            {isLoadingManagedEvents && !isRefreshingManagedEvents ? <div className="flex justify-center py-5"><LoadingSpinner/></div> :
+              managedEvents.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {teamSpecificManagedEvents.map(event => {
+                  {managedEvents.map(event => {
                     const {date, time} = formatMatchDateTime(event.eventTime);
                     return (
                       <Card key={event.id} className="shadow-md">
@@ -454,8 +477,19 @@ export default function BasketballTeamProfilePage() {
                                     {event.homeScore} - {event.awayScore}
                                 </p>
                             )}
+                            {event.status === 'finished' && (
+                                <p className="font-bold text-md text-center text-foreground py-1">
+                                    Final: {event.homeScore} - {event.awayScore}
+                                    {event.winningTeamId === event.homeTeam.id && ` (${event.homeTeam.name} won)`}
+                                    {event.winningTeamId === event.awayTeam.id && ` (${event.awayTeam.name} won)`}
+                                    {event.winningTeamId == null && !event.winningTeamId && " (Draw)"}
+                                </p>
+                            )}
+                            {event.status === 'cancelled' && (
+                                 <p className="font-bold text-md text-center text-destructive py-1">Event Cancelled</p>
+                            )}
                         </CardContent>
-                        {event.status === 'upcoming' && currentUser && (
+                        {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && currentUser && (
                             <CardContent className="flex flex-col sm:flex-row gap-2 pt-0">
                                 <Button size="sm" className="flex-1" variant="outline" onClick={() => handleOpenBettingModal(event, event.homeTeam)}>
                                     Bet on {event.homeTeam.name}
@@ -465,7 +499,7 @@ export default function BasketballTeamProfilePage() {
                                 </Button>
                             </CardContent>
                         )}
-                        {event.status === 'upcoming' && !currentUser && (
+                        {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && !currentUser && (
                              <CardContent className="pt-0">
                                 <Button className="w-full" size="sm" variant="outline" onClick={() => router.push('/login')}>Log in to Bet</Button>
                             </CardContent>
@@ -474,7 +508,7 @@ export default function BasketballTeamProfilePage() {
                     )
                   })}
                 </div>
-              ) : <p className="text-muted-foreground text-center py-4">No upcoming or live custom events involving {displayTeamName} at the moment.</p>
+              ) : <p className="text-muted-foreground text-center py-4">No custom events involving {displayTeamName} at the moment.</p>
             }
           </CardContent>
         </Card>
