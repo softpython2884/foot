@@ -18,9 +18,9 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { updateNameAction, updatePasswordAction, getLeaderboardAction, getUserDetailsAction, addPointsAction } from '@/actions/user';
-import { getBetHistoryAction, settleApiBetAction } from '@/actions/bets'; 
+import { getBetHistoryAction, settleApiBetAction } from '@/actions/bets';
 import type { AuthenticatedUser, LeaderboardUser, BetWithMatchDetails } from '@/lib/types';
-import { UserCog, LockKeyhole, Trophy, ListOrdered, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle, Coins } from 'lucide-react';
+import { UserCog, LockKeyhole, Trophy, UserCircle, Gamepad2, AlertTriangle, CheckCircle2, XCircle, Coins } from 'lucide-react';
 import Link from 'next/link';
 import { formatMatchDateTime } from '@/lib/dateUtils';
 import { cn } from '@/lib/utils';
@@ -41,7 +41,7 @@ const passwordFormSchema = z.object({
 });
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
-const POINTS_TO_ADD = 100; 
+const POINTS_TO_ADD = 100;
 
 export default function ProfilePage() {
   const { currentUser, login: updateAuthContextUser, isLoading: authLoading } = useAuth();
@@ -65,37 +65,56 @@ export default function ProfilePage() {
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
 
+  const userId = currentUser?.id;
+
   const fetchUserData = useCallback(async () => {
-    if (!currentUser) return;
-    console.log('[ProfilePage] fetchUserData: Fetching fresh user data and bet history.');
-    setBetHistoryLoading(true); // Corrected: s minuscule
+    if (!userId) {
+        console.log('[ProfilePage] fetchUserData: No userId, skipping fetch.');
+        return;
+    }
+    console.log('[ProfilePage] fetchUserData: Fetching fresh user data and bet history for userId:', userId);
+    setBetHistoryLoading(true);
+
     // Fetch fresh user details
-    const userDetailsResult = await getUserDetailsAction(currentUser.id);
+    const userDetailsResult = await getUserDetailsAction(userId);
     if (userDetailsResult.user) {
-      updateAuthContextUser(userDetailsResult.user); // Update context
+      updateAuthContextUser(userDetailsResult.user);
     } else if (userDetailsResult.error) {
       toast({variant: 'destructive', title: 'Failed to refresh user data', description: userDetailsResult.error});
     }
 
     // Fetch bet history
-    const betHistoryResult = await getBetHistoryAction(currentUser.id);
+    const betHistoryResult = await getBetHistoryAction(userId);
     if (betHistoryResult.bets) {
       setBetHistory(betHistoryResult.bets);
     } else if (betHistoryResult.error) {
       toast({ variant: 'destructive', title: 'Error fetching bet history', description: betHistoryResult.error });
     }
-    setBetHistoryLoading(false); // Corrected: s minuscule
-  }, [currentUser, toast, updateAuthContextUser, setBetHistoryLoading, setBetHistory]);
+    setBetHistoryLoading(false);
+  }, [userId, toast, updateAuthContextUser, setBetHistoryLoading, setBetHistory]);
 
 
+  // Effect for auth check, redirection, and initial data fetch
   useEffect(() => {
-    if (!authLoading && !currentUser) {
-      router.push('/login');
-    } else if (currentUser) {
-      nameForm.reset({ newName: currentUser.name });
-      fetchUserData(); 
+    console.log('[ProfilePage] Auth/Data Fetch Effect triggered. AuthLoading:', authLoading, 'UserId:', userId);
+    if (!authLoading) {
+      if (userId) {
+        fetchUserData();
+      } else {
+        console.log('[ProfilePage] No user ID and not authLoading, redirecting to login.');
+        router.push('/login');
+      }
     }
-  }, [currentUser, authLoading, router, nameForm, fetchUserData]);
+  }, [userId, authLoading, router, fetchUserData]);
+
+  // Effect for resetting form when user name changes from context
+  useEffect(() => {
+    if (currentUser?.name) {
+      console.log('[ProfilePage] Name Form Reset Effect: Resetting nameForm with name:', currentUser.name);
+      nameForm.reset({ newName: currentUser.name });
+    }
+  }, [currentUser?.name, nameForm]);
+
 
   useEffect(() => {
     async function fetchLeaderboard() {
@@ -120,8 +139,8 @@ export default function ProfilePage() {
     const result = await updateNameAction(formData);
     if (result.success && result.user) {
       toast({ title: 'Success', description: result.success });
-      updateAuthContextUser(result.user as AuthenticatedUser); 
-      nameForm.reset({ newName: result.user.name });
+      updateAuthContextUser(result.user as AuthenticatedUser);
+      // nameForm.reset({ newName: result.user.name }); // This will be handled by the useEffect for currentUser.name
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to update name.' });
        if (result.details) {
@@ -165,12 +184,12 @@ export default function ProfilePage() {
     const formData = new FormData();
     formData.append('betId', betId.toString());
     formData.append('userWon', userWon.toString());
-    
+
     const settlementResult = await settleApiBetAction(formData);
     if (settlementResult.success) {
       toast({ title: 'Bet Settled', description: settlementResult.success });
-      await fetchUserData(); 
-      
+      await fetchUserData(); // Fetch fresh data after settling
+
       const leaderboardResult = await getLeaderboardAction();
         if (leaderboardResult.users) {
             setLeaderboard(leaderboardResult.users);
@@ -192,7 +211,7 @@ export default function ProfilePage() {
     const result = await addPointsAction(formData);
     if (result.success) {
       toast({ title: 'Points Added!', description: result.success });
-      await fetchUserData(); 
+      await fetchUserData(); // Fetch fresh data after adding points
     } else {
       toast({ variant: 'destructive', title: 'Error Adding Points', description: result.error || 'Could not add points.' });
     }
@@ -217,7 +236,7 @@ export default function ProfilePage() {
       <Header />
       <main className="flex-grow container mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold font-headline text-center mb-12 text-primary">My Profile</h1>
-        
+
         <Card className="shadow-lg mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 font-headline"><UserCircle /> User Information</CardTitle>
@@ -231,8 +250,8 @@ export default function ProfilePage() {
                     const accordionTrigger = document.querySelector('div[data-state="closed"] > button[aria-expanded="false"][data-radix-accordion-trigger]');
 
                     if (accordionTrigger instanceof HTMLElement) {
-                      accordionTrigger.click(); 
-                      setTimeout(() => inputElement?.focus(), 150); 
+                      accordionTrigger.click();
+                      setTimeout(() => inputElement?.focus(), 150);
                     } else if (inputElement) {
                       inputElement.focus();
                     }
@@ -388,7 +407,7 @@ export default function ProfilePage() {
                                             <p>Bet on: <span className="font-semibold">{bet.teamBetOnName}</span></p>
                                             <p>Amount: <span className="font-semibold">{bet.amountBet} pts</span></p>
                                             <p>Potential Winnings: <span className="font-semibold">{bet.potentialWinnings} pts</span></p>
-                                            <p>Status: 
+                                            <p>Status:
                                                 <span className={cn(
                                                     "font-semibold",
                                                     bet.status === 'won' && 'text-green-500',
@@ -404,18 +423,18 @@ export default function ProfilePage() {
                                         </CardContent>
                                         {bet.eventSource === 'api' && bet.status === 'pending' && (
                                             <CardFooter className="flex gap-2 pt-2">
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
                                                     onClick={() => handleSettleApiBet(bet.id, true)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-green-500 border-green-500 hover:bg-green-500/10 hover:text-green-600"
                                                 >
                                                     {isSettlingBet === bet.id ? <LoadingSpinner size="sm"/> : "Simulate Win"}
                                                 </Button>
-                                                <Button 
-                                                    size="sm" 
-                                                    variant="outline" 
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
                                                     onClick={() => handleSettleApiBet(bet.id, false)}
                                                     disabled={isSettlingBet === bet.id}
                                                     className="text-red-500 border-red-500 hover:bg-red-500/10 hover:text-red-600"
@@ -479,3 +498,4 @@ export default function ProfilePage() {
   );
 }
 
+    
