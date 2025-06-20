@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -10,7 +10,7 @@ import { footballTeams, formula1Entities, basketballTeams, supportedSports } fro
 import type { Team, SportDefinition, ManagedEventApp, TeamApp, MatchApp } from '@/lib/types';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, CalendarClock, Users, Tv, Gamepad2 } from 'lucide-react';
+import { ChevronLeft, CalendarClock, Users, Tv, Gamepad2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { BettingModal } from '@/components/BettingModal';
 import { useToast } from '@/hooks/use-toast';
@@ -28,35 +28,46 @@ export default function SportTeamsPage() {
 
   const sportSlug = params.sportSlug as string;
 
-  // Derive sport directly. If not found, call notFound().
-  // This must happen before any hooks that depend on `sport`.
-  if (!sportSlug) {
-    // This case should ideally be caught by Next.js routing if the slug is missing entirely.
-    // However, good to have a safeguard.
-    notFound();
-  }
-
   const sport = supportedSports.find(s => s.slug === sportSlug);
 
-  if (!sport) {
-    // If the sportSlug from the URL doesn't match any supported sport, render 404.
+  if (!sportSlug || !sport) {
     notFound();
   }
 
-  // States for data fetched based on the `sport` object
   const [teamsToShow, setTeamsToShow] = useState<Team[]>([]);
   const [pageTitleSuffix, setPageTitleSuffix] = useState("Entities");
   const [managedEvents, setManagedEvents] = useState<ManagedEventApp[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
+  const [isRefreshingEvents, setIsRefreshingEvents] = useState(false);
+
 
   const [isBettingModalOpen, setIsBettingModalOpen] = useState(false);
   const [selectedEventForBetting, setSelectedEventForBetting] = useState<ManagedEventApp | MatchApp | null>(null);
   const [selectedTeamForBetting, setSelectedTeamForBetting] = useState<TeamApp | null>(null);
 
 
+  const fetchManagedEvents = useCallback(async () => {
+    if (!sport) return; // Should not happen due to check above but good practice
+    setIsLoadingEvents(true);
+    try {
+      const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live&status=paused`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({error: `Failed to fetch ${sport.name} events and parse error response`}));
+        throw new Error(errorData.error || `Failed to fetch ${sport.name} events. Status: ${response.status}`);
+      }
+      const data: ManagedEventApp[] = await response.json();
+      setManagedEvents(data);
+    } catch (error) {
+      console.error(`Error fetching managed ${sport.name} events:`, error);
+      toast({ variant: 'destructive', title: 'Error Loading Events', description: (error as Error).message });
+      setManagedEvents([]);
+    }
+    setIsLoadingEvents(false);
+    setIsRefreshingEvents(false);
+  }, [sport, toast]);
+
   useEffect(() => {
-    // `sport` is guaranteed to be defined here due to the notFound() call above.
-    // So, we can safely use `sport.slug` and `sport.name`.
+    if (!sport) return; // Should not happen due to check above
 
     let currentTeams: Team[] = [];
     let suffix = "Entities";
@@ -73,27 +84,14 @@ export default function SportTeamsPage() {
     setTeamsToShow(currentTeams);
     setPageTitleSuffix(suffix);
 
-    async function fetchManagedEvents() {
-      setIsLoadingEvents(true);
-      try {
-        const response = await fetch(`/api/sport-events/${sport.slug}?status=upcoming&status=live`);
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({error: `Failed to fetch ${sport.name} events and parse error response`}));
-          throw new Error(errorData.error || `Failed to fetch ${sport.name} events. Status: ${response.status}`);
-        }
-        const data: ManagedEventApp[] = await response.json();
-        setManagedEvents(data);
-      } catch (error) {
-        console.error(`Error fetching managed ${sport.name} events:`, error);
-        toast({ variant: 'destructive', title: 'Error Loading Events', description: (error as Error).message });
-        setManagedEvents([]);
-      }
-      setIsLoadingEvents(false);
-    }
-
     fetchManagedEvents();
 
-  }, [sport, toast]); // Depend on the `sport` object itself.
+  }, [sport, fetchManagedEvents]);
+
+  const handleRefreshEvents = () => {
+    setIsRefreshingEvents(true);
+    fetchManagedEvents();
+  };
 
   const handleOpenBettingModal = (event: ManagedEventApp | MatchApp, team: TeamApp) => {
     if (!currentUser) {
@@ -125,8 +123,6 @@ export default function SportTeamsPage() {
     return 'text-muted-foreground';
   };
 
-  // If `sport` was not found, `notFound()` would have been called and this component instance
-  // would cease rendering. Thus, `sport` can be assumed to be defined from this point onwards.
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -143,7 +139,7 @@ export default function SportTeamsPage() {
             <h2 className="text-3xl font-bold font-headline text-center text-primary">
               {sport.name} {pageTitleSuffix}
             </h2>
-            <div style={{ width: '150px' }} /> {/* Spacer to balance the back button */}
+            <div style={{ width: '150px' }} /> 
           </div>
 
           {teamsToShow.length > 0 ? (
@@ -160,11 +156,17 @@ export default function SportTeamsPage() {
         </section>
 
         <section className="my-12">
-          <h2 className="text-3xl font-bold font-headline mb-6 text-center text-secondary-foreground">
-            <Gamepad2 className="inline-block mr-3 text-accent" size={32}/>
-            Custom Events & Betting ({sport.name})
-          </h2>
-          {isLoadingEvents ? <div className="flex justify-center"><LoadingSpinner/></div> :
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+            <h2 className="text-3xl font-bold font-headline text-center sm:text-left text-secondary-foreground">
+              <Gamepad2 className="inline-block mr-3 text-accent" size={32}/>
+              Custom Events & Betting ({sport.name})
+            </h2>
+            <Button onClick={handleRefreshEvents} variant="outline" disabled={isRefreshingEvents}>
+              <RefreshCw size={16} className={cn("mr-2", isRefreshingEvents && "animate-spin")} />
+              {isRefreshingEvents ? 'Refreshing...' : 'Refresh Events'}
+            </Button>
+          </div>
+          {isLoadingEvents && !isRefreshingEvents ? <div className="flex justify-center"><LoadingSpinner/></div> :
             managedEvents.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {managedEvents.map(event => {
@@ -199,7 +201,7 @@ export default function SportTeamsPage() {
                             )}
                             {event.notes && <p className="text-xs text-muted-foreground pt-2">Notes: {event.notes}</p>}
                         </CardContent>
-                        {event.status === 'upcoming' && currentUser && (
+                        {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && currentUser && (
                             <CardContent className="flex flex-col sm:flex-row gap-2 pt-0">
                                 <Button className="flex-1" variant="outline" onClick={() => handleOpenBettingModal(event, event.homeTeam)}>
                                     Bet on {event.homeTeam.name}
@@ -209,14 +211,9 @@ export default function SportTeamsPage() {
                                 </Button>
                             </CardContent>
                         )}
-                        {event.status === 'upcoming' && !currentUser && (
+                        {(event.status === 'upcoming' || event.status === 'live' || event.status === 'paused') && !currentUser && (
                              <CardContent className="pt-0">
                                 <Button className="w-full" variant="outline" onClick={() => router.push('/login')}>Log in to Bet</Button>
-                            </CardContent>
-                        )}
-                         {(event.status === 'live' || event.status === 'paused') && (
-                            <CardContent className="pt-0 text-center">
-                                <p className="text-sm text-muted-foreground">Betting closed (event live or paused).</p>
                             </CardContent>
                         )}
                          {event.status === 'finished' && (
@@ -229,11 +226,16 @@ export default function SportTeamsPage() {
                                 </p>
                             </CardContent>
                         )}
+                         {event.status === 'cancelled' && (
+                            <CardContent className="pt-0 text-center">
+                                <p className="text-sm font-semibold text-destructive">Event Cancelled</p>
+                            </CardContent>
+                         )}
                     </Card>
                   )
               })}
             </div>
-            ) : <p className="text-center text-muted-foreground">No upcoming or live custom events for {sport.name} at the moment.</p>
+            ) : <p className="text-center text-muted-foreground">No upcoming, live, or paused custom events for {sport.name} at the moment.</p>
           }
         </section>
 
@@ -243,7 +245,7 @@ export default function SportTeamsPage() {
           isOpen={isBettingModalOpen}
           onClose={handleCloseBettingModal}
           eventData={selectedEventForBetting}
-          eventSource="custom" // All events here are 'custom'
+          eventSource="custom" 
           teamToBetOn={selectedTeamForBetting}
           currentUser={currentUser}
           sportSlug={sport.slug}
@@ -253,4 +255,3 @@ export default function SportTeamsPage() {
     </div>
   );
 }
-

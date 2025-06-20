@@ -107,9 +107,9 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
             console.warn(`[betsAction] Server: Managed event not found for ID: ${eventId}`);
             return { error: 'Managed event not found.' };
         }
-        if (managedEvent.status !== 'upcoming') {
-             console.warn(`[betsAction] Server: Managed event ${eventId} is not 'upcoming'. Status: ${managedEvent.status}`);
-             return { error: 'Betting is only allowed on upcoming managed events.' };
+        if (!['upcoming', 'live', 'paused'].includes(managedEvent.status)) {
+             console.warn(`[betsAction] Server: Managed event ${eventId} is not 'upcoming', 'live', or 'paused'. Status: ${managedEvent.status}`);
+             return { error: 'Betting is only allowed on upcoming, live, or paused managed events.' };
         }
         const teamDetails = [managedEvent.homeTeam, managedEvent.awayTeam].find(t => t.id === teamIdBetOn);
         teamBetOnName = teamDetails ? teamDetails.name : 'Selected Team';
@@ -133,7 +133,7 @@ export async function placeBetAction(formData: FormData): Promise<{ error?: stri
     }
     console.log(`[betsAction] Server: Bet created successfully with ID: ${betId}.`);
 
-    // Deduct bet amount from user's score
+    
     await updateUserScoreDb(userId, -amountBet);
     console.log(`[betsAction] Server: Deducted ${amountBet} points from user ${userId}. New score potentially: ${currentUser.score - amountBet}.`);
 
@@ -316,7 +316,7 @@ export async function settleBetsForManagedEvent(managedEventId: number): Promise
         if (!scoreUpdated) {
           errorCount++;
           console.error(`  Bet ID ${bet.id}: Failed to update score for user ${bet.userId} after winning.`);
-          // Potentially revert bet status update or mark for manual review
+          
           continue;
         }
         console.log(`  Bet ID ${bet.id}: User ${bet.userId} score updated by +${scoreChange}.`);

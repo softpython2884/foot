@@ -24,20 +24,18 @@ interface ManagedEventEditorCardProps {
   onEventUpdated: () => void;
 }
 
-// Schema to handle potential number or string input and validate as a numeric string or empty
 const safeNumericStringSchema = () =>
   z.preprocess(
     (val) => {
-      // console.log(`[ManagedEventEditorCard] Preprocessing score/time. Input: '${val}', type: ${typeof val}`);
-      if (val === null || val === undefined || val === '') return ''; // Normalize empty/null/undefined to empty string
-      return String(val); // Convert numbers or other types to string
+      if (val === null || val === undefined || val === '') return ''; 
+      return String(val); 
     },
-    z.string() // Now we are sure it's a string (or empty string)
+    z.string() 
       .refine(
-        (val) => val === '' || /^\d+$/.test(val), // Allow empty string or string of digits
+        (val) => val === '' || /^\d+$/.test(val), 
         { message: "Must be a non-negative integer or empty." }
       )
-      .optional() // The field itself is optional (can be omitted or be an empty string after preprocess)
+      .optional() 
   );
 
 
@@ -45,12 +43,14 @@ const updateEventStatusFormSchema = z.object({
   status: z.custom<ManagedEventStatus>((val) => ['upcoming', 'live', 'paused', 'finished', 'cancelled'].includes(val as string)),
   homeScore: safeNumericStringSchema(),
   awayScore: safeNumericStringSchema(),
-  winningTeamId: z.string().optional(), // Stays as string, server will coerce or handle empty as null
+  winningTeamId: z.string().optional(), 
   elapsedTime: safeNumericStringSchema(),
   notes: z.string().optional(),
 });
 
 type UpdateEventStatusFormValues = z.infer<typeof updateEventStatusFormSchema>;
+
+const NULL_WINNER_OPTION_VALUE = "null_winner_option";
 
 export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEditorCardProps) {
   const { toast } = useToast();
@@ -62,7 +62,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
       status: event.status,
       homeScore: event.homeScore?.toString() ?? '',
       awayScore: event.awayScore?.toString() ?? '',
-      winningTeamId: event.winningTeamId?.toString() ?? '', // Select handles string values
+      winningTeamId: event.winningTeamId?.toString() ?? NULL_WINNER_OPTION_VALUE, 
       elapsedTime: event.elapsedTime?.toString() ?? '',
       notes: event.notes ?? '',
     },
@@ -75,14 +75,17 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
     formData.append('eventId', event.id.toString());
     formData.append('status', data.status);
     
-    // FormData handles undefined values by not appending them, which is fine for optional fields.
-    // The server-side Zod schema will coerce these strings.
-    // Only append if defined and not an empty string (empty string from form means user cleared it)
     if (data.homeScore !== undefined && data.homeScore !== '') formData.append('homeScore', data.homeScore);
     if (data.awayScore !== undefined && data.awayScore !== '') formData.append('awayScore', data.awayScore);
-    if (data.winningTeamId !== undefined && data.winningTeamId !== '') formData.append('winningTeamId', data.winningTeamId); // Empty string means "Draw/No Winner"
+    
+    // Send the special value if "Draw/No Winner" is selected, otherwise the team ID or nothing if not applicable
+    if (data.winningTeamId === NULL_WINNER_OPTION_VALUE) {
+      formData.append('winningTeamId', NULL_WINNER_OPTION_VALUE); 
+    } else if (data.winningTeamId !== undefined && data.winningTeamId !== '') {
+      formData.append('winningTeamId', data.winningTeamId);
+    }
+    
     if (data.elapsedTime !== undefined && data.elapsedTime !== '') formData.append('elapsedTime', data.elapsedTime);
-    // Notes can be an empty string, or null/undefined.
     if (data.notes !== undefined && data.notes !== null) formData.append('notes', data.notes);
 
 
@@ -197,7 +200,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                         <FormLabel>Winning Team (auto-set by scores if different, or select for draws/manual override)</FormLabel>
                         <Select 
                             onValueChange={field.onChange} 
-                            value={field.value ?? ''} 
+                            value={field.value ?? NULL_WINNER_OPTION_VALUE} 
                             disabled={
                                 (form.getValues('homeScore') !== '' && form.getValues('awayScore') !== '' && 
                                  !isNaN(Number(form.getValues('homeScore'))) && !isNaN(Number(form.getValues('awayScore'))) &&
@@ -206,7 +209,7 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
                         >
                             <FormControl><SelectTrigger><SelectValue placeholder="Select winning team (or Draw)" /></SelectTrigger></FormControl>
                             <SelectContent>
-                            <SelectItem value="">Draw / No Winner</SelectItem>
+                            <SelectItem value={NULL_WINNER_OPTION_VALUE}>Draw / No Winner</SelectItem>
                             <SelectItem value={event.homeTeam.id.toString()}>{event.homeTeam.name} (Home)</SelectItem>
                             <SelectItem value={event.awayTeam.id.toString()}>{event.awayTeam.name} (Away)</SelectItem>
                             </SelectContent>
@@ -238,4 +241,3 @@ export function ManagedEventEditorCard({ event, onEventUpdated }: ManagedEventEd
     </Card>
   );
 }
-

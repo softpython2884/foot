@@ -3,9 +3,11 @@
 
 import { z } from 'zod';
 import { createManagedEventInDb, updateManagedEventInDb, getManagedEventFromDb } from '@/lib/db';
-import { settleBetsForManagedEvent } from './bets';
+import { settleBetsForManagedEvent } from './bets'; 
 import type { ManagedEventStatus } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+
+const NULL_WINNER_OPTION_VALUE = "null_winner_option";
 
 const CreateEventSchema = z.object({
   name: z.string().min(3, "Event name must be at least 3 characters."),
@@ -108,7 +110,7 @@ const UpdateEventSchema = z.object({
   }),
   homeScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
   awayScore: z.coerce.number().int().min(0, "Score cannot be negative.").optional().nullable(),
-  winningTeamId: z.coerce.number().int().positive().optional().nullable(), // Accepts number or null (after coercion)
+  winningTeamId: z.coerce.number().int().positive().optional().nullable(), 
   elapsedTime: z.coerce.number().int().min(0, "Elapsed time cannot be negative.").optional().nullable(),
   notes: z.string().optional().nullable(),
 });
@@ -130,8 +132,8 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
   const elapsedTimeForZod = (rawElapsedTime === '' || rawElapsedTime === null) ? null : rawElapsedTime;
 
   const rawWinningTeamId = formData.get('winningTeamId');
-  // If winningTeamId is an empty string (from "Draw/No Winner" select option), it should become null for Zod.
-  const winningTeamIdForZod = (rawWinningTeamId === '' || rawWinningTeamId === null || rawWinningTeamId === undefined || rawWinningTeamId === 'null') ? null : rawWinningTeamId;
+  const winningTeamIdForZod = (rawWinningTeamId === NULL_WINNER_OPTION_VALUE || rawWinningTeamId === '' || rawWinningTeamId === null || rawWinningTeamId === undefined) ? null : rawWinningTeamId;
+
 
   const dataToValidate = {
     eventId: formData.get('eventId'),
@@ -152,11 +154,11 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
   }
   console.log('[adminEventsAction] Server: Zod validation successful (update). Validated data:', validatedFields.data);
 
+  
   const { eventId, status } = validatedFields.data;
-  // Use validated values directly
   const homeScore = validatedFields.data.homeScore;
   const awayScore = validatedFields.data.awayScore;
-  let winningTeamId = validatedFields.data.winningTeamId; // This is now number | null | undefined
+  let winningTeamIdValidated = validatedFields.data.winningTeamId; 
   const elapsedTime = validatedFields.data.elapsedTime;
   const notes = validatedFields.data.notes;
 
@@ -173,25 +175,21 @@ export async function updateManagedEventAction(formData: FormData): Promise<{ er
       console.warn('[adminEventsAction] Server: Scores are required to finish an event.');
       return { error: 'Home and Away scores are required to finish an event.' };
     }
-    if (homeScore > awayScore) {
-      winningTeamId = existingEvent.homeTeam.id;
-    } else if (awayScore > homeScore) {
-      winningTeamId = existingEvent.awayTeam.id;
+    if (Number(homeScore) > Number(awayScore)) {
+      winningTeamIdValidated = existingEvent.homeTeam.id;
+    } else if (Number(awayScore) > Number(homeScore)) {
+      winningTeamIdValidated = existingEvent.awayTeam.id;
     } else { 
-      winningTeamId = null; // Draw explicitly
+      winningTeamIdValidated = null; 
     }
-    console.log(`[adminEventsAction] Server: Event finished. Auto-determined winningTeamId: ${winningTeamId}`);
+    console.log(`[adminEventsAction] Server: Event finished. Auto-determined winningTeamId: ${winningTeamIdValidated}`);
   } else {
-     // If not 'finished', winningTeamId from form (if provided and valid) is used.
-     // If it wasn't provided or was invalid, validatedFields.data.winningTeamId would be null/undefined.
-     // No need to explicitly set to null here unless status is not 'finished' AND it wasn't in form.
-     // The Zod schema handles optionality.
-     console.log(`[adminEventsAction] Server: Event not finished. Using winningTeamId from form (if any): ${winningTeamId}`);
+     console.log(`[adminEventsAction] Server: Event not finished. Using winningTeamId from form (if any): ${winningTeamIdValidated}`);
   }
 
   try {
-    console.log(`[adminEventsAction] Server: Updating event ${eventId} in DB with status: ${status}, homeScore: ${homeScore}, awayScore: ${awayScore}, winningTeamId: ${winningTeamId}, elapsedTime: ${elapsedTime}`);
-    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, winningTeamId, elapsedTime, notes);
+    console.log(`[adminEventsAction] Server: Updating event ${eventId} in DB with status: ${status}, homeScore: ${homeScore}, awayScore: ${awayScore}, winningTeamId: ${winningTeamIdValidated}, elapsedTime: ${elapsedTime}`);
+    const success = await updateManagedEventInDb(eventId, status, homeScore, awayScore, winningTeamIdValidated, elapsedTime, notes);
 
     if (!success) {
       console.error(`[adminEventsAction] Server: Failed to update event ${eventId} in database.`);
